@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0E0F12">
+<title>Treino · Semana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E0F12;
+    --surface:#16181D;
+    --surface-2:#1E2128;
+    --surface-3:#24272F;
+    --border:#2A2E37;
+    --text:#ECEDEF;
+    --muted:#8A8F99;
+    --faint:#5A5F69;
+    --accent:#FF5A1F;       /* intensidade / marca */
+    --accent-soft:rgba(255,90,31,.14);
+    --done:#34D399;         /* concluído */
+    --done-soft:rgba(52,211,153,.14);
+    --display:'Oswald',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  .wrap{max-width:780px;margin:0 auto;padding:0 16px}
+
+  /* ---------- Cabeçalho ---------- */
+  header.top{
+    padding:28px 0 18px;
+  }
+  .kicker{
+    font-family:var(--display);
+    font-weight:500;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--accent);
+  }
+  h1{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:clamp(34px,9vw,52px);
+    line-height:.95;
+    letter-spacing:.01em;
+    text-transform:uppercase;
+    margin:6px 0 8px;
+  }
+  .sub{color:var(--muted);font-size:14px;max-width:48ch}
+
+  /* ---------- Tira de dias (sticky) ---------- */
+  .days{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(var(--ink) 70%,rgba(14,15,18,0));
+    padding:10px 0 14px;
+  }
+  .days-inner{
+    display:flex;gap:8px;
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
+  }
+  .days-inner::-webkit-scrollbar{display:none}
+  .day-btn{
+    flex:1 0 auto;
+    min-width:62px;
+    scroll-snap-align:start;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    color:var(--muted);
+    padding:10px 6px 9px;
+    cursor:pointer;
+    text-align:center;
+    transition:background .18s,border-color .18s,color .18s,transform .12s;
+    font-family:var(--display);
+  }
+  .day-btn:hover{border-color:var(--faint)}
+  .day-btn:active{transform:translateY(1px)}
+  .day-btn .abbr{
+    display:block;font-weight:600;font-size:18px;letter-spacing:.06em;text-transform:uppercase;
+  }
+  .day-btn .focus{
+    display:block;font-family:var(--body);font-weight:500;
+    font-size:10px;color:var(--faint);margin-top:3px;line-height:1.2;
+  }
+  .day-btn .dot{
+    display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--done);margin-top:5px;opacity:0;transition:opacity .18s;
+  }
+  .day-btn.complete .dot{opacity:1}
+  .day-btn[aria-selected="true"]{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+    color:var(--text);
+  }
+  .day-btn[aria-selected="true"] .focus{color:var(--accent)}
+  .day-btn .today{
+    display:none;font-family:var(--body);font-weight:700;font-size:9px;
+    letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-top:3px;
+  }
+  .day-btn.is-today .today{display:block}
+
+  /* ---------- Painel do dia ---------- */
+  .panel-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:12px;flex-wrap:wrap;margin:6px 0 16px;
+  }
+  .panel-head h2{
+    font-family:var(--display);font-weight:700;text-transform:uppercase;
+    font-size:24px;letter-spacing:.02em;
+  }
+  .panel-head .focus-tag{color:var(--muted);font-size:13px;font-weight:500}
+  .progress{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--display);font-weight:500;font-size:13px;
+    letter-spacing:.04em;color:var(--muted);
+  }
+  .progress .count{color:var(--text)}
+  .reset{
+    background:none;border:1px solid var(--border);color:var(--muted);
+    font-family:var(--body);font-size:11px;font-weight:600;
+    border-radius:8px;padding:5px 9px;cursor:pointer;transition:.15s;
+  }
+  .reset:hover{border-color:var(--accent);color:var(--accent)}
+
+  .bar{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .bar span{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+
+  /* ---------- Cartões de exercício ---------- */
+  .ex{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    margin-bottom:12px;
+    overflow:hidden;
+    transition:border-color .18s,opacity .18s;
+  }
+  .ex.done{border-color:var(--done-soft);opacity:.62}
+  .ex-row{
+    display:flex;gap:14px;align-items:flex-start;
+    padding:15px 16px;cursor:pointer;
+  }
+  .num{
+    flex:0 0 auto;
+    font-family:var(--display);font-weight:700;font-size:15px;
+    width:30px;height:30px;border-radius:9px;
+    display:grid;place-items:center;
+    background:var(--surface-3);color:var(--accent);
+    transition:.18s;
+  }
+  .ex.done .num{background:var(--done-soft);color:var(--done)}
+  .ex.done .num::after{content:"✓"}
+  .ex.done .num .n{display:none}
+  .body{flex:1 1 auto;min-width:0}
+  .name{font-family:var(--display);font-weight:500;font-size:18px;line-height:1.15;letter-spacing:.01em}
+  .note{font-size:12.5px;color:var(--muted);margin-top:4px}
+
+  /* esquema de repetições */
+  .scheme{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+  .scheme .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px}
+  .chip{
+    font-family:var(--display);font-weight:500;font-size:14px;
+    min-width:30px;text-align:center;
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;padding:4px 8px;color:var(--text);
+    font-variant-numeric:tabular-nums;
+  }
+  .chip.first{border-color:var(--accent);color:var(--accent)}
+  .pill{
+    font-family:var(--display);font-weight:600;font-size:14px;
+    background:var(--accent-soft);border:1px solid var(--accent);
+    color:var(--accent);border-radius:8px;padding:4px 11px;letter-spacing:.03em;
+  }
+
+  /* badges de técnica */
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;font-weight:600;letter-spacing:.02em;
+    border-radius:99px;padding:3px 9px;border:1px solid transparent;
+  }
+  .badge.drop{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  .badge.iso{background:var(--surface-2);color:#9FB4FF;border-color:#39406b}
+  .badge.fast{background:var(--surface-2);color:#FFD27A;border-color:#5e4d28}
+  .badge::before{font-family:var(--body);font-weight:700}
+  .badge.drop::before{content:"▼"}
+  .badge.iso::before{content:"⏱"}
+  .badge.fast::before{content:"⚡"}
+
+  /* supersérie */
+  .superset{
+    margin:0 16px 15px 60px;
+    border-left:2px solid var(--accent);
+    padding:12px 0 2px 14px;
+    position:relative;
+  }
+  .superset .tag{
+    font-family:var(--display);font-weight:600;font-size:10px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
+    display:block;margin-bottom:8px;
+  }
+  .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15}
+
+  /* ---------- Notas gerais ---------- */
+  footer{padding:14px 0 40px}
+  .notes{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:18px;
+  }
+  .notes h3{
+    font-family:var(--display);font-weight:600;text-transform:uppercase;
+    letter-spacing:.06em;font-size:14px;color:var(--accent);margin-bottom:12px;
+  }
+  .notes ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .notes li{display:flex;gap:10px;font-size:14px;color:var(--text)}
+  .notes li b{color:var(--text);font-weight:600}
+  .notes li span.k{color:var(--accent);font-weight:700;flex:0 0 auto}
+  .sig{text-align:center;color:var(--faint);font-size:11px;margin-top:18px;letter-spacing:.06em}
+
+  @media (max-width:480px){
+    .day-btn{min-width:58px}
+    .panel-head h2{font-size:21px}
+    .superset{margin-left:46px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+  }
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="kicker">Programa · 5 dias</span>
+    <h1>Treino<br>da Semana</h1>
+    <p class="sub">Hipertrofia em divisão de 5 dias. Toque num exercício para marcar como concluído — o progresso fica salvo no aparelho.</p>
+  </header>
+</div>
+
+<nav class="days" aria-label="Dias da semana">
+  <div class="wrap">
+    <div class="days-inner" id="dayStrip" role="tablist"></div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section id="panel" role="tabpanel" aria-live="polite"></section>
+
+  <footer>
+    <div class="notes">
+      <h3>Notas gerais</h3>
+      <ul>
+        <li><span class="k">⏲</span><div><b>Descanso:</b> 1 a 1min30 entre as séries.</div></li>
+        <li><span class="k">▤</span><div><b>Prancha:</b> 3× por semana — 4 séries até a falha.</div></li>
+        <li><span class="k">⏱</span><div><b>Isometria 2s:</b> contrair 2 segundos em cada pico de contração.</div></li>
+        <li><span class="k">⚡</span><div><b>Acelerar na fadiga:</b> aumentar a velocidade do movimento ao fadigar.</div></li>
+      </ul>
+    </div>
+    <p class="sig">12 · 10 · 8 — pirâmide descendente de carga</p>
+  </footer>
+</main>
+
+<script>
+const DAYS = [
+  {
+    abbr:"Seg", name:"Segunda", focus:"Ombro lateral/posterior · Costas",
+    ex:[
+      {name:"Elevação lateral com halter", scheme:{kind:"fixed",txt:"4×8"}, badges:["drop"]},
+      {name:"Crucifixo invertido com halter", scheme:{kind:"pyr",reps:[12,10,10,8]}, note:"Apoiar o peito no banco da remada cavalinho."},
+      {name:"Remada Hammer (anilhas)", scheme:{kind:"pyr",reps:[12,10,10,8]}, badges:["iso"]},
+      {name:"Remada unilateral com halter", scheme:{kind:"fixed",txt:"4×8"}, note:"No banco inclinado."},
+      {name:"Pulley frente — pegada supinada", scheme:{kind:"pyr",reps:[12,10,10,8]}},
+    ]
+  },
+  {
+    abbr:"Ter", name:"Terça", focus:"Ombro frontal · Posterior de coxa · Glúteo",
+    ex:[
+      {name:"Elevação frontal com anilha", scheme:{kind:"fixed",txt:"4×8"}},
+      {name:"Cadeira abdutora", scheme:{kind:"pyr",reps:[12,10,8,8]}, badges:["iso"]},
+      {name:"Meio terra sumô", scheme:{kind:"pyr",reps:[12,10,8,8]}},
+      {name:"Flexora sentado", scheme:{kind:"pyr",reps:[12,10,10,8]}, badges:["iso","fast"]},
+      {name:"Leg 45 unilateral", scheme:{kind:"pyr",reps:[12,10,8,6]}},
+      {name:"Panturrilha sentado", scheme:{kind:"fixed",txt:"3×15"}},
+    ]
+  },
+  {
+    abbr:"Qua", name:"Quarta", focus:"Peito · Ombro",
+    ex:[
+      {name:"Supino vertical inclinado", scheme:{kind:"pyr",reps:[12,10,8,8,8]}},
+      {name:"Peck deck", scheme:{kind:"pyr",reps:[15,12,10,8,8]}},
+      {name:"Supino inclinado com barra", scheme:{kind:"pyr",reps:[12,10,8,8,6]}},
+      {name:"Elevação frontal com anilha", scheme:{kind:"fixed",txt:"5×6"},
+        superset:{name:"Elevação lateral com halter (sentado)", scheme:{kind:"pyr",reps:[12,10,10,8,8]}}},
+      {name:"Desenvolvimento máquina", scheme:{kind:"pyr",reps:[12,10,8,8,8]}},
+    ]
+  },
+  {
+    abbr:"Qui", name:"Quinta", focus:"Posterior de ombro · Tríceps · Bíceps",
+    ex:[
+      {name:"Face pull no Cross", scheme:{kind:"pyr",reps:[12,10,10,8,8]}, badges:["iso"],
+        superset:{name:"Elevação lateral com halter", scheme:{kind:"fixed",txt:"5×8"}}},
+      {name:"Tríceps pulley com barra", scheme:{kind:"fixed",txt:"4×8–10"},
+        superset:{name:"Rosca W", scheme:{kind:"fixed",txt:"4×8–10"}}},
+      {name:"Tríceps francês com halter", scheme:{kind:"fixed",txt:"4×8"},
+        superset:{name:"Rosca no Cross", scheme:{kind:"fixed",txt:"4×8"}}},
+      {name:"Tríceps corda", scheme:{kind:"pyr",reps:[12,10,10,8]}, badges:["iso"],
+        superset:{name:"Martelo simultâneo com halter", scheme:{kind:"pyr",reps:[12,10,8,8]}}},
+    ]
+  },
+  {
+    abbr:"Sex", name:"Sexta", focus:"Quadríceps · Adutor",
+    ex:[
+      {name:"Cadeira extensora", scheme:{kind:"fixed",txt:"4×"}, badges:["iso","fast"],
+        note:"Por série: 6 movimentos com isometria 2s + 6 movimentos acelerando."},
+      {name:"Búlgaro com carga ipsilateral", scheme:{kind:"pyr",reps:[12,10,8,8]}},
+      {name:"Leg 45", scheme:{kind:"pyr",reps:[12,10,8,6]}},
+      {name:"Cadeira adutora", scheme:{kind:"pyr",reps:[15,12,10,8]}},
+      {name:"Panturrilha sentado", scheme:{kind:"fixed",txt:"3×15"}},
+    ]
+  },
+];
+
+const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
+const store = {
+  get(d){ try{ return JSON.parse(localStorage.getItem("treino_"+d)||"[]"); }catch{ return []; } },
+  set(d,a){ try{ localStorage.setItem("treino_"+d, JSON.stringify(a)); }catch{} }
+};
+
+let current = 0;
+const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
+current = todayIdx;
+
+const strip = document.getElementById("dayStrip");
+const panel = document.getElementById("panel");
+
+function schemeHTML(s){
+  if(s.kind==="pyr"){
+    const chips = s.reps.map((r,i)=>`<span class="chip${i===0?' first':''}">${r}</span>`).join("");
+    return `<div class="scheme"><span class="lbl">Reps</span>${chips}</div>`;
+  }
+  return `<div class="scheme"><span class="lbl">Séries</span><span class="pill">${s.txt.replace('x','×')}</span></div>`;
+}
+function badgesHTML(b){
+  if(!b||!b.length) return "";
+  return `<div class="badges">${b.map(x=>`<span class="badge ${x}">${BADGE_LABEL[x]}</span>`).join("")}</div>`;
+}
+
+function renderDay(){
+  const day = DAYS[current];
+  const done = store.get(current);
+  const total = day.ex.length;
+  const completed = done.filter(Boolean).length;
+  const pct = total ? Math.round(completed/total*100) : 0;
+
+  let html = `
+    <div class="panel-head">
+      <div>
+        <h2>${day.name}</h2>
+        <div class="focus-tag">${day.focus}</div>
+      </div>
+      <div class="progress">
+        <span><span class="count">${completed}</span>/${total} concluídos</span>
+        <button class="reset" id="resetBtn">Limpar</button>
+      </div>
+    </div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+  `;
+
+  day.ex.forEach((e,i)=>{
+    const isDone = !!done[i];
+    html += `
+      <article class="ex ${isDone?'done':''}" data-i="${i}">
+        <div class="ex-row" role="button" tabindex="0" aria-pressed="${isDone}" aria-label="${e.name}, marcar concluído">
+          <div class="num"><span class="n">${i+1}</span></div>
+          <div class="body">
+            <div class="name">${e.name}</div>
+            ${e.note?`<div class="note">${e.note}</div>`:""}
+            ${schemeHTML(e.scheme)}
+            ${badgesHTML(e.badges)}
+          </div>
+        </div>
+        ${e.superset?`
+          <div class="superset">
+            <span class="tag">+ Supersérie</span>
+            <div class="sname">${e.superset.name}</div>
+            ${schemeHTML(e.superset.scheme)}
+          </div>`:""}
+      </article>`;
+  });
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll(".ex").forEach(card=>{
+    const row = card.querySelector(".ex-row");
+    const toggle = ()=>{
+      const i = +card.dataset.i;
+      const arr = store.get(current);
+      arr[i] = !arr[i];
+      store.set(current, arr);
+      renderDay(); renderStrip();
+    };
+    row.addEventListener("click", toggle);
+    row.addEventListener("keydown", ev=>{
+      if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); toggle(); }
+    });
+  });
+  document.getElementById("resetBtn").addEventListener("click", ()=>{
+    store.set(current, []); renderDay(); renderStrip();
+  });
+}
+
+function renderStrip(){
+  strip.innerHTML = DAYS.map((d,i)=>{
+    const done = store.get(i);
+    const complete = d.ex.length>0 && done.filter(Boolean).length===d.ex.length;
+    return `
+      <button class="day-btn ${i===current?'':''} ${i===todayIdx?'is-today':''} ${complete?'complete':''}"
+              role="tab" aria-selected="${i===current}" data-i="${i}">
+        <span class="abbr">${d.abbr}</span>
+        <span class="focus">${d.focus.split('·')[0].trim()}</span>
+        <span class="today">Hoje</span>
+        <span class="dot"></span>
+      </button>`;
+  }).join("");
+
+  strip.querySelectorAll(".day-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      current = +btn.dataset.i;
+      renderStrip(); renderDay();
+      btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+    });
+  });
+}
+
+renderStrip();
+renderDay();
+const active = strip.querySelector('[aria-selected="true"]');
+if(active) active.scrollIntoView({inline:"center",block:"nearest"});
+</script>
+</body>
+</html>
