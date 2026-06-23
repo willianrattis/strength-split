@@ -1,0 +1,69 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Strength Split — Split de 5 dias</title>
+  <desc>Open Graph preview card para o Strength Split, tracker de treino semanal em 5 dias.</desc>
+
+  <rect width="1200" height="630" fill="#0E0F12"/>
+
+  <g stroke="#1E2128" stroke-width="1" fill="none">
+    <line x1="0" y1="105" x2="1200" y2="105"/>
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="525" x2="1200" y2="525"/>
+    <line x1="240" y1="0" x2="240" y2="630"/>
+    <line x1="480" y1="0" x2="480" y2="630"/>
+    <line x1="720" y1="0" x2="720" y2="630"/>
+    <line x1="960" y1="0" x2="960" y2="630"/>
+  </g>
+
+  <rect x="64" y="90" width="6" height="260" rx="3" fill="#FF5A1F"/>
+
+  <text x="90" y="128" font-family="'Oswald',system-ui,sans-serif" font-weight="500" font-size="18" letter-spacing="6" fill="#FF5A1F" text-anchor="start">PROGRAMA · 5 DIAS</text>
+  <text x="88" y="210" font-family="'Oswald',system-ui,sans-serif" font-weight="700" font-size="88" letter-spacing="2" fill="#ECEDEF" text-anchor="start">STRENGTH</text>
+  <text x="88" y="308" font-family="'Oswald',system-ui,sans-serif" font-weight="300" font-size="88" letter-spacing="2" fill="#ECEDEF" text-anchor="start">SPLIT</text>
+  <text x="90" y="390" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="22" fill="#8A8F99" text-anchor="start">Split semanal · Marque, acompanhe, evolua.</text>
+
+  <rect x="680" y="80" width="100" height="80" rx="14" fill="#1E2128" stroke="#FF5A1F" stroke-width="1.5"/>
+  <text x="730" y="126" font-family="'Oswald',system-ui,sans-serif" font-weight="600" font-size="26" fill="#ECEDEF" text-anchor="middle">SEG</text>
+  <text x="730" y="148" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="13" fill="#FF5A1F" text-anchor="middle">OMBROS</text>
+
+  <rect x="795" y="80" width="100" height="80" rx="14" fill="#1E2128" stroke="#2A2E37" stroke-width="1"/>
+  <text x="845" y="126" font-family="'Oswald',system-ui,sans-serif" font-weight="600" font-size="26" fill="#ECEDEF" text-anchor="middle">TER</text>
+  <text x="845" y="148" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="13" fill="#5A5F69" text-anchor="middle">POSTERIOR</text>
+
+  <rect x="910" y="80" width="100" height="80" rx="14" fill="#1E2128" stroke="#2A2E37" stroke-width="1"/>
+  <text x="960" y="126" font-family="'Oswald',system-ui,sans-serif" font-weight="600" font-size="26" fill="#ECEDEF" text-anchor="middle">QUA</text>
+  <text x="960" y="148" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="13" fill="#5A5F69" text-anchor="middle">PEITO</text>
+
+  <rect x="1025" y="80" width="100" height="80" rx="14" fill="#1E2128" stroke="#2A2E37" stroke-width="1"/>
+  <text x="1075" y="126" font-family="'Oswald',system-ui,sans-serif" font-weight="600" font-size="26" fill="#ECEDEF" text-anchor="middle">QUI</text>
+  <text x="1075" y="148" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="13" fill="#5A5F69" text-anchor="middle">BRAÇOS</text>
+
+  <rect x="1025" y="178" width="100" height="80" rx="14" fill="#1E2128" stroke="#2A2E37" stroke-width="1"/>
+  <text x="1075" y="224" font-family="'Oswald',system-ui,sans-serif" font-weight="600" font-size="26" fill="#ECEDEF" text-anchor="middle">SEX</text>
+  <text x="1075" y="246" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="13" fill="#5A5F69" text-anchor="middle">QUAD</text>
+
+  <rect x="680" y="290" width="445" height="8" rx="4" fill="#1E2128"/>
+  <rect x="680" y="290" width="178" height="8" rx="4" fill="#FF5A1F"/>
+  <text x="680" y="323" font-family="'Oswald',system-ui,sans-serif" font-weight="500" font-size="16" fill="#8A8F99" letter-spacing="2">3 / 8 EXERCÍCIOS</text>
+
+  <rect x="680" y="345" width="18" height="18" rx="5" fill="rgba(52,211,153,.18)" stroke="#34D399" stroke-width="1"/>
+  <text x="689" y="358" font-family="'Inter',system-ui,sans-serif" font-weight="700" font-size="12" fill="#34D399" text-anchor="middle">✓</text>
+  <text x="710" y="359" font-family="'Oswald',system-ui,sans-serif" font-weight="400" font-size="17" fill="#5A5F69">Elevação lateral com halter · 4×8</text>
+
+  <rect x="680" y="375" width="18" height="18" rx="5" fill="rgba(52,211,153,.18)" stroke="#34D399" stroke-width="1"/>
+  <text x="689" y="388" font-family="'Inter',system-ui,sans-serif" font-weight="700" font-size="12" fill="#34D399" text-anchor="middle">✓</text>
+  <text x="710" y="389" font-family="'Oswald',system-ui,sans-serif" font-weight="400" font-size="17" fill="#5A5F69">Crucifixo invertido · 12 10 10 8</text>
+
+  <rect x="680" y="405" width="18" height="18" rx="5" fill="#FF5A1F"/>
+  <text x="689" y="418" font-family="'Inter',system-ui,sans-serif" font-weight="700" font-size="12" fill="#0E0F12" text-anchor="middle">3</text>
+  <text x="710" y="419" font-family="'Oswald',system-ui,sans-serif" font-weight="500" font-size="17" fill="#ECEDEF">Remada Hammer · 12 10 10 8</text>
+
+  <rect x="680" y="435" width="18" height="18" rx="5" fill="#1E2128" stroke="#2A2E37" stroke-width="1"/>
+  <text x="689" y="448" font-family="'Inter',system-ui,sans-serif" font-weight="500" font-size="12" fill="#5A5F69" text-anchor="middle">4</text>
+  <text x="710" y="449" font-family="'Oswald',system-ui,sans-serif" font-weight="400" font-size="17" fill="#5A5F69">Remada unilateral · 4×8</text>
+
+  <line x1="64" y1="560" x2="1136" y2="560" stroke="#1E2128" stroke-width="1"/>
+  <text x="64" y="598" font-family="'Oswald',system-ui,sans-serif" font-weight="500" font-size="18" letter-spacing="4" fill="#FF5A1F">STRENGTH SPLIT</text>
+  <text x="1136" y="598" font-family="'Inter',system-ui,sans-serif" font-weight="400" font-size="16" fill="#5A5F69" text-anchor="end">Salvo localmente · sem login</text>
+</svg>
