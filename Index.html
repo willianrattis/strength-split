@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root, [data-theme="dark"]{
     --ink:#0E0F12;
@@ -503,21 +503,17 @@ function effectiveTheme(){
 function applyTheme(){
   const t = effectiveTheme();
   document.documentElement.setAttribute("data-theme", t);
-  // no escuro mostra o sol (ação: clarear); no claro mostra a lua (ação: escurecer)
   $themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
   $themeBtn.title = t === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro";
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
 }
 $themeBtn.addEventListener("click", () => {
-  // alterna explicitamente entre claro/escuro
   theme = effectiveTheme() === "dark" ? "light" : "dark";
   applyTheme();
   savePref();
-  // se o gráfico estiver visível, redesenha com as cores do novo tema
   if(evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
 });
-// se o usuário não fixou tema, acompanha mudanças do sistema
 prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
 
 // ========= Abas principais =========
@@ -559,7 +555,7 @@ $loginBtn.addEventListener("click", () => {
 
 onAuthStateChanged(auth, async u => {
   user = u;
-  allSessions = null; // limpa cache ao trocar de usuário
+  allSessions = null;
   if(u){
     $authBox.innerHTML = `
       <span class="who">Olá, <b>${(u.displayName||u.email||"").split(" ")[0]}</b></span>
@@ -589,7 +585,6 @@ function todayStr(){
 }
 function sessionId(date, dayKey){ return `${date}_${dayKey}`; }
 
-// preferências do usuário (modo de visualização) — doc users/{uid}/prefs/app
 async function loadPref(){
   if(!user) return;
   try{
@@ -626,7 +621,6 @@ function emptySession(dayKey){
   };
 }
 
-// Ajusta a sessão carregada se o catálogo mudou (ex: você editou DAYS)
 function reconcileSession(s, dayKey){
   const day = DAYS[dayKey];
   const fresh = emptySession(dayKey);
@@ -648,7 +642,6 @@ function reconcileSession(s, dayKey){
   return fresh;
 }
 
-// carrega todas as sessões do usuário uma vez e cacheia
 async function loadAllSessions(){
   if(allSessions || !user) return;
   try{
@@ -696,7 +689,6 @@ async function saveNow(){
   try{
     await setDoc(ref, { ...session, updatedAt: serverTimestamp() }, { merge: true });
     setSync(navigator.onLine ? "live" : "offline", navigator.onLine ? "sincronizado" : "offline — salvando local");
-    // atualiza cache local
     if(allSessions){
       const idx = allSessions.findIndex(s => s.date === session.date && s.dayKey === session.dayKey);
       if(idx >= 0) allSessions[idx] = { ...session };
@@ -822,7 +814,6 @@ function attachHandlers(){
         const si = +inp.dataset.si;
         const v = inp.value.replace(",", ".").trim();
         target()[si].weight = v === "" ? null : (isNaN(parseFloat(v)) ? target()[si].weight : parseFloat(v));
-        // atualiza borda da célula sem rerender (mantém o foco)
         inp.parentElement.classList.toggle("filled", v !== "");
         scheduleSave();
       });
@@ -838,7 +829,6 @@ function attachHandlers(){
 
 function renderStrip(){
   $strip.innerHTML = DAYS.map((d,i) => {
-    // não temos info de outros dias em memória — apenas marca o atual
     return `
       <button class="day-btn ${i===todayIdx?'is-today':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
@@ -862,12 +852,11 @@ function renderStrip(){
 }
 
 // ========= Evolução =========
-// catálogo de exercícios únicos (principal + supersérie), com chave estável
 const MUSCLE_ORDER = ["ombro","costas","peito","tríceps","bíceps","perna"];
 const MUSCLE_LABEL = {ombro:"Ombro",costas:"Costas",peito:"Peito","tríceps":"Tríceps","bíceps":"Bíceps",perna:"Perna"};
 
 function buildExerciseList(){
-  const seen = new Map(); // nome -> {name, muscle, dayKey, exIdx, isSup}
+  const seen = new Map();
   DAYS.forEach((d, dk) => {
     d.ex.forEach((e, ei) => {
       if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, dayKey:dk, exIdx:ei, isSup:false});
@@ -883,7 +872,6 @@ let evoInitialized = false;
 function initEvolucao(){
   if(evoInitialized) return;
   evoInitialized = true;
-  // agrupa por músculo, ordem alfabética dentro de cada grupo
   const grouped = new Map();
   EXERCISES.forEach((x,i) => {
     const m = x.muscle || "outro";
@@ -904,7 +892,6 @@ function initEvolucao(){
   renderEvolucao();
 }
 
-// extrai métricas de carga de um array de séries
 function loadMetrics(sets){
   if(!sets) return null;
   const ws = sets.map(s => (s && s.weight != null && s.weight !== "") ? Number(s.weight) : null)
@@ -920,21 +907,17 @@ async function renderEvolucao(){
   const sel = EXERCISES[+$evoSelect.value || 0];
   $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
 
-  // usa cache local — sem queries compostas
   await loadAllSessions();
   const docsData = (allSessions || [])
     .filter(s => s.dayKey === sel.dayKey)
     .sort((a,b) => a.date.localeCompare(b.date));
 
-  // monta série temporal: data -> métricas do exercício escolhido
   const points = [];
   docsData.forEach(s => {
     const ex = s.exercises && s.exercises[sel.exIdx];
     if(!ex) return;
-    // confere que é o mesmo exercício (nome bate), senão pula
     const sets = sel.isSup ? ex.sup : ex.main;
-    const nmeExpected = sel.isSup ? (DAYS[sel.dayKey].ex[sel.exIdx].superset||{}).name : DAYS[sel.dayKey].ex[sel.exIdx].name;
-    if(ex.name !== DAYS[sel.dayKey].ex[sel.exIdx].name) { /* catálogo mudou de ordem; ainda tentamos */ }
+    if(ex.name !== DAYS[sel.dayKey].ex[sel.exIdx].name) { /* catálogo mudou; segue */ }
     const m = loadMetrics(sets);
     if(m) points.push({ date: s.date, max: m.max, avg: m.avg });
   });
@@ -945,11 +928,12 @@ async function renderEvolucao(){
     return;
   }
 
-  // estatísticas-resumo
   const lastMax = points[points.length-1].max;
   const firstMax = points[0].max;
   const delta = lastMax - firstMax;
-  const deltaTxt = (delta>0?"+":"") + (Math.round(delta*10)/10) + " kg";
+  const deltaTxt = points.length < 2
+    ? "—"
+    : (delta>0?"+":"") + (Math.round(delta*10)/10) + " kg";
 
   $evoBody.innerHTML = `
     <div class="evo-stats">
