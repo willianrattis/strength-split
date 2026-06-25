@@ -93,14 +93,14 @@
   .days-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;}
   .days-inner::-webkit-scrollbar{display:none}
   .day-btn{
-    flex:1 0 auto;min-width:62px;scroll-snap-align:start;
+    flex:1 0 auto;min-width:62px;max-width:120px;scroll-snap-align:start;
     background:var(--surface);border:1px solid var(--border);border-radius:14px;
-    color:var(--muted);padding:10px 6px 9px;cursor:pointer;text-align:center;
+    color:var(--muted);padding:10px 8px 9px;cursor:pointer;text-align:center;
     transition:.18s;font-family:var(--display);
   }
   .day-btn:hover{border-color:var(--faint)}
   .day-btn .abbr{display:block;font-weight:600;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
-  .day-btn .focus{display:block;font-family:var(--body);font-weight:500;font-size:10px;color:var(--faint);margin-top:3px;line-height:1.2}
+  .day-btn .focus{display:block;font-family:var(--body);font-weight:500;font-size:10px;color:var(--faint);margin-top:3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .day-btn .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:5px;opacity:0;transition:.18s}
   .day-btn.complete .dot{opacity:1}
   .day-btn[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
@@ -184,21 +184,18 @@
   .weight-input::placeholder{color:var(--faint);font-weight:400}
   .load-cell .unit{font-size:11px;color:var(--faint);padding-right:8px;flex:0 0 auto}
 
-  /* modo compacto: esconde carga, chips fluem em linha */
-  .compact .series-table{padding-bottom:14px}
-  .compact .series-head{display:none}
-  .compact .series-grid{
-    display:inline-grid;grid-template-columns:none;
-    grid-auto-flow:column;gap:0;
-  }
-  .compact .series-table{flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center}
+  /* modo compacto: só os chips de reps fluindo em linha */
+  .compact .series-table{flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:14px}
+  .compact .series-head{display:none !important}
+  .compact .series-head span{display:none !important}
+  .compact .series-grid:not(.series-head){display:contents}   /* dissolve só as linhas de série */
   .compact .set-idx{display:none}
   .compact .load-cell{display:none}
-  .compact .chip{padding:6px 14px;font-size:14px}
+  .compact .chip{width:auto;padding:7px 16px}
   .compact-reps-lbl{display:none}
   .compact .compact-reps-lbl{
     display:inline-flex;align-items:center;font-size:10px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px;
+    text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:4px;
   }
 
   /* badges */
@@ -258,15 +255,15 @@
   <nav class="days" aria-label="Dias da semana">
     <div class="wrap">
       <div class="days-inner" id="dayStrip" role="tablist"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:10px">
-        <div class="mode-toggle" role="group" aria-label="Modo de visualização">
-          <button id="modeCompact" type="button">Compacto</button>
-          <button id="modeLoad" type="button">Carga</button>
-        </div>
-      </div>
     </div>
   </nav>
   <main class="wrap">
+    <div style="display:flex;justify-content:flex-end;margin:4px 0 14px">
+      <div class="mode-toggle" role="group" aria-label="Modo de visualização">
+        <button id="modeCompact" type="button">Compacto</button>
+        <button id="modeLoad" type="button">Carga</button>
+      </div>
+    </div>
     <section id="panel" role="tabpanel" aria-live="polite"></section>
     <footer>
       <div class="notes">
@@ -322,14 +319,14 @@ const provider = new GoogleAuthProvider();
 
 // ========= Catálogo do treino =========
 const DAYS = [
-  { abbr:"Seg", name:"Segunda", focus:"Ombro lateral/posterior · Costas", ex:[
+  { abbr:"Seg", name:"Segunda", tag:"Ombro · Costas", focus:"Ombro lateral/posterior · Costas", ex:[
     {name:"Elevação lateral com halter", reps:[8,8,8,8], badges:["drop"]},
     {name:"Crucifixo invertido com halter", reps:[12,10,10,8], note:"Apoiar o peito no banco da remada cavalinho."},
     {name:"Remada Hammer (anilhas)", reps:[12,10,10,8], badges:["iso"]},
     {name:"Remada unilateral com halter", reps:[8,8,8,8], note:"No banco inclinado."},
     {name:"Pulley frente — pegada supinada", reps:[12,10,10,8]},
   ]},
-  { abbr:"Ter", name:"Terça", focus:"Ombro frontal · Posterior de coxa · Glúteo", ex:[
+  { abbr:"Ter", name:"Terça", tag:"Posterior", focus:"Ombro frontal · Posterior de coxa · Glúteo", ex:[
     {name:"Elevação frontal com anilha", reps:[8,8,8,8]},
     {name:"Cadeira abdutora", reps:[12,10,8,8], badges:["iso"]},
     {name:"Meio terra sumô", reps:[12,10,8,8]},
@@ -337,7 +334,7 @@ const DAYS = [
     {name:"Leg 45 unilateral", reps:[12,10,8,6]},
     {name:"Panturrilha sentado", reps:[15,15,15]},
   ]},
-  { abbr:"Qua", name:"Quarta", focus:"Peito · Ombro", ex:[
+  { abbr:"Qua", name:"Quarta", tag:"Peito", focus:"Peito · Ombro", ex:[
     {name:"Supino vertical inclinado", reps:[12,10,8,8,8]},
     {name:"Peck deck", reps:[15,12,10,8,8]},
     {name:"Supino inclinado com barra", reps:[12,10,8,8,6]},
@@ -345,7 +342,7 @@ const DAYS = [
       superset:{name:"Elevação lateral com halter (sentado)", reps:[12,10,10,8,8]}},
     {name:"Desenvolvimento máquina", reps:[12,10,8,8,8]},
   ]},
-  { abbr:"Qui", name:"Quinta", focus:"Posterior de ombro · Tríceps · Bíceps", ex:[
+  { abbr:"Qui", name:"Quinta", tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps", ex:[
     {name:"Face pull no Cross", reps:[12,10,10,8,8], badges:["iso"],
       superset:{name:"Elevação lateral com halter", reps:[8,8,8,8,8]}},
     {name:"Tríceps pulley com barra", reps:[9,9,9,9],
@@ -355,7 +352,7 @@ const DAYS = [
     {name:"Tríceps corda", reps:[12,10,10,8], badges:["iso"],
       superset:{name:"Martelo simultâneo com halter", reps:[12,10,8,8]}},
   ]},
-  { abbr:"Sex", name:"Sexta", focus:"Quadríceps · Adutor", ex:[
+  { abbr:"Sex", name:"Sexta", tag:"Pernas", focus:"Quadríceps · Adutor", ex:[
     {name:"Cadeira extensora", reps:[12,12,12,12], badges:["iso","fast"], note:"Por série: 6 mov. com isometria + 6 acelerando."},
     {name:"Búlgaro com carga ipsilateral", reps:[12,10,8,8]},
     {name:"Leg 45", reps:[12,10,8,6]},
@@ -682,7 +679,7 @@ function renderStrip(){
       <button class="day-btn ${i===todayIdx?'is-today':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
-        <span class="focus">${d.focus.split('·')[0].trim()}</span>
+        <span class="focus">${d.tag || d.focus.split('·')[0].trim()}</span>
         <span class="today">Hoje</span>
         <span class="dot"></span>
       </button>`;
