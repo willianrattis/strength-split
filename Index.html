@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
+  :root, [data-theme="dark"]{
     --ink:#0E0F12;
     --surface:#16181D;
     --surface-2:#1E2128;
@@ -39,13 +39,30 @@
     --display:'Oswald',system-ui,sans-serif;
     --body:'Inter',system-ui,sans-serif;
   }
+  [data-theme="light"]{
+    --ink:#F4F5F7;
+    --surface:#FFFFFF;
+    --surface-2:#EEF0F3;
+    --surface-3:#E3E6EB;
+    --border:#D8DCE2;
+    --text:#1A1D23;
+    --muted:#5E6571;
+    --faint:#9AA1AD;
+    --accent:#E8480E;
+    --accent-soft:rgba(232,72,14,.12);
+    --display:'Oswald',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
     background:var(--ink);color:var(--text);font-family:var(--body);
     line-height:1.5;-webkit-font-smoothing:antialiased;
     padding-bottom:env(safe-area-inset-bottom);
+    transition:background .25s,color .25s;
   }
+  [data-theme="light"] .badge.iso{color:#3A50C0;border-color:#B9C2EE;background:#EBEEFB}
+  [data-theme="light"] .badge.fast{color:#9A6B12;border-color:#E6D2A0;background:#FBF4E3}
   .wrap{max-width:780px;margin:0 auto;padding:0 16px}
 
   /* topo */
@@ -146,6 +163,15 @@
   }
   .mode-toggle button.active{background:var(--accent-soft);color:var(--accent)}
   .mode-toggle button:not(.active):hover{color:var(--text)}
+
+  /* botão de tema */
+  .theme-btn{
+    flex:0 0 auto;background:var(--surface-2);border:1px solid var(--border);
+    color:var(--muted);border-radius:10px;width:38px;height:38px;cursor:pointer;
+    display:grid;place-items:center;transition:.15s;
+  }
+  .theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .theme-btn svg{width:18px;height:18px;display:block}
 
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
@@ -257,7 +283,8 @@
     </div>
   </nav>
   <main class="wrap">
-    <div style="display:flex;justify-content:flex-end;margin:4px 0 14px">
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema"></button>
       <div class="mode-toggle" role="group" aria-label="Modo de visualização">
         <button id="modeCompact" type="button">Compacto</button>
         <button id="modeLoad" type="button">Carga</button>
@@ -368,6 +395,7 @@ let session = null;      // documento da sessão atual
 let prevSession = null;  // sessão anterior para o mesmo dia (referência de carga)
 let saveTimer = null;
 let viewMode = "load";   // "load" | "compact" — preferência de visualização
+let theme = null;        // "dark" | "light" — null = segue o sistema
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
 current = todayIdx;
@@ -382,6 +410,33 @@ const $panel = document.getElementById("panel");
 const $sync = document.getElementById("syncStatus");
 const $modeCompact = document.getElementById("modeCompact");
 const $modeLoad = document.getElementById("modeLoad");
+const $themeBtn = document.getElementById("themeBtn");
+
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
+const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
+
+function effectiveTheme(){
+  return theme || (prefersDark.matches ? "dark" : "light");
+}
+function applyTheme(){
+  const t = effectiveTheme();
+  document.documentElement.setAttribute("data-theme", t);
+  // no escuro mostra o sol (ação: clarear); no claro mostra a lua (ação: escurecer)
+  $themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
+  $themeBtn.title = t === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
+}
+$themeBtn.addEventListener("click", () => {
+  // alterna explicitamente entre claro/escuro
+  theme = effectiveTheme() === "dark" ? "light" : "dark";
+  applyTheme();
+  savePref();
+});
+// se o usuário não fixou tema, acompanha mudanças do sistema
+prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
 
 function applyModeButtons(){
   $modeCompact.classList.toggle("active", viewMode === "compact");
@@ -445,17 +500,20 @@ async function loadPref(){
   try{
     const ref = doc(db, "users", user.uid, "prefs", "app");
     const snap = await getDoc(ref);
-    if(snap.exists() && snap.data().viewMode){
-      viewMode = snap.data().viewMode;
+    if(snap.exists()){
+      const d = snap.data();
+      if(d.viewMode) viewMode = d.viewMode;
+      if(d.theme === "dark" || d.theme === "light") theme = d.theme;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
+  applyTheme();
 }
 async function savePref(){
   if(!user) return;
   try{
     const ref = doc(db, "users", user.uid, "prefs", "app");
-    await setDoc(ref, { viewMode }, { merge: true });
+    await setDoc(ref, { viewMode, theme: theme || null }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
 
@@ -696,6 +754,7 @@ function renderStrip(){
   });
 }
 
+applyTheme();
 applyModeButtons();
 renderStrip();
 </script>
