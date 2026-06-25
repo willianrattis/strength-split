@@ -133,6 +133,20 @@
   .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
   .prev-load b{color:var(--muted);font-weight:600}
 
+  /* toggle de modo */
+  .mode-toggle{
+    display:inline-flex;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:10px;padding:3px;gap:2px;
+  }
+  .mode-toggle button{
+    font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.06em;
+    text-transform:uppercase;background:none;border:none;color:var(--muted);
+    border-radius:8px;padding:6px 12px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .mode-toggle button.active{background:var(--accent-soft);color:var(--accent)}
+  .mode-toggle button:not(.active):hover{color:var(--text)}
+
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
@@ -169,6 +183,23 @@
   }
   .weight-input::placeholder{color:var(--faint);font-weight:400}
   .load-cell .unit{font-size:11px;color:var(--faint);padding-right:8px;flex:0 0 auto}
+
+  /* modo compacto: esconde carga, chips fluem em linha */
+  .compact .series-table{padding-bottom:14px}
+  .compact .series-head{display:none}
+  .compact .series-grid{
+    display:inline-grid;grid-template-columns:none;
+    grid-auto-flow:column;gap:0;
+  }
+  .compact .series-table{flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center}
+  .compact .set-idx{display:none}
+  .compact .load-cell{display:none}
+  .compact .chip{padding:6px 14px;font-size:14px}
+  .compact-reps-lbl{display:none}
+  .compact .compact-reps-lbl{
+    display:inline-flex;align-items:center;font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px;
+  }
 
   /* badges */
   .badges{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 14px 60px}
@@ -225,7 +256,15 @@
 
 <div id="appContent" style="display:none">
   <nav class="days" aria-label="Dias da semana">
-    <div class="wrap"><div class="days-inner" id="dayStrip" role="tablist"></div></div>
+    <div class="wrap">
+      <div class="days-inner" id="dayStrip" role="tablist"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <div class="mode-toggle" role="group" aria-label="Modo de visualização">
+          <button id="modeCompact" type="button">Compacto</button>
+          <button id="modeLoad" type="button">Carga</button>
+        </div>
+      </div>
+    </div>
   </nav>
   <main class="wrap">
     <section id="panel" role="tabpanel" aria-live="polite"></section>
@@ -332,6 +371,7 @@ let current = 0;
 let session = null;      // documento da sessão atual
 let prevSession = null;  // sessão anterior para o mesmo dia (referência de carga)
 let saveTimer = null;
+let viewMode = "load";   // "load" | "compact" — preferência de visualização
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
 current = todayIdx;
@@ -344,6 +384,21 @@ const $gateWrap = document.getElementById("gateWrap");
 const $strip = document.getElementById("dayStrip");
 const $panel = document.getElementById("panel");
 const $sync = document.getElementById("syncStatus");
+const $modeCompact = document.getElementById("modeCompact");
+const $modeLoad = document.getElementById("modeLoad");
+
+function applyModeButtons(){
+  $modeCompact.classList.toggle("active", viewMode === "compact");
+  $modeLoad.classList.toggle("active", viewMode === "load");
+}
+function setMode(m){
+  viewMode = m;
+  applyModeButtons();
+  renderDay();
+  savePref();
+}
+$modeCompact.addEventListener("click", () => setMode("compact"));
+$modeLoad.addEventListener("click", () => setMode("load"));
 
 function setSync(state, txt){
   $sync.className = "sync-status " + state;
@@ -367,6 +422,7 @@ onAuthStateChanged(auth, async u => {
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
     setSync("live", "sincronizado");
+    await loadPref();
     await loadDay(current);
     renderStrip();
   } else {
@@ -386,6 +442,26 @@ function todayStr(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 function sessionId(date, dayKey){ return `${date}_${dayKey}`; }
+
+// preferências do usuário (modo de visualização) — doc users/{uid}/prefs/app
+async function loadPref(){
+  if(!user) return;
+  try{
+    const ref = doc(db, "users", user.uid, "prefs", "app");
+    const snap = await getDoc(ref);
+    if(snap.exists() && snap.data().viewMode){
+      viewMode = snap.data().viewMode;
+    }
+  }catch(e){ console.warn("loadPref:", e.message); }
+  applyModeButtons();
+}
+async function savePref(){
+  if(!user) return;
+  try{
+    const ref = doc(db, "users", user.uid, "prefs", "app");
+    await setDoc(ref, { viewMode }, { merge: true });
+  }catch(e){ console.warn("savePref:", e.message); }
+}
 
 function emptySession(dayKey){
   const day = DAYS[dayKey];
@@ -490,6 +566,7 @@ function prevLoadText(exIdx, isSup){
 
 function seriesHTML(sets, exIdx, isSup){
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
+  html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
     <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
   </div>`;
@@ -515,6 +592,7 @@ function badgesHTML(b){
 
 function renderDay(){
   if(!session) return;
+  $panel.classList.toggle("compact", viewMode === "compact");
   const day = DAYS[current];
   const total = day.ex.length;
   const completed = countDone();
@@ -622,6 +700,7 @@ function renderStrip(){
   });
 }
 
+applyModeButtons();
 renderStrip();
 </script>
 </body>
