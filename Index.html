@@ -93,7 +93,7 @@
   .days-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;}
   .days-inner::-webkit-scrollbar{display:none}
   .day-btn{
-    flex:1 0 auto;min-width:62px;max-width:120px;scroll-snap-align:start;
+    flex:0 0 116px;width:116px;scroll-snap-align:start;
     background:var(--surface);border:1px solid var(--border);border-radius:14px;
     color:var(--muted);padding:10px 8px 9px;cursor:pointer;text-align:center;
     transition:.18s;font-family:var(--display);
@@ -226,7 +226,6 @@
   .sig{text-align:center;color:var(--faint);font-size:11px;margin-top:18px;letter-spacing:.06em}
 
   @media(max-width:480px){
-    .day-btn{min-width:58px}
     .panel-head h2{font-size:21px}
     .superset{margin-left:46px}
     .series-table{padding-left:46px}
