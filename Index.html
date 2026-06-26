@@ -533,6 +533,118 @@
   .day-custom-actions .dc-reset{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
   .day-custom-actions .dc-reset:hover{border-color:var(--accent);color:var(--accent)}
   .day-custom-status{font-size:11px;color:var(--faint);margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+  /* plans section */
+  .plans-section{margin-bottom:20px}
+  .plans-section-toggle{
+    font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent);background:none;border:none;
+    cursor:pointer;display:flex;align-items:center;gap:8px;padding:0;margin-bottom:12px;
+  }
+  .plans-section-toggle:hover{opacity:.8}
+  .plans-section-body{display:none}
+  .plans-section-body.open{display:block}
+  .plan-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+    transition:.18s;
+  }
+  .plan-card:hover{border-color:var(--faint)}
+  .plan-card.active-plan{border-color:var(--accent);background:var(--accent-soft)}
+  .plan-card-body{flex:1 1 auto;min-width:0}
+  .plan-card-name{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.2;letter-spacing:.01em}
+  .plan-card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
+  .plan-card-actions{display:flex;gap:6px;flex:0 0 auto;align-items:center}
+  .plan-apply-btn{
+    font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.04em;
+    text-transform:uppercase;background:var(--accent);color:#fff;border:none;
+    border-radius:8px;padding:7px 12px;cursor:pointer;transition:.15s;
+  }
+  .plan-apply-btn:hover{opacity:.85}
+
+  /* rest day */
+  .day-btn.rest{opacity:.5}
+  .day-btn.rest .focus{font-style:italic}
+  .rest-placeholder{
+    text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;line-height:1.6;
+  }
+  .rest-placeholder .big{
+    font-family:var(--display);font-size:22px;color:var(--faint);text-transform:uppercase;
+    letter-spacing:.03em;display:block;margin-bottom:8px;
+  }
+
+  /* day mapping modal */
+  .day-map-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .day-map-type{
+    font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);
+    width:32px;text-align:center;flex:0 0 auto;
+  }
+  .day-map-label{font-family:var(--body);font-size:13px;color:var(--muted);flex:1 1 auto;min-width:0}
+  .day-map-select{
+    font-family:var(--body);font-size:14px;font-weight:500;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:10px 12px;outline:none;transition:.15s;
+    -webkit-appearance:none;appearance:none;cursor:pointer;flex:0 0 140px;
+  }
+  .day-map-select:focus{border-color:var(--accent)}
+
+  /* plan editor */
+  .plan-day-type{
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .plan-day-type-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .plan-day-type-letter{
+    font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    background:var(--accent-soft);flex:0 0 auto;
+  }
+  .plan-day-type-label-input{
+    font-family:var(--body);font-size:13px;font-weight:500;
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:7px 10px;outline:none;transition:.15s;flex:1;
+  }
+  .plan-day-type-label-input:focus{border-color:var(--accent)}
+  .plan-ex-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;padding-left:40px}
+  .plan-ex-row input,.plan-ex-row select{
+    font-family:var(--body);font-size:13px;font-weight:500;
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:7px 10px;outline:none;transition:.15s;
+  }
+  .plan-ex-row input:focus,.plan-ex-row select:focus{border-color:var(--accent)}
+  .plan-ex-name{flex:2;min-width:0}
+  .plan-ex-muscle{flex:0 0 100px;-webkit-appearance:none;appearance:none;cursor:pointer}
+  .plan-ex-reps{flex:0 0 80px;text-align:center}
+  .plan-ex-remove{
+    background:none;border:1px solid var(--border);color:var(--faint);
+    border-radius:8px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
+    font-size:14px;transition:.15s;flex:0 0 auto;
+  }
+  .plan-ex-remove:hover{border-color:#F87171;color:#F87171}
+  .plan-add-ex-btn{
+    font-family:var(--body);font-size:11px;font-weight:600;color:var(--accent);
+    background:none;border:1px dashed var(--accent);border-radius:8px;
+    padding:5px 10px;cursor:pointer;margin-left:40px;margin-bottom:8px;transition:.15s;
+  }
+  .plan-add-ex-btn:hover{background:var(--accent-soft)}
+  .plan-add-day-btn{
+    font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent);background:none;
+    border:1px dashed var(--accent);border-radius:10px;padding:10px;
+    cursor:pointer;width:100%;margin-bottom:10px;transition:.15s;
+  }
+  .plan-add-day-btn:hover{background:var(--accent-soft)}
+  .plan-remove-day{
+    background:none;border:1px solid var(--border);color:var(--faint);
+    border-radius:8px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
+    font-size:14px;transition:.15s;flex:0 0 auto;margin-left:auto;
+  }
+  .plan-remove-day:hover{border-color:#F87171;color:#F87171}
+  @media(max-width:480px){
+    .plan-ex-row{padding-left:0;flex-wrap:wrap}
+    .plan-ex-muscle{flex:0 0 80px}
+    .plan-card-actions{flex-wrap:wrap}
+  }
+
   @media(max-width:480px){
     .day-custom-fields{flex-direction:column;gap:8px}
   }
@@ -601,6 +713,7 @@
   <!-- VIEW: EXERCÍCIOS -->
   <div id="viewExercicios" style="display:none">
     <main class="wrap">
+      <div id="plansSection"></div>
       <div id="dayCustomSection" class="days-section"></div>
       <div id="exFilterBar"></div>
       <div id="exList"></div>
@@ -621,6 +734,14 @@
   <!-- MODAL: Editor de exercício -->
   <div class="modal-overlay" id="exModal">
     <div class="modal" id="exModalInner"></div>
+  </div>
+  <!-- MODAL: Editor de plano -->
+  <div class="modal-overlay" id="planModal">
+    <div class="modal" id="planModalInner"></div>
+  </div>
+  <!-- MODAL: Aplicar plano (mapeamento de dias) -->
+  <div class="modal-overlay" id="applyPlanModal">
+    <div class="modal" id="applyPlanModalInner"></div>
   </div>
 </div>
 
@@ -706,6 +827,118 @@ const DAYS = [
 ];
 const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
 
+// ========= Plan Templates =========
+const PLAN_TEMPLATES = [
+  { templateKey:"AB", name:"AB \u00b7 Superiores / Inferiores", days:[
+    { type:"A", label:"Superiores", exercises:[
+      {name:"Supino reto com barra", muscle:"peito", reps:[8,8,8]},
+      {name:"Remada curvada com barra", muscle:"costas", reps:[8,8,8]},
+      {name:"Desenvolvimento com halteres", muscle:"ombro", reps:[8,8,8]},
+      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
+      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10]},
+      {name:"Tr\u00edceps franc\u00eas (testa)", muscle:"tr\u00edceps", reps:[10,10,10]},
+    ]},
+    { type:"B", label:"Inferiores", exercises:[
+      {name:"Agachamento livre", muscle:"perna", reps:[8,8,8]},
+      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
+      {name:"Cadeira flexora", muscle:"perna", reps:[10,10,10]},
+      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
+      {name:"Panturrilha em p\u00e9 (m\u00e1quina)", muscle:"perna", reps:[12,12,12,12]},
+    ]},
+  ]},
+  { templateKey:"ABC", name:"ABC \u00b7 Push / Pull / Legs", days:[
+    { type:"A", label:"Push", exercises:[
+      {name:"Supino reto com barra", muscle:"peito", reps:[8,8,8]},
+      {name:"Supino inclinado com halteres", muscle:"peito", reps:[10,10,10]},
+      {name:"Desenvolvimento militar halteres", muscle:"ombro", reps:[8,8,8]},
+      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
+      {name:"Tr\u00edceps corda no crossover", muscle:"tr\u00edceps", reps:[10,10,10]},
+    ]},
+    { type:"B", label:"Pull", exercises:[
+      {name:"Barra fixa (ou puxada alta)", muscle:"costas", reps:[8,8,8]},
+      {name:"Remada sentada (tri\u00e2ngulo)", muscle:"costas", reps:[10,10,10]},
+      {name:"Face pull (corda)", muscle:"ombro", reps:[12,12,12]},
+      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10]},
+      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10]},
+    ]},
+    { type:"C", label:"Legs", exercises:[
+      {name:"Agachamento barra livre", muscle:"perna", reps:[8,8,8]},
+      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
+      {name:"Stiff (terra romeno)", muscle:"perna", reps:[10,10,10]},
+      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
+      {name:"Panturrilha sentado", muscle:"perna", reps:[12,12,12,12]},
+    ]},
+  ]},
+  { templateKey:"ABCD", name:"ABCD \u00b7 Upper/Lower com \u00eanfases", days:[
+    { type:"A", label:"Superiores A (for\u00e7a)", exercises:[
+      {name:"Supino reto com barra", muscle:"peito", reps:[6,6,6]},
+      {name:"Remada curvada barra", muscle:"costas", reps:[6,6,6]},
+      {name:"Desenvolvimento militar barra", muscle:"ombro", reps:[8,8,8]},
+      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
+      {name:"Rosca direta", muscle:"b\u00edceps", reps:[10,10,10]},
+      {name:"Tr\u00edceps testa", muscle:"tr\u00edceps", reps:[10,10,10]},
+    ]},
+    { type:"B", label:"Inferiores A (quadr\u00edceps)", exercises:[
+      {name:"Agachamento livre", muscle:"perna", reps:[8,8,8]},
+      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
+      {name:"Afundo com halteres", muscle:"perna", reps:[10,10,10], note:"cada perna"},
+      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
+      {name:"Panturrilha em p\u00e9", muscle:"perna", reps:[12,12,12,12]},
+    ]},
+    { type:"C", label:"Superiores B (volume)", exercises:[
+      {name:"Supino inclinado halteres", muscle:"peito", reps:[8,8,8]},
+      {name:"Barra fixa supinada", muscle:"costas", reps:[8,8,8]},
+      {name:"Eleva\u00e7\u00e3o lateral na polia", muscle:"ombro", reps:[12,12,12]},
+      {name:"Crucifixo reto (m\u00e1quina)", muscle:"peito", reps:[12,12,12]},
+      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10]},
+      {name:"Tr\u00edceps franc\u00eas unilateral", muscle:"tr\u00edceps", reps:[10,10,10]},
+    ]},
+    { type:"D", label:"Inferiores B (posterior/gl\u00fateo)", exercises:[
+      {name:"Levantamento terra romeno", muscle:"perna", reps:[8,8,8]},
+      {name:"Cadeira flexora", muscle:"perna", reps:[10,10,10]},
+      {name:"Gl\u00fateo na polia (coice)", muscle:"perna", reps:[12,12,12]},
+      {name:"Cadeira abdutora", muscle:"perna", reps:[12,12,12]},
+      {name:"Panturrilha sentado", muscle:"perna", reps:[12,12,12,12]},
+    ]},
+  ]},
+  { templateKey:"ABCDE", name:"ABCDE \u00b7 Divis\u00e3o por grupo (5\u00d7/sem)", days:[
+    { type:"A", label:"Peito", exercises:[
+      {name:"Supino reto barra", muscle:"peito", reps:[8,8,8,8]},
+      {name:"Supino inclinado halteres", muscle:"peito", reps:[10,10,10,10]},
+      {name:"Crucifixo m\u00e1quina", muscle:"peito", reps:[12,12,12]},
+      {name:"Crossover polia alta", muscle:"peito", reps:[12,12,12]},
+    ]},
+    { type:"B", label:"Costas", exercises:[
+      {name:"Barra fixa (ou puxada alta)", muscle:"costas", reps:[8,8,8,8]},
+      {name:"Remada cavalinho (barra T)", muscle:"costas", reps:[8,8,8,8]},
+      {name:"Puxada aberta (pulley frente)", muscle:"costas", reps:[10,10,10]},
+      {name:"Face pull", muscle:"ombro", reps:[12,12,12]},
+      {name:"Remada baixa (cord\u00e3o)", muscle:"costas", reps:[12,12,12]},
+    ]},
+    { type:"C", label:"Pernas", exercises:[
+      {name:"Agachamento barra livre", muscle:"perna", reps:[8,8,8,8]},
+      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10,10]},
+      {name:"Stiff", muscle:"perna", reps:[10,10,10,10]},
+      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
+      {name:"Cadeira flexora", muscle:"perna", reps:[12,12,12]},
+      {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15,15]},
+    ]},
+    { type:"D", label:"Ombros", exercises:[
+      {name:"Desenvolvimento militar barra", muscle:"ombro", reps:[8,8,8,8]},
+      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12,12]},
+      {name:"Crucifixo invertido", muscle:"ombro", reps:[12,12,12]},
+      {name:"Encolhimento", muscle:"ombro", reps:[10,10,10]},
+    ]},
+    { type:"E", label:"Bra\u00e7os", exercises:[
+      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10,10]},
+      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10,10]},
+      {name:"Tr\u00edceps testa (barra EZ)", muscle:"tr\u00edceps", reps:[10,10,10,10]},
+      {name:"Tr\u00edceps corda no crossover", muscle:"tr\u00edceps", reps:[12,12,12]},
+      {name:"Rosca punho (antebra\u00e7o)", muscle:"b\u00edceps", reps:[15,15,15], note:"opcional"},
+    ]},
+  ]},
+];
+
 // ========= Estado em memória =========
 let user = null;
 let current = 0;
@@ -719,6 +952,11 @@ let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
 let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
 let weekOffset = 0; // 0 = current week, -1 = last week, etc.
+let plansCache = new Map(); // planId -> plan doc (custom plans from Firestore)
+let currentPlanName = null;
+let currentPlanId = null;   // custom plan doc id
+let currentPlanKey = null;  // predefined template key
+let plansSectionOpen = false;
 
 // exercise list filters
 let exFilterMuscle = null; // null = todos
@@ -753,6 +991,11 @@ const $exFilterBar = document.getElementById("exFilterBar");
 const $exList = document.getElementById("exList");
 const $exModal = document.getElementById("exModal");
 const $exModalInner = document.getElementById("exModalInner");
+const $plansSection = document.getElementById("plansSection");
+const $planModal = document.getElementById("planModal");
+const $planModalInner = document.getElementById("planModalInner");
+const $applyPlanModal = document.getElementById("applyPlanModal");
+const $applyPlanModalInner = document.getElementById("applyPlanModalInner");
 const $evoSelect = document.getElementById("evoSelect");
 const $evoBody = document.getElementById("evoBody");
 let evoChart = null;
@@ -836,6 +1079,7 @@ onAuthStateChanged(auth, async u => {
     await loadDayCustomizations();
     await seedExercises(u.uid);
     await loadExercises();
+    await loadPlans();
     await loadDay(current);
     renderStrip();
   } else {
@@ -846,6 +1090,10 @@ onAuthStateChanged(auth, async u => {
     exercisesCatalog.clear();
     userDays = null;
     dayCustomizations = {};
+    plansCache.clear();
+    currentPlanName = null;
+    currentPlanId = null;
+    currentPlanKey = null;
   }
 });
 
@@ -883,6 +1131,9 @@ async function loadPref(){
       const d = snap.data();
       if(d.viewMode) viewMode = d.viewMode;
       if(d.theme === "dark" || d.theme === "light") theme = d.theme;
+      if(d.currentPlanName) currentPlanName = d.currentPlanName;
+      if(d.currentPlanId) currentPlanId = d.currentPlanId;
+      if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
@@ -892,12 +1143,18 @@ async function savePref(){
   if(!user) return;
   try{
     const ref = doc(db, "users", user.uid, "prefs", "app");
-    await setDoc(ref, { viewMode, theme: theme || null }, { merge: true });
+    await setDoc(ref, {
+      viewMode, theme: theme || null,
+      currentPlanName: currentPlanName || null,
+      currentPlanId: currentPlanId || null,
+      currentPlanKey: currentPlanKey || null,
+    }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
 
 function emptySession(dayKey){
   const day = activeDays()[dayKey];
+  if(!day.ex.length) return { date: dateForDay(dayKey, weekOffset), dayKey, dayName: day.name, exercises: [] };
   return {
     date: dateForDay(dayKey, weekOffset),
     dayKey,
@@ -913,6 +1170,7 @@ function emptySession(dayKey){
 function reconcileSession(s, dayKey){
   const day = activeDays()[dayKey];
   const fresh = emptySession(dayKey);
+  if(!day.ex.length) return fresh;
   if(!s || !Array.isArray(s.exercises)) return fresh;
   fresh.exercises = day.ex.map((e, i) => {
     const old = s.exercises[i];
@@ -1037,8 +1295,19 @@ function renderDay(){
   $panel.classList.toggle("compact", viewMode === "compact");
   const day = activeDays()[current];
   const total = day.ex.length;
+
+  if(total === 0){
+    $panel.innerHTML = `
+      <div class="panel-head"><div><h2>${day.name}</h2></div></div>
+      <div class="rest-placeholder">
+        <span class="big">Descanso</span>
+        Nenhum exerc\u00edcio programado para hoje. Aproveite para recuperar!
+      </div>`;
+    return;
+  }
+
   const completed = countDone();
-  const pct = total ? Math.round(completed/total*100) : 0;
+  const pct = Math.round(completed/total*100);
 
   let html = `
     <div class="panel-head">
@@ -1047,7 +1316,7 @@ function renderDay(){
         <div class="focus-tag">${day.focus}</div>
       </div>
       <div class="progress">
-        <span><span class="count">${completed}</span>/${total} concluídos</span>
+        <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
     </div>
@@ -1119,11 +1388,12 @@ function attachHandlers(){
 function renderStrip(){
   $strip.innerHTML = activeDays().map((d,i) => {
     const isToday = weekOffset === 0 && i === todayIdx;
+    const isRest = d.ex.length === 0;
     return `
-      <button class="day-btn ${isToday?'is-today':''}"
+      <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
-        <span class="focus">${d.tag || d.focus.split('·')[0].trim()}</span>
+        <span class="focus">${isRest ? 'Descanso' : (d.tag || d.focus.split('\u00b7')[0].trim())}</span>
         <span class="today">Hoje</span>
         <span class="dot"></span>
       </button>`;
@@ -1609,6 +1879,7 @@ function renderDayCustomSection(){
 // ========= Exercícios list view =========
 
 function renderExercicios(){
+  renderPlansSection();
   renderDayCustomSection();
   renderExFilterBar();
   renderExList();
@@ -1870,6 +2141,512 @@ async function reorderExercise(fromId, toId, before){
 
   rebuildUserDays();
   renderExList();
+}
+
+// ========= Plans =========
+
+async function loadPlans(){
+  if(!user) return;
+  plansCache.clear();
+  try{
+    const snap = await getDocs(collection(db, "users", user.uid, "plans"));
+    snap.forEach(d => plansCache.set(d.id, d.data()));
+  }catch(e){ console.warn("loadPlans:", e.message); }
+}
+
+async function savePlanDoc(docId, data){
+  if(!user) return null;
+  data.updatedAt = serverTimestamp();
+  if(docId){
+    const ref = doc(db, "users", user.uid, "plans", docId);
+    await setDoc(ref, data, { merge: true });
+    return docId;
+  } else {
+    data.createdAt = serverTimestamp();
+    const ref = await addDoc(collection(db, "users", user.uid, "plans"), data);
+    return ref.id;
+  }
+}
+
+async function deletePlanDoc(docId){
+  if(!user) return;
+  await deleteDoc(doc(db, "users", user.uid, "plans", docId));
+}
+
+function renderPlansSection(){
+  let html = `<div class="plans-section">`;
+  html += `<button class="plans-section-toggle" id="plansSectionToggle">
+    <span id="plansSectionArrow">${plansSectionOpen?'\u25bc':'\u25b6'}</span> Planos de treino
+  </button>`;
+  html += `<div class="plans-section-body ${plansSectionOpen?'open':''}" id="plansSectionBody">`;
+
+  if(currentPlanName){
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      Plano ativo: <b style="color:var(--accent)">${currentPlanName}</b>
+    </div>`;
+  }
+
+  html += `<button class="ex-new-btn" id="newPlanBtn" style="margin-bottom:12px">+ Novo plano</button>`;
+
+  PLAN_TEMPLATES.forEach(t => {
+    const isActive = currentPlanKey === t.templateKey;
+    const daysSummary = t.days.map(d => d.type).join(' \u00b7 ');
+    html += `<div class="plan-card ${isActive?'active-plan':''}" data-key="${t.templateKey}">
+      <div class="plan-card-body">
+        <div class="plan-card-name">${t.name}</div>
+        <div class="plan-card-meta">
+          <span class="ex-tag">${daysSummary}</span>
+          <span class="ex-tag">Predefinido</span>
+          ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
+        </div>
+      </div>
+      <div class="plan-card-actions">
+        <button class="plan-apply-btn" data-key="${t.templateKey}">Aplicar</button>
+      </div>
+    </div>`;
+  });
+
+  plansCache.forEach((plan, id) => {
+    const isActive = currentPlanId === id;
+    const daysSummary = (plan.days||[]).map(d => d.type).join(' \u00b7 ');
+    html += `<div class="plan-card ${isActive?'active-plan':''}" data-id="${id}">
+      <div class="plan-card-body">
+        <div class="plan-card-name">${plan.name}</div>
+        <div class="plan-card-meta">
+          <span class="ex-tag">${daysSummary}</span>
+          <span class="ex-tag">Personalizado</span>
+          ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
+        </div>
+      </div>
+      <div class="plan-card-actions">
+        <button class="ex-icon-btn plan-edit-btn" data-id="${id}" title="Editar">\u270e</button>
+        <button class="ex-icon-btn plan-delete-btn" data-id="${id}" title="Excluir">\u2715</button>
+        <button class="plan-apply-btn" data-id="${id}">Aplicar</button>
+      </div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  $plansSection.innerHTML = html;
+
+  document.getElementById("plansSectionToggle").addEventListener("click", () => {
+    plansSectionOpen = !plansSectionOpen;
+    document.getElementById("plansSectionBody").classList.toggle("open", plansSectionOpen);
+    document.getElementById("plansSectionArrow").textContent = plansSectionOpen ? '\u25bc' : '\u25b6';
+  });
+
+  document.getElementById("newPlanBtn").addEventListener("click", () => openPlanEditor(null));
+
+  $plansSection.querySelectorAll(".plan-apply-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const key = btn.dataset.key;
+      const id = btn.dataset.id;
+      if(key){
+        const tpl = PLAN_TEMPLATES.find(t => t.templateKey === key);
+        if(tpl) openApplyPlanModal(tpl, null);
+      } else if(id){
+        const plan = plansCache.get(id);
+        if(plan) openApplyPlanModal(plan, id);
+      }
+    });
+  });
+
+  $plansSection.querySelectorAll(".plan-edit-btn").forEach(btn => {
+    btn.addEventListener("click", e => { e.stopPropagation(); openPlanEditor(btn.dataset.id); });
+  });
+
+  $plansSection.querySelectorAll(".plan-delete-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const plan = plansCache.get(id);
+      if(!plan || !confirm(`Excluir plano "${plan.name}"?`)) return;
+      try{
+        await deletePlanDoc(id);
+        plansCache.delete(id);
+        if(currentPlanId === id){ currentPlanId = null; currentPlanName = null; savePref(); }
+        renderPlansSection();
+      }catch(e){ alert("Erro: " + e.message); }
+    });
+  });
+}
+
+// ========= Apply plan modal =========
+
+function openApplyPlanModal(plan, planDocId){
+  const dayTypes = plan.days || [];
+  const weekdays = ["Seg","Ter","Qua","Qui","Sex"];
+  const isABCDE = dayTypes.length === 5;
+
+  let html = `<h3>Aplicar plano</h3>`;
+  html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${plan.name}</p>`;
+  html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias n\u00e3o mapeados ser\u00e3o dias de descanso.</p>`;
+
+  dayTypes.forEach((d, i) => {
+    const defaultDay = isABCDE ? i : -1;
+    html += `<div class="day-map-row">
+      <span class="day-map-type">${d.type}</span>
+      <span class="day-map-label">${d.label} (${d.exercises.length} ex.)</span>
+      <select class="day-map-select" data-idx="${i}">
+        <option value="">— Selecionar —</option>
+        ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
+      </select>
+    </div>`;
+  });
+
+  html += `<div class="modal-error" id="applyError" style="display:none"></div>`;
+  html += `<div class="modal-footer">
+    <button class="modal-btn primary" id="applyConfirm">Aplicar</button>
+    <button class="modal-btn secondary" id="applyCancel">Cancelar</button>
+  </div>`;
+
+  $applyPlanModalInner.innerHTML = html;
+  $applyPlanModal.classList.add("open");
+
+  const closeApply = () => $applyPlanModal.classList.remove("open");
+  document.getElementById("applyCancel").addEventListener("click", closeApply);
+  $applyPlanModal.addEventListener("click", e => { if(e.target === $applyPlanModal) closeApply(); });
+
+  document.getElementById("applyConfirm").addEventListener("click", async () => {
+    const errEl = document.getElementById("applyError");
+    errEl.style.display = "none";
+
+    const mapping = [];
+    const usedWeekdays = new Set();
+    let valid = true;
+
+    $applyPlanModalInner.querySelectorAll(".day-map-select").forEach(sel => {
+      if(!valid) return;
+      const idx = +sel.dataset.idx;
+      const val = sel.value;
+      if(val === ''){
+        errEl.textContent = `Selecione um dia para o tipo ${dayTypes[idx].type}.`;
+        errEl.style.display = ""; valid = false; return;
+      }
+      const weekday = +val;
+      if(usedWeekdays.has(weekday)){
+        errEl.textContent = `O dia ${weekdays[weekday]} foi selecionado mais de uma vez.`;
+        errEl.style.display = ""; valid = false; return;
+      }
+      usedWeekdays.add(weekday);
+      mapping.push({ dayTypeIdx: idx, weekday });
+    });
+
+    if(!valid) return;
+
+    try{
+      await applyPlan(plan, planDocId, mapping);
+      closeApply();
+    }catch(e){
+      errEl.textContent = "Erro: " + e.message;
+      errEl.style.display = "";
+    }
+  });
+}
+
+async function preserveCurrentAsCustomPlan(){
+  if(!user || exercisesCatalog.size === 0) return;
+
+  const typeLetters = ['A','B','C','D','E'];
+  const days = activeDays();
+  const dayTypes = [];
+
+  days.forEach((d) => {
+    if(d.ex.length === 0) return;
+    const exercises = d.ex.map(e => ({
+      name: e.name, muscle: e.muscle,
+      reps: [...(e.reps||[])],
+      badges: [...(e.badges||[])],
+      note: e.note || null,
+      superset: e.superset ? {
+        name: e.superset.name, muscle: e.superset.muscle,
+        reps: [...(e.superset.reps||[])],
+        badges: [...(e.superset.badges||[])],
+        note: e.superset.note || null,
+      } : null,
+    }));
+    dayTypes.push({
+      type: typeLetters[dayTypes.length] || String(dayTypes.length),
+      label: d.tag || d.focus || d.name,
+      exercises,
+    });
+  });
+
+  if(!dayTypes.length) return;
+
+  const planName = currentPlanName || "Treino anterior";
+  const planData = { name: planName, source: "custom", days: dayTypes };
+
+  let existingId = null;
+  plansCache.forEach((p, id) => { if(p.name === planName) existingId = id; });
+
+  const id = await savePlanDoc(existingId, planData);
+  plansCache.set(id, { ...planData });
+}
+
+async function applyPlan(plan, planDocId, mapping){
+  if(!user) return;
+
+  // 1. Preserve current workout
+  await preserveCurrentAsCustomPlan();
+
+  // 2. Delete all current exercises
+  const delPromises = [];
+  exercisesCatalog.forEach((_, id) => delPromises.push(deleteExerciseDoc(id)));
+  await Promise.all(delPromises);
+  exercisesCatalog.clear();
+
+  // 3. Create new exercises — deduplicate by name, merge days
+  const byName = new Map();
+  mapping.forEach(({ dayTypeIdx, weekday }) => {
+    const dayType = plan.days[dayTypeIdx];
+    dayType.exercises.forEach((e, ei) => {
+      if(!byName.has(e.name)){
+        byName.set(e.name, {
+          name: e.name, muscle: e.muscle,
+          reps: [...(e.reps||[12,10,8])],
+          badges: [...(e.badges||[])],
+          note: e.note || null, active: true,
+          days: [weekday], orderByDay: { [weekday]: ei },
+          superset: e.superset ? {
+            name: e.superset.name, muscle: e.superset.muscle || e.muscle,
+            reps: [...(e.superset.reps||[])],
+            badges: [...(e.superset.badges||[])],
+            note: e.superset.note || null,
+          } : null,
+        });
+      } else {
+        const existing = byName.get(e.name);
+        if(!existing.days.includes(weekday)){
+          existing.days.push(weekday);
+          existing.orderByDay[weekday] = ei;
+        }
+      }
+    });
+  });
+
+  const colRef = collection(db, "users", user.uid, "exercises");
+  const addPromises = [];
+  byName.forEach(exData => {
+    addPromises.push(
+      addDoc(colRef, { ...exData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+        .then(ref => exercisesCatalog.set(ref.id, exData))
+    );
+  });
+  await Promise.all(addPromises);
+
+  // 4. Update day customizations
+  for(let dk = 0; dk < 5; dk++){
+    const mappedItem = mapping.find(m => m.weekday === dk);
+    if(mappedItem){
+      const dayType = plan.days[mappedItem.dayTypeIdx];
+      await saveDayCustomization(dk, dayType.label, dayType.label);
+    } else {
+      await saveDayCustomization(dk, "Descanso", "Dia de descanso");
+    }
+  }
+
+  // 5. Update plan pointer
+  currentPlanName = plan.name;
+  if(planDocId){
+    currentPlanId = planDocId; currentPlanKey = null;
+  } else if(plan.templateKey){
+    currentPlanKey = plan.templateKey; currentPlanId = null;
+  } else {
+    currentPlanId = null; currentPlanKey = null;
+  }
+  await savePref();
+
+  // 6. Rebuild and re-render
+  rebuildUserDays();
+  renderStrip();
+  session = null;
+  await loadDay(current);
+  renderPlansSection();
+}
+
+// ========= Plan editor modal =========
+
+function openPlanEditor(planDocId){
+  const isNew = !planDocId;
+  let plan;
+
+  if(isNew){
+    plan = { name: "", source: "custom", days: [
+      { type: "A", label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] }
+    ]};
+  } else {
+    plan = JSON.parse(JSON.stringify(plansCache.get(planDocId)));
+  }
+
+  function renderPlanEditorContent(){
+    let html = `<h3>${isNew ? 'Novo plano' : 'Editar plano'}</h3>`;
+    html += `<div class="modal-field">
+      <label>Nome do plano</label>
+      <input class="modal-input" id="pfName" value="${plan.name||''}" placeholder="Ex: Push Pull Legs">
+    </div>`;
+    html += `<div class="modal-field"><label>Dias do plano</label></div>`;
+
+    plan.days.forEach((d, di) => {
+      html += `<div class="plan-day-type" data-di="${di}">
+        <div class="plan-day-type-header">
+          <span class="plan-day-type-letter">${d.type}</span>
+          <input class="plan-day-type-label-input" data-di="${di}" value="${d.label||''}" placeholder="Ex: Push, Pull, Legs...">
+          ${plan.days.length > 1 ? `<button class="plan-remove-day" data-di="${di}" title="Remover dia">\u2715</button>` : ''}
+        </div>`;
+
+      d.exercises.forEach((e, ei) => {
+        html += `<div class="plan-ex-row" data-di="${di}" data-ei="${ei}">
+          <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}">
+          <select class="plan-ex-muscle" data-di="${di}" data-ei="${ei}">
+            ${Object.entries(MUSCLE_LABEL).map(([k,v]) => `<option value="${k}" ${e.muscle===k?'selected':''}>${v}</option>`).join("")}
+          </select>
+          <input class="plan-ex-reps" value="${(e.reps||[]).join(',')}" placeholder="8,8,8" data-di="${di}" data-ei="${ei}" title="Reps separadas por v\u00edrgula">
+          <button class="plan-ex-remove" data-di="${di}" data-ei="${ei}" title="Remover">\u2715</button>
+        </div>`;
+      });
+
+      html += `<button class="plan-add-ex-btn" data-di="${di}">+ Exerc\u00edcio</button>`;
+      html += `</div>`;
+    });
+
+    if(plan.days.length < 5){
+      html += `<button class="plan-add-day-btn" id="pfAddDay">+ Adicionar dia</button>`;
+    }
+
+    html += `<div class="modal-error" id="pfError" style="display:none"></div>`;
+    html += `<div class="modal-footer">
+      <button class="modal-btn primary" id="pfSave">Salvar</button>
+      <button class="modal-btn secondary" id="pfCancel">Cancelar</button>
+      ${!isNew ? `<button class="modal-btn danger" id="pfDelete">Excluir</button>` : ''}
+    </div>`;
+
+    $planModalInner.innerHTML = html;
+    bindPlanEditorEvents();
+  }
+
+  function syncPlanFromUI(){
+    const nameEl = document.getElementById("pfName");
+    if(nameEl) plan.name = nameEl.value.trim();
+
+    $planModalInner.querySelectorAll(".plan-day-type").forEach(dtEl => {
+      const di = +dtEl.dataset.di;
+      if(!plan.days[di]) return;
+      const labelInput = dtEl.querySelector(".plan-day-type-label-input");
+      if(labelInput) plan.days[di].label = labelInput.value.trim();
+
+      const exRows = dtEl.querySelectorAll(".plan-ex-row");
+      const exercises = [];
+      exRows.forEach(exRow => {
+        const nameInput = exRow.querySelector(".plan-ex-name");
+        const muscleSelect = exRow.querySelector(".plan-ex-muscle");
+        const repsInput = exRow.querySelector(".plan-ex-reps");
+        exercises.push({
+          name: nameInput ? nameInput.value.trim() : "",
+          muscle: muscleSelect ? muscleSelect.value : "peito",
+          reps: repsInput ? repsInput.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0) : [10,10,10],
+          badges: [], note: null, superset: null,
+        });
+      });
+      plan.days[di].exercises = exercises;
+    });
+  }
+
+  function bindPlanEditorEvents(){
+    document.getElementById("pfCancel").addEventListener("click", closePlanEditor);
+    $planModal.addEventListener("click", e => { if(e.target === $planModal) closePlanEditor(); });
+
+    $planModalInner.querySelectorAll(".plan-add-ex-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        syncPlanFromUI();
+        const di = +btn.dataset.di;
+        plan.days[di].exercises.push({name:"",muscle:"peito",reps:[10,10,10],badges:[],note:null,superset:null});
+        renderPlanEditorContent();
+      });
+    });
+
+    $planModalInner.querySelectorAll(".plan-ex-remove").forEach(btn => {
+      btn.addEventListener("click", () => {
+        syncPlanFromUI();
+        const di = +btn.dataset.di, ei = +btn.dataset.ei;
+        plan.days[di].exercises.splice(ei, 1);
+        renderPlanEditorContent();
+      });
+    });
+
+    const addDayBtn = document.getElementById("pfAddDay");
+    if(addDayBtn){
+      addDayBtn.addEventListener("click", () => {
+        syncPlanFromUI();
+        const typeLetters = 'ABCDEFGHIJ';
+        plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] });
+        renderPlanEditorContent();
+      });
+    }
+
+    $planModalInner.querySelectorAll(".plan-remove-day").forEach(btn => {
+      btn.addEventListener("click", () => {
+        syncPlanFromUI();
+        plan.days.splice(+btn.dataset.di, 1);
+        const typeLetters = 'ABCDEFGHIJ';
+        plan.days.forEach((d, i) => d.type = typeLetters[i] || String(i));
+        renderPlanEditorContent();
+      });
+    });
+
+    document.getElementById("pfSave").addEventListener("click", async () => {
+      syncPlanFromUI();
+      const errEl = document.getElementById("pfError");
+      errEl.style.display = "none";
+
+      if(!plan.name){
+        errEl.textContent = "Nome \u00e9 obrigat\u00f3rio."; errEl.style.display = ""; return;
+      }
+
+      for(const d of plan.days){
+        d.exercises = d.exercises.filter(e => e.name);
+        if(!d.exercises.length){
+          errEl.textContent = `Dia ${d.type} precisa de pelo menos 1 exerc\u00edcio.`;
+          errEl.style.display = ""; return;
+        }
+      }
+
+      try{
+        const data = { name: plan.name, source: "custom", days: plan.days };
+        const id = await savePlanDoc(planDocId, data);
+        plansCache.set(id, { ...data });
+        closePlanEditor();
+        renderPlansSection();
+      }catch(e){
+        errEl.textContent = "Erro: " + e.message;
+        errEl.style.display = "";
+      }
+    });
+
+    if(!isNew){
+      const delBtn = document.getElementById("pfDelete");
+      if(delBtn){
+        delBtn.addEventListener("click", async () => {
+          if(!confirm(`Excluir plano "${plan.name}"?`)) return;
+          try{
+            await deletePlanDoc(planDocId);
+            plansCache.delete(planDocId);
+            if(currentPlanId === planDocId){ currentPlanId = null; currentPlanName = null; savePref(); }
+            closePlanEditor();
+            renderPlansSection();
+          }catch(e){ alert("Erro: " + e.message); }
+        });
+      }
+    }
+  }
+
+  renderPlanEditorContent();
+  $planModal.classList.add("open");
+}
+
+function closePlanEditor(){
+  $planModal.classList.remove("open");
 }
 
 // ========= Exercise editor modal =========
