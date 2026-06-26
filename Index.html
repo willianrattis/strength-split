@@ -311,7 +311,191 @@
     .chip{font-size:14px}
     .weight-input{font-size:13px}
   }
+  /* exercícios — list */
+  .ex-list-item{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+    cursor:pointer;transition:.18s;
+  }
+  .ex-list-item:hover{border-color:var(--faint)}
+  .ex-list-item.inactive{opacity:.55}
+  .ex-list-body{flex:1 1 auto;min-width:0}
+  .ex-list-name{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.2;letter-spacing:.01em}
+  .ex-list-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
+  .ex-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-3);color:var(--muted)}
+  .ex-tag.accent{background:var(--accent-soft);color:var(--accent)}
+  .ex-tag.inactive-tag{background:var(--surface-3);color:var(--faint);font-style:italic}
+  .ex-list-actions{display:flex;gap:6px;flex:0 0 auto}
+  .ex-icon-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+    border-radius:9px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center;
+    transition:.15s;font-size:14px;
+  }
+  .ex-icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .ex-icon-btn.active-toggle.is-active{color:#34D399;border-color:#34D399}
+
+  /* filter bar */
+  .ex-filter-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;align-items:center}
+  .filter-chip{
+    font-family:var(--body);font-size:12px;font-weight:600;
+    background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    border-radius:10px;padding:7px 13px;cursor:pointer;transition:.15s;
+    white-space:nowrap;
+  }
+  .filter-chip:hover{border-color:var(--faint);color:var(--text)}
+  .filter-chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .filter-sep{width:1px;height:22px;background:var(--border);margin:0 4px}
+  .ex-new-btn{
+    font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.04em;
+    text-transform:uppercase;background:var(--accent);color:#fff;border:none;
+    border-radius:10px;padding:9px 16px;cursor:pointer;transition:.15s;margin-left:auto;
+  }
+  .ex-new-btn:hover{opacity:.85}
+
+  /* toggle switch */
+  .switch{position:relative;display:inline-block;width:40px;height:22px;flex:0 0 auto}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;inset:0;background:var(--surface-3);border:1px solid var(--border);border-radius:22px;transition:.2s}
+  .slider::before{content:"";position:absolute;width:16px;height:16px;left:2px;bottom:2px;background:var(--muted);border-radius:50%;transition:.2s}
+  .switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent)}
+  .switch input:checked + .slider::before{background:var(--accent);transform:translateX(18px)}
+
+  /* modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;
+    display:flex;align-items:flex-end;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .modal-overlay.open{opacity:1;pointer-events:auto}
+  .modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;
+    width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+    padding:24px 20px 32px;transform:translateY(100%);transition:transform .25s ease;
+  }
+  .modal-overlay.open .modal{transform:translateY(0)}
+  .modal h3{font-family:var(--display);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.02em;margin-bottom:18px}
+  .modal-field{margin-bottom:14px}
+  .modal-field label{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px}
+  .modal-input,.modal-select,.modal-textarea{
+    font-family:var(--body);font-size:14px;font-weight:500;width:100%;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:10px 12px;outline:none;transition:.15s;
+  }
+  .modal-input:focus,.modal-select:focus,.modal-textarea:focus{border-color:var(--accent)}
+  .modal-textarea{min-height:60px;resize:vertical}
+  .modal-select{-webkit-appearance:none;appearance:none;cursor:pointer;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8F99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;
+  }
+
+  /* reps editor */
+  .reps-list{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .rep-input{
+    font-family:var(--display);font-size:15px;font-weight:500;text-align:center;
+    width:52px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:8px 4px;outline:none;transition:.15s;
+  }
+  .rep-input:focus{border-color:var(--accent)}
+  .rep-add,.rep-remove{
+    font-size:18px;font-weight:700;width:32px;height:32px;border-radius:8px;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+    cursor:pointer;display:grid;place-items:center;transition:.15s;
+  }
+  .rep-add:hover,.rep-remove:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* day chips in editor */
+  .day-chips{display:flex;gap:8px;flex-wrap:wrap}
+  .day-chip{
+    font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.04em;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+    border-radius:10px;padding:8px 14px;cursor:pointer;transition:.15s;text-transform:uppercase;
+  }
+  .day-chip.selected{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+  /* badge toggles */
+  .badge-toggles{display:flex;gap:8px;flex-wrap:wrap}
+  .badge-toggle{
+    font-size:12px;font-weight:600;border-radius:99px;padding:5px 12px;
+    border:1px solid var(--border);background:var(--surface-2);color:var(--muted);
+    cursor:pointer;transition:.15s;
+  }
+  .badge-toggle.selected{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+  /* superset collapsible */
+  .superset-toggle{
+    font-family:var(--display);font-size:13px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent);background:none;border:none;
+    cursor:pointer;display:flex;align-items:center;gap:6px;padding:0;margin-bottom:10px;
+  }
+  .superset-fields{display:none;border-left:2px solid var(--accent);padding-left:14px;margin-bottom:10px}
+  .superset-fields.open{display:block}
+
+  /* modal footer */
+  .modal-footer{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .modal-btn{
+    font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;
+    text-transform:uppercase;border-radius:12px;padding:12px 22px;cursor:pointer;transition:.15s;border:none;
+  }
+  .modal-btn.primary{background:var(--accent);color:#fff}
+  .modal-btn.primary:hover{opacity:.85}
+  .modal-btn.secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
+  .modal-btn.secondary:hover{border-color:var(--faint);color:var(--text)}
+  .modal-btn.danger{background:none;border:1px solid #F87171;color:#F87171;margin-left:auto}
+  .modal-btn.danger:hover{background:rgba(248,113,113,.1)}
+  .modal-error{color:#F87171;font-size:12px;font-weight:600;margin-top:8px}
+
+  /* drag handle */
+  .drag-handle{
+    flex:0 0 auto;width:24px;cursor:grab;color:var(--faint);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;padding:4px 0;touch-action:none;
+  }
+  .drag-handle span{display:block;width:14px;height:2px;background:currentColor;border-radius:1px}
+  .ex-list-item.dragging{opacity:.4;border-style:dashed}
+  .ex-list-item.drag-over-top{border-top:2px solid var(--accent)}
+  .ex-list-item.drag-over-bottom{border-bottom:2px solid var(--accent)}
+
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* day customization section */
+  .days-section{margin-bottom:20px}
+  .days-section-toggle{
+    font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent);background:none;border:none;
+    cursor:pointer;display:flex;align-items:center;gap:8px;padding:0;margin-bottom:12px;
+  }
+  .days-section-toggle:hover{opacity:.8}
+  .days-section-body{display:none}
+  .days-section-body.open{display:block}
+  .day-custom-row{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:14px 16px;margin-bottom:10px;
+  }
+  .day-custom-header{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .day-custom-abbr{font-family:var(--display);font-weight:700;font-size:16px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+  .day-custom-name{font-family:var(--display);font-weight:500;font-size:14px;color:var(--muted)}
+  .day-custom-fields{display:flex;gap:10px;align-items:flex-start}
+  .day-custom-fields .modal-field{flex:1;margin-bottom:0}
+  .day-custom-fields .modal-field label{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px}
+  .day-custom-fields .modal-input{
+    font-family:var(--body);font-size:13px;font-weight:500;width:100%;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:9px 12px;outline:none;transition:.15s;
+  }
+  .day-custom-fields .modal-input:focus{border-color:var(--accent)}
+  .day-custom-actions{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+  .day-custom-actions button{
+    font-family:var(--body);font-size:11px;font-weight:600;
+    border-radius:8px;padding:5px 10px;cursor:pointer;transition:.15s;border:none;
+  }
+  .day-custom-actions .dc-save{background:var(--accent);color:#fff}
+  .day-custom-actions .dc-save:hover{opacity:.85}
+  .day-custom-actions .dc-reset{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
+  .day-custom-actions .dc-reset:hover{border-color:var(--accent);color:var(--accent)}
+  .day-custom-status{font-size:11px;color:var(--faint);margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+  @media(max-width:480px){
+    .day-custom-fields{flex-direction:column;gap:8px}
+  }
 </style>
 </head>
 <body>
@@ -331,6 +515,7 @@
   <div class="wrap">
     <div class="main-tabs" role="tablist">
       <button class="main-tab active" id="tabTreino" type="button" role="tab">Treino</button>
+      <button class="main-tab" id="tabExercicios" type="button" role="tab">Exercícios</button>
       <button class="main-tab" id="tabEvolucao" type="button" role="tab">Evolução</button>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema" style="margin-left:auto"></button>
     </div>
@@ -366,6 +551,15 @@
     </main>
   </div>
 
+  <!-- VIEW: EXERCÍCIOS -->
+  <div id="viewExercicios" style="display:none">
+    <main class="wrap">
+      <div id="dayCustomSection" class="days-section"></div>
+      <div id="exFilterBar"></div>
+      <div id="exList"></div>
+    </main>
+  </div>
+
   <!-- VIEW: EVOLUÇÃO -->
   <div id="viewEvolucao" style="display:none">
     <main class="wrap">
@@ -375,6 +569,11 @@
       </div>
       <div id="evoBody"></div>
     </main>
+  </div>
+
+  <!-- MODAL: Editor de exercício -->
+  <div class="modal-overlay" id="exModal">
+    <div class="modal" id="exModalInner"></div>
   </div>
 </div>
 
@@ -396,7 +595,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, serverTimestamp
+  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -469,6 +668,14 @@ let saveTimer = null;
 let viewMode = "load";   // "load" | "compact" — preferência de visualização
 let theme = null;        // "dark" | "light" — null = segue o sistema
 let allSessions = null;  // cache: array de todas as sessões do usuário
+let exercisesCatalog = new Map(); // docId -> exercise doc
+let userDays = null; // replaces DAYS when loaded from Firestore
+let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
+
+// exercise list filters
+let exFilterMuscle = null; // null = todos
+let exFilterDay = null; // null = todos
+let exShowInactive = false;
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
 current = todayIdx;
@@ -485,9 +692,16 @@ const $modeCompact = document.getElementById("modeCompact");
 const $modeLoad = document.getElementById("modeLoad");
 const $themeBtn = document.getElementById("themeBtn");
 const $tabTreino = document.getElementById("tabTreino");
+const $tabExercicios = document.getElementById("tabExercicios");
 const $tabEvolucao = document.getElementById("tabEvolucao");
 const $viewTreino = document.getElementById("viewTreino");
+const $viewExercicios = document.getElementById("viewExercicios");
 const $viewEvolucao = document.getElementById("viewEvolucao");
+const $dayCustomSection = document.getElementById("dayCustomSection");
+const $exFilterBar = document.getElementById("exFilterBar");
+const $exList = document.getElementById("exList");
+const $exModal = document.getElementById("exModal");
+const $exModalInner = document.getElementById("exModalInner");
 const $evoSelect = document.getElementById("evoSelect");
 const $evoBody = document.getElementById("evoBody");
 let evoChart = null;
@@ -518,14 +732,17 @@ prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
 
 // ========= Abas principais =========
 function showTab(which){
-  const evo = which === "evolucao";
-  $tabTreino.classList.toggle("active", !evo);
-  $tabEvolucao.classList.toggle("active", evo);
-  $viewTreino.style.display = evo ? "none" : "";
-  $viewEvolucao.style.display = evo ? "" : "none";
-  if(evo) initEvolucao();
+  $tabTreino.classList.toggle("active", which === "treino");
+  $tabExercicios.classList.toggle("active", which === "exercicios");
+  $tabEvolucao.classList.toggle("active", which === "evolucao");
+  $viewTreino.style.display = which === "treino" ? "" : "none";
+  $viewExercicios.style.display = which === "exercicios" ? "" : "none";
+  $viewEvolucao.style.display = which === "evolucao" ? "" : "none";
+  if(which === "evolucao") initEvolucao();
+  if(which === "exercicios") renderExercicios();
 }
 $tabTreino.addEventListener("click", () => showTab("treino"));
+$tabExercicios.addEventListener("click", () => showTab("exercicios"));
 $tabEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 function applyModeButtons(){
@@ -565,6 +782,9 @@ onAuthStateChanged(auth, async u => {
     $appContent.style.display = "";
     setSync("live", "sincronizado");
     await loadPref();
+    await loadDayCustomizations();
+    await seedExercises(u.uid);
+    await loadExercises();
     await loadDay(current);
     renderStrip();
   } else {
@@ -572,6 +792,9 @@ onAuthStateChanged(auth, async u => {
     $gateWrap.style.display = "";
     $appContent.style.display = "none";
     setSync("", "aguardando login");
+    exercisesCatalog.clear();
+    userDays = null;
+    dayCustomizations = {};
   }
 });
 
@@ -608,7 +831,7 @@ async function savePref(){
 }
 
 function emptySession(dayKey){
-  const day = DAYS[dayKey];
+  const day = activeDays()[dayKey];
   return {
     date: todayStr(),
     dayKey,
@@ -622,7 +845,7 @@ function emptySession(dayKey){
 }
 
 function reconcileSession(s, dayKey){
-  const day = DAYS[dayKey];
+  const day = activeDays()[dayKey];
   const fresh = emptySession(dayKey);
   if(!s || !Array.isArray(s.exercises)) return fresh;
   fresh.exercises = day.ex.map((e, i) => {
@@ -746,7 +969,7 @@ function badgesHTML(b){
 function renderDay(){
   if(!session) return;
   $panel.classList.toggle("compact", viewMode === "compact");
-  const day = DAYS[current];
+  const day = activeDays()[current];
   const total = day.ex.length;
   const completed = countDone();
   const pct = total ? Math.round(completed/total*100) : 0;
@@ -828,7 +1051,7 @@ function attachHandlers(){
 }
 
 function renderStrip(){
-  $strip.innerHTML = DAYS.map((d,i) => {
+  $strip.innerHTML = activeDays().map((d,i) => {
     return `
       <button class="day-btn ${i===todayIdx?'is-today':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
@@ -857,7 +1080,7 @@ const MUSCLE_LABEL = {ombro:"Ombro",costas:"Costas",peito:"Peito","tríceps":"Tr
 
 function buildExerciseList(){
   const seen = new Map();
-  DAYS.forEach((d, dk) => {
+  activeDays().forEach((d, dk) => {
     d.ex.forEach((e, ei) => {
       if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, dayKey:dk, exIdx:ei, isSup:false});
       if(e.superset && !seen.has(e.superset.name))
@@ -866,7 +1089,7 @@ function buildExerciseList(){
   });
   return [...seen.values()];
 }
-const EXERCISES = buildExerciseList();
+let EXERCISES = buildExerciseList();
 
 let evoInitialized = false;
 function initEvolucao(){
@@ -917,7 +1140,7 @@ async function renderEvolucao(){
     const ex = s.exercises && s.exercises[sel.exIdx];
     if(!ex) return;
     const sets = sel.isSup ? ex.sup : ex.main;
-    if(ex.name !== DAYS[sel.dayKey].ex[sel.exIdx].name) { /* catálogo mudou; segue */ }
+    if(ex.name !== activeDays()[sel.dayKey]?.ex[sel.exIdx]?.name) { /* catálogo mudou; segue */ }
     const m = loadMetrics(sets);
     if(m) points.push({ date: s.date, max: m.max, avg: m.avg });
   });
@@ -1016,6 +1239,776 @@ function drawChart(points){
       }
     }
   });
+}
+
+// ========= Exercise CRUD (Firestore) =========
+
+const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex"];
+
+function activeDays(){ return userDays || DAYS; }
+
+// Build userDays from exercisesCatalog
+function rebuildUserDays(){
+  const base = [
+    {abbr:"Seg",name:"Segunda",tag:"Ombro · Costas",focus:"Ombro lateral/posterior · Costas"},
+    {abbr:"Ter",name:"Terça",tag:"Posterior",focus:"Ombro frontal · Posterior de coxa · Glúteo"},
+    {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
+    {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
+    {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
+  ];
+  base.forEach((d,i) => {
+    d.ex = [];
+    const custom = dayCustomizations[i];
+    if(custom){
+      if(custom.tag) d.tag = custom.tag;
+      if(custom.focus) d.focus = custom.focus;
+    }
+  });
+  exercisesCatalog.forEach((ex, id) => {
+    if(!ex.active) return;
+    (ex.days || []).forEach(dk => {
+      if(dk < 0 || dk > 4) return;
+      const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
+      base[dk].ex.push({
+        _id: id,
+        _order: order,
+        name: ex.name,
+        muscle: ex.muscle,
+        reps: ex.reps || [12,10,8],
+        badges: ex.badges || [],
+        note: ex.note || null,
+        superset: ex.superset || null,
+      });
+    });
+  });
+  base.forEach(d => d.ex.sort((a,b) => a._order - b._order));
+  userDays = base;
+  EXERCISES = buildExerciseList();
+  evoInitialized = false;
+}
+
+// Seed exercises from hardcoded DAYS on first login
+async function seedExercises(uid){
+  try {
+    const snap = await getDocs(collection(db, "users", uid, "exercises"));
+    if(!snap.empty) return; // already seeded
+  } catch(e) { console.warn("seedExercises check:", e.message); return; }
+
+  // Deduplicate exercises by name, merge days
+  const byName = new Map();
+  DAYS.forEach((d, dk) => {
+    d.ex.forEach((e, ei) => {
+      if(!byName.has(e.name)){
+        byName.set(e.name, {
+          name: e.name, muscle: e.muscle,
+          reps: [...e.reps], badges: [...(e.badges||[])],
+          note: e.note || null, active: true,
+          days: [dk], orderByDay: {[dk]: ei},
+          superset: e.superset ? {
+            name: e.superset.name, muscle: e.superset.muscle || e.muscle,
+            reps: [...e.superset.reps], badges: [...(e.superset.badges||[])],
+            note: e.superset.note || null
+          } : null,
+        });
+      } else {
+        const existing = byName.get(e.name);
+        if(!existing.days.includes(dk)){
+          existing.days.push(dk);
+          existing.orderByDay[dk] = ei;
+        }
+      }
+    });
+  });
+
+  try {
+    const colRef = collection(db, "users", uid, "exercises");
+    const promises = [];
+    byName.forEach(ex => {
+      promises.push(addDoc(colRef, { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    });
+    await Promise.all(promises);
+  } catch(e) { console.error("seedExercises write:", e); }
+}
+
+// Load exercises from Firestore
+async function loadExercises(){
+  if(!user) return;
+  try {
+    const snap = await getDocs(collection(db, "users", user.uid, "exercises"));
+    exercisesCatalog.clear();
+    snap.forEach(d => exercisesCatalog.set(d.id, d.data()));
+  } catch(e) {
+    console.warn("loadExercises:", e.message);
+  }
+  rebuildUserDays();
+}
+
+// Save exercise doc
+async function saveExerciseDoc(docId, data){
+  if(!user) return null;
+  data.updatedAt = serverTimestamp();
+  if(docId){
+    const ref = doc(db, "users", user.uid, "exercises", docId);
+    await setDoc(ref, data, { merge: true });
+    return docId;
+  } else {
+    data.createdAt = serverTimestamp();
+    const ref = await addDoc(collection(db, "users", user.uid, "exercises"), data);
+    return ref.id;
+  }
+}
+
+// Delete exercise doc
+async function deleteExerciseDoc(docId){
+  if(!user) return;
+  await deleteDoc(doc(db, "users", user.uid, "exercises", docId));
+}
+
+// ========= Day Customizations =========
+
+const DAY_DEFAULTS = [
+  {tag:"Ombro · Costas", focus:"Ombro lateral/posterior · Costas"},
+  {tag:"Posterior", focus:"Ombro frontal · Posterior de coxa · Glúteo"},
+  {tag:"Peito", focus:"Peito · Ombro"},
+  {tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps"},
+  {tag:"Pernas", focus:"Quadríceps · Adutor"},
+];
+
+async function loadDayCustomizations(){
+  if(!user) return;
+  dayCustomizations = {};
+  try {
+    const snap = await getDocs(collection(db, "users", user.uid, "days"));
+    snap.forEach(d => { dayCustomizations[d.id] = d.data(); });
+  } catch(e){ console.warn("loadDayCustomizations:", e.message); }
+}
+
+async function saveDayCustomization(dayKey, tag, focus){
+  if(!user) return;
+  const data = { tag, focus, updatedAt: serverTimestamp() };
+  const ref = doc(db, "users", user.uid, "days", String(dayKey));
+  await setDoc(ref, data, { merge: true });
+  dayCustomizations[dayKey] = { tag, focus };
+}
+
+async function deleteDayCustomization(dayKey){
+  if(!user) return;
+  const ref = doc(db, "users", user.uid, "days", String(dayKey));
+  await deleteDoc(ref);
+  delete dayCustomizations[dayKey];
+}
+
+let daysSectionOpen = false;
+
+function renderDayCustomSection(){
+  const base = [
+    {abbr:"Seg", name:"Segunda"},
+    {abbr:"Ter", name:"Terça"},
+    {abbr:"Qua", name:"Quarta"},
+    {abbr:"Qui", name:"Quinta"},
+    {abbr:"Sex", name:"Sexta"},
+  ];
+
+  let html = `<button class="days-section-toggle" id="daysSectionToggle">
+    <span id="daysSectionArrow">${daysSectionOpen?'▼':'▶'}</span> Dias da semana
+  </button>`;
+  html += `<div class="days-section-body ${daysSectionOpen?'open':''}" id="daysSectionBody">`;
+
+  base.forEach((d, i) => {
+    const custom = dayCustomizations[i] || {};
+    const tagVal = custom.tag ?? DAY_DEFAULTS[i].tag;
+    const focusVal = custom.focus ?? DAY_DEFAULTS[i].focus;
+    const isCustom = dayCustomizations[i] != null;
+
+    html += `<div class="day-custom-row" data-dk="${i}">
+      <div class="day-custom-header">
+        <span class="day-custom-abbr">${d.abbr}</span>
+        <span class="day-custom-name">${d.name}</span>
+        <span class="day-custom-status" id="dcStatus${i}"></span>
+      </div>
+      <div class="day-custom-fields">
+        <div class="modal-field">
+          <label>Tag</label>
+          <input class="modal-input dc-tag" data-dk="${i}" value="${tagVal}" maxlength="30" placeholder="${DAY_DEFAULTS[i].tag}">
+        </div>
+        <div class="modal-field">
+          <label>Foco</label>
+          <input class="modal-input dc-focus" data-dk="${i}" value="${focusVal}" maxlength="80" placeholder="${DAY_DEFAULTS[i].focus}">
+        </div>
+      </div>
+      <div class="day-custom-actions">
+        ${isCustom ? `<button class="dc-reset" data-dk="${i}">Restaurar padrão</button>` : ''}
+        <button class="dc-save" data-dk="${i}">Salvar</button>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+  $dayCustomSection.innerHTML = html;
+
+  // toggle
+  document.getElementById("daysSectionToggle").addEventListener("click", () => {
+    daysSectionOpen = !daysSectionOpen;
+    document.getElementById("daysSectionBody").classList.toggle("open", daysSectionOpen);
+    document.getElementById("daysSectionArrow").textContent = daysSectionOpen ? "▼" : "▶";
+  });
+
+  // save buttons
+  $dayCustomSection.querySelectorAll(".dc-save").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const dk = Number(btn.dataset.dk);
+      const tag = $dayCustomSection.querySelector(`.dc-tag[data-dk="${dk}"]`).value.trim();
+      const focus = $dayCustomSection.querySelector(`.dc-focus[data-dk="${dk}"]`).value.trim();
+      const statusEl = document.getElementById(`dcStatus${dk}`);
+      statusEl.textContent = "salvando…";
+      try {
+        const finalTag = tag || DAY_DEFAULTS[dk].tag;
+        const finalFocus = focus || DAY_DEFAULTS[dk].focus;
+        await saveDayCustomization(dk, finalTag, finalFocus);
+        rebuildUserDays();
+        renderStrip();
+        if(current === dk) renderDay();
+        statusEl.textContent = "✓ salvo";
+        setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        renderDayCustomSection();
+      } catch(e) {
+        statusEl.textContent = "erro";
+        console.error(e);
+      }
+    });
+  });
+
+  // reset buttons
+  $dayCustomSection.querySelectorAll(".dc-reset").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const dk = Number(btn.dataset.dk);
+      const statusEl = document.getElementById(`dcStatus${dk}`);
+      statusEl.textContent = "restaurando…";
+      try {
+        await deleteDayCustomization(dk);
+        rebuildUserDays();
+        renderStrip();
+        if(current === dk) renderDay();
+        statusEl.textContent = "✓ restaurado";
+        setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        renderDayCustomSection();
+      } catch(e) {
+        statusEl.textContent = "erro";
+        console.error(e);
+      }
+    });
+  });
+}
+
+// ========= Exercícios list view =========
+
+function renderExercicios(){
+  renderDayCustomSection();
+  renderExFilterBar();
+  renderExList();
+}
+
+function renderExFilterBar(){
+  const muscles = Object.entries(MUSCLE_LABEL);
+  let html = `<button class="ex-new-btn" id="exNewBtn">+ Novo exercício</button>`;
+  html += `<div class="ex-filter-bar" style="margin-top:10px">`;
+  html += `<span class="filter-chip ${exFilterMuscle===null?'active':''}" data-muscle="">Todos</span>`;
+  muscles.forEach(([k,v]) => {
+    html += `<span class="filter-chip ${exFilterMuscle===k?'active':''}" data-muscle="${k}">${v}</span>`;
+  });
+  html += `<span class="filter-sep"></span>`;
+  html += `<span class="filter-chip ${exFilterDay===null?'active':''}" data-day="">Todos</span>`;
+  DAY_NAMES_SHORT.forEach((d,i) => {
+    html += `<span class="filter-chip ${exFilterDay===i?'active':''}" data-day="${i}">${d}</span>`;
+  });
+  html += `<span class="filter-sep"></span>`;
+  html += `<label class="filter-chip" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+    <input type="checkbox" ${exShowInactive?'checked':''} id="exInactiveToggle" style="accent-color:var(--accent)"> Inativos
+  </label>`;
+  html += `</div>`;
+  $exFilterBar.innerHTML = html;
+
+  // bind filter clicks
+  $exFilterBar.querySelectorAll("[data-muscle]").forEach(el => {
+    el.addEventListener("click", () => {
+      exFilterMuscle = el.dataset.muscle === "" ? null : el.dataset.muscle;
+      renderExercicios();
+    });
+  });
+  $exFilterBar.querySelectorAll("[data-day]").forEach(el => {
+    el.addEventListener("click", () => {
+      exFilterDay = el.dataset.day === "" ? null : Number(el.dataset.day);
+      renderExercicios();
+    });
+  });
+  document.getElementById("exInactiveToggle").addEventListener("change", e => {
+    exShowInactive = e.target.checked;
+    renderExList();
+  });
+  document.getElementById("exNewBtn").addEventListener("click", () => openExEditor(null));
+}
+
+function renderExList(){
+  let items = [];
+  exercisesCatalog.forEach((ex, id) => items.push({...ex, _id: id}));
+
+  // filters
+  if(exFilterMuscle) items = items.filter(e => e.muscle === exFilterMuscle);
+  if(exFilterDay !== null) items = items.filter(e => (e.days||[]).includes(exFilterDay));
+  if(!exShowInactive) items = items.filter(e => e.active !== false);
+
+  // sort: by name
+  if(exFilterDay !== null){
+    items.sort((a,b) => {
+      const oa = (a.orderByDay && a.orderByDay[exFilterDay] != null) ? a.orderByDay[exFilterDay] : 999;
+      const ob = (b.orderByDay && b.orderByDay[exFilterDay] != null) ? b.orderByDay[exFilterDay] : 999;
+      return oa - ob;
+    });
+  } else {
+    items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
+  }
+
+  if(!items.length){
+    $exList.innerHTML = `<div class="evo-empty"><span class="big">Nenhum exercício encontrado</span></div>`;
+    return;
+  }
+
+  const canDrag = exFilterDay !== null;
+
+  let html = "";
+  items.forEach(ex => {
+    const isInactive = ex.active === false;
+    const dayPills = (ex.days||[]).sort().map(d => DAY_NAMES_SHORT[d]).join(" · ");
+    const repsSummary = (ex.reps||[]).length + "×" + (ex.reps||[])[0];
+    const badgeTags = (ex.badges||[]).map(b => `<span class="ex-tag accent">${b}</span>`).join("");
+
+    html += `<div class="ex-list-item ${isInactive?'inactive':''}" data-id="${ex._id}" ${canDrag?'draggable="true"':''}>`;
+    if(canDrag) html += `<div class="drag-handle"><span></span><span></span><span></span></div>`;
+    html += `<div class="ex-list-body">
+      <div class="ex-list-name">${ex.name}</div>
+      <div class="ex-list-meta">
+        <span class="ex-tag">${MUSCLE_LABEL[ex.muscle]||ex.muscle}</span>
+        <span class="ex-tag">${dayPills}</span>
+        <span class="ex-tag">${repsSummary}</span>
+        ${badgeTags}
+        ${isInactive ? '<span class="ex-tag inactive-tag">Inativo</span>' : ''}
+        ${ex.superset ? '<span class="ex-tag accent">supersérie</span>' : ''}
+      </div>
+    </div>`;
+    html += `<div class="ex-list-actions">
+      <button class="ex-icon-btn active-toggle ${!isInactive?'is-active':''}" data-id="${ex._id}" title="${isInactive?'Ativar':'Desativar'}">
+        ${isInactive ? '○' : '●'}
+      </button>
+      <button class="ex-icon-btn edit-btn" data-id="${ex._id}" title="Editar">✎</button>
+    </div>`;
+    html += `</div>`;
+  });
+  $exList.innerHTML = html;
+
+  // bind clicks
+  $exList.querySelectorAll(".ex-list-item").forEach(el => {
+    el.addEventListener("click", e => {
+      if(e.target.closest(".ex-icon-btn") || e.target.closest(".drag-handle")) return;
+      openExEditor(el.dataset.id);
+    });
+  });
+  $exList.querySelectorAll(".edit-btn").forEach(btn => {
+    btn.addEventListener("click", e => { e.stopPropagation(); openExEditor(btn.dataset.id); });
+  });
+  $exList.querySelectorAll(".active-toggle").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const ex = exercisesCatalog.get(id);
+      if(!ex) return;
+      const newActive = ex.active === false;
+      await saveExerciseDoc(id, { active: newActive });
+      ex.active = newActive;
+      rebuildUserDays();
+      renderExList();
+    });
+  });
+
+  // drag and drop
+  if(canDrag) initDragAndDrop();
+}
+
+// ========= Drag and Drop =========
+
+function initDragAndDrop(){
+  const items = $exList.querySelectorAll(".ex-list-item[draggable]");
+  let dragId = null;
+
+  items.forEach(el => {
+    // HTML5 DnD
+    el.addEventListener("dragstart", e => {
+      dragId = el.dataset.id;
+      el.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", el.dataset.id);
+    });
+    el.addEventListener("dragend", () => {
+      el.classList.remove("dragging");
+      $exList.querySelectorAll(".drag-over-top,.drag-over-bottom").forEach(x => x.classList.remove("drag-over-top","drag-over-bottom"));
+    });
+    el.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const rect = el.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      el.classList.toggle("drag-over-top", e.clientY < mid);
+      el.classList.toggle("drag-over-bottom", e.clientY >= mid);
+    });
+    el.addEventListener("dragleave", () => {
+      el.classList.remove("drag-over-top","drag-over-bottom");
+    });
+    el.addEventListener("drop", e => {
+      e.preventDefault();
+      el.classList.remove("drag-over-top","drag-over-bottom");
+      const fromId = e.dataTransfer.getData("text/plain");
+      if(fromId === el.dataset.id) return;
+      const rect = el.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      reorderExercise(fromId, el.dataset.id, before);
+    });
+
+    // Touch fallback
+    let touchStartY = 0;
+    let touchClone = null;
+    let touchActive = false;
+    let longPressTimer = null;
+
+    const handle = el.querySelector(".drag-handle");
+    if(!handle) return;
+
+    handle.addEventListener("touchstart", e => {
+      touchStartY = e.touches[0].clientY;
+      dragId = el.dataset.id;
+      longPressTimer = setTimeout(() => {
+        touchActive = true;
+        el.classList.add("dragging");
+        touchClone = el.cloneNode(true);
+        touchClone.style.cssText = `position:fixed;left:16px;right:16px;width:${el.offsetWidth}px;opacity:.7;pointer-events:none;z-index:200;transform:scale(.97)`;
+        touchClone.style.top = e.touches[0].clientY - el.offsetHeight/2 + "px";
+        document.body.appendChild(touchClone);
+      }, 250);
+    }, {passive:true});
+
+    handle.addEventListener("touchmove", e => {
+      if(!touchActive){ clearTimeout(longPressTimer); return; }
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      if(touchClone) touchClone.style.top = y - el.offsetHeight/2 + "px";
+      // highlight drop target
+      $exList.querySelectorAll(".drag-over-top,.drag-over-bottom").forEach(x => x.classList.remove("drag-over-top","drag-over-bottom"));
+      const target = document.elementFromPoint(e.touches[0].clientX, y);
+      const item = target?.closest?.(".ex-list-item");
+      if(item && item.dataset.id !== dragId){
+        const rect = item.getBoundingClientRect();
+        item.classList.toggle("drag-over-top", y < rect.top + rect.height/2);
+        item.classList.toggle("drag-over-bottom", y >= rect.top + rect.height/2);
+      }
+    }, {passive:false});
+
+    handle.addEventListener("touchend", e => {
+      clearTimeout(longPressTimer);
+      if(!touchActive) return;
+      touchActive = false;
+      el.classList.remove("dragging");
+      if(touchClone){ touchClone.remove(); touchClone = null; }
+      $exList.querySelectorAll(".drag-over-top,.drag-over-bottom").forEach(x => x.classList.remove("drag-over-top","drag-over-bottom"));
+
+      const y = e.changedTouches[0].clientY;
+      const target = document.elementFromPoint(e.changedTouches[0].clientX, y);
+      const item = target?.closest?.(".ex-list-item");
+      if(item && item.dataset.id !== dragId){
+        const rect = item.getBoundingClientRect();
+        reorderExercise(dragId, item.dataset.id, y < rect.top + rect.height/2);
+      }
+    });
+
+    handle.addEventListener("touchcancel", () => {
+      clearTimeout(longPressTimer);
+      touchActive = false;
+      el.classList.remove("dragging");
+      if(touchClone){ touchClone.remove(); touchClone = null; }
+    });
+  });
+}
+
+async function reorderExercise(fromId, toId, before){
+  if(exFilterDay === null) return;
+  const dk = exFilterDay;
+
+  // get current order
+  const ordered = [];
+  $exList.querySelectorAll(".ex-list-item").forEach(el => ordered.push(el.dataset.id));
+
+  // remove fromId and insert at new position
+  const fromIdx = ordered.indexOf(fromId);
+  if(fromIdx >= 0) ordered.splice(fromIdx, 1);
+  let toIdx = ordered.indexOf(toId);
+  if(!before) toIdx++;
+  ordered.splice(toIdx, 0, fromId);
+
+  // update orderByDay for all affected
+  const promises = [];
+  ordered.forEach((id, i) => {
+    const ex = exercisesCatalog.get(id);
+    if(!ex) return;
+    if(!ex.orderByDay) ex.orderByDay = {};
+    ex.orderByDay[dk] = i;
+    promises.push(saveExerciseDoc(id, { orderByDay: ex.orderByDay }));
+  });
+  await Promise.all(promises);
+
+  rebuildUserDays();
+  renderExList();
+}
+
+// ========= Exercise editor modal =========
+
+function openExEditor(docId){
+  const isNew = !docId;
+  const ex = isNew ? {
+    name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
+    active:true, days:[], orderByDay:{}, superset:null,
+  } : {...exercisesCatalog.get(docId)};
+
+  let html = `<h3>${isNew ? 'Novo exercício' : 'Editar exercício'}</h3>`;
+
+  // Nome
+  html += `<div class="modal-field">
+    <label>Nome</label>
+    <input class="modal-input" id="mfName" value="${ex.name||''}" placeholder="Nome do exercício">
+  </div>`;
+
+  // Grupo muscular
+  html += `<div class="modal-field">
+    <label>Grupo muscular</label>
+    <select class="modal-select" id="mfMuscle">
+      ${Object.entries(MUSCLE_LABEL).map(([k,v]) => `<option value="${k}" ${ex.muscle===k?'selected':''}>${v}</option>`).join("")}
+    </select>
+  </div>`;
+
+  // Reps
+  html += `<div class="modal-field">
+    <label>Repetições por série</label>
+    <div class="reps-list" id="mfReps">
+      ${(ex.reps||[12]).map((r,i) => `<input class="rep-input" type="number" inputmode="numeric" value="${r}" min="1">`).join("")}
+      <button class="rep-add" type="button" id="mfRepAdd">+</button>
+    </div>
+  </div>`;
+
+  // Badges
+  html += `<div class="modal-field">
+    <label>Badges</label>
+    <div class="badge-toggles" id="mfBadges">
+      ${["drop","iso","fast"].map(b => `<span class="badge-toggle ${(ex.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+    </div>
+  </div>`;
+
+  // Nota
+  html += `<div class="modal-field">
+    <label>Observação</label>
+    <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${ex.note||''}</textarea>
+  </div>`;
+
+  // Dias
+  html += `<div class="modal-field">
+    <label>Dias</label>
+    <div class="day-chips" id="mfDays">
+      ${DAY_NAMES_SHORT.map((d,i) => `<span class="day-chip ${(ex.days||[]).includes(i)?'selected':''}" data-day="${i}">${d}</span>`).join("")}
+    </div>
+  </div>`;
+
+  // Ativo
+  html += `<div class="modal-field" style="display:flex;align-items:center;gap:10px">
+    <label style="margin-bottom:0">Ativo</label>
+    <label class="switch"><input type="checkbox" id="mfActive" ${ex.active!==false?'checked':''}><span class="slider"></span></label>
+  </div>`;
+
+  // Supersérie
+  const sup = ex.superset || {name:"",muscle:"ombro",reps:[12,10,8],badges:[],note:null};
+  const hasSup = !!ex.superset;
+  html += `<div class="modal-field">
+    <button class="superset-toggle" type="button" id="mfSupToggle">
+      <span id="mfSupArrow">${hasSup?'▼':'▶'}</span> Supersérie
+    </button>
+    <div class="superset-fields ${hasSup?'open':''}" id="mfSupFields">
+      <div class="modal-field">
+        <label>Nome</label>
+        <input class="modal-input" id="mfSupName" value="${sup.name||''}" placeholder="Nome da supersérie">
+      </div>
+      <div class="modal-field">
+        <label>Grupo muscular</label>
+        <select class="modal-select" id="mfSupMuscle">
+          ${Object.entries(MUSCLE_LABEL).map(([k,v]) => `<option value="${k}" ${sup.muscle===k?'selected':''}>${v}</option>`).join("")}
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Repetições por série</label>
+        <div class="reps-list" id="mfSupReps">
+          ${(sup.reps||[12]).map(r => `<input class="rep-input" type="number" inputmode="numeric" value="${r}" min="1">`).join("")}
+          <button class="rep-add" type="button" id="mfSupRepAdd">+</button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Badges</label>
+        <div class="badge-toggles" id="mfSupBadges">
+          ${["drop","iso","fast"].map(b => `<span class="badge-toggle ${(sup.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Observação</label>
+        <textarea class="modal-textarea" id="mfSupNote" placeholder="Opcional">${sup.note||''}</textarea>
+      </div>
+    </div>
+  </div>`;
+
+  // Error
+  html += `<div class="modal-error" id="mfError" style="display:none"></div>`;
+
+  // Footer
+  html += `<div class="modal-footer">
+    <button class="modal-btn primary" id="mfSave">Salvar</button>
+    <button class="modal-btn secondary" id="mfCancel">Cancelar</button>
+    ${!isNew ? `<button class="modal-btn danger" id="mfDelete">Excluir</button>` : ''}
+  </div>`;
+
+  $exModalInner.innerHTML = html;
+  $exModal.classList.add("open");
+
+  // Event bindings
+  const bindRepsAdd = (containerId, addBtnId) => {
+    const container = document.getElementById(containerId);
+    const addBtn = document.getElementById(addBtnId);
+    addBtn.addEventListener("click", () => {
+      const inputs = container.querySelectorAll(".rep-input");
+      const lastVal = inputs.length ? inputs[inputs.length-1].value : "10";
+      const inp = document.createElement("input");
+      inp.className = "rep-input"; inp.type = "number"; inp.inputMode = "numeric";
+      inp.value = lastVal; inp.min = "1";
+      container.insertBefore(inp, addBtn);
+      // add remove on double tap
+      inp.addEventListener("dblclick", () => { if(container.querySelectorAll(".rep-input").length > 1) inp.remove(); });
+    });
+    container.querySelectorAll(".rep-input").forEach(inp => {
+      inp.addEventListener("dblclick", () => { if(container.querySelectorAll(".rep-input").length > 1) inp.remove(); });
+    });
+  };
+  bindRepsAdd("mfReps","mfRepAdd");
+  bindRepsAdd("mfSupReps","mfSupRepAdd");
+
+  // badge toggles
+  const bindBadges = (containerId) => {
+    document.getElementById(containerId).querySelectorAll(".badge-toggle").forEach(el => {
+      el.addEventListener("click", () => el.classList.toggle("selected"));
+    });
+  };
+  bindBadges("mfBadges");
+  bindBadges("mfSupBadges");
+
+  // day chips
+  document.getElementById("mfDays").querySelectorAll(".day-chip").forEach(el => {
+    el.addEventListener("click", () => el.classList.toggle("selected"));
+  });
+
+  // superset toggle
+  document.getElementById("mfSupToggle").addEventListener("click", () => {
+    const f = document.getElementById("mfSupFields");
+    const a = document.getElementById("mfSupArrow");
+    f.classList.toggle("open");
+    a.textContent = f.classList.contains("open") ? "▼" : "▶";
+  });
+
+  // cancel
+  document.getElementById("mfCancel").addEventListener("click", closeExEditor);
+  $exModal.addEventListener("click", e => { if(e.target === $exModal) closeExEditor(); });
+  document.addEventListener("keydown", escHandler);
+
+  // save
+  document.getElementById("mfSave").addEventListener("click", async () => {
+    const errEl = document.getElementById("mfError");
+    errEl.style.display = "none";
+    const name = document.getElementById("mfName").value.trim();
+    const muscle = document.getElementById("mfMuscle").value;
+    const reps = [...document.querySelectorAll("#mfReps .rep-input")].map(i => Math.max(1, parseInt(i.value)||1));
+    const badges = [...document.querySelectorAll("#mfBadges .badge-toggle.selected")].map(el => el.dataset.badge);
+    const note = document.getElementById("mfNote").value.trim() || null;
+    const days = [...document.querySelectorAll("#mfDays .day-chip.selected")].map(el => Number(el.dataset.day));
+    const active = document.getElementById("mfActive").checked;
+
+    // superset
+    const supOpen = document.getElementById("mfSupFields").classList.contains("open");
+    const supName = document.getElementById("mfSupName").value.trim();
+    let superset = null;
+    if(supOpen && supName){
+      superset = {
+        name: supName,
+        muscle: document.getElementById("mfSupMuscle").value,
+        reps: [...document.querySelectorAll("#mfSupReps .rep-input")].map(i => Math.max(1, parseInt(i.value)||1)),
+        badges: [...document.querySelectorAll("#mfSupBadges .badge-toggle.selected")].map(el => el.dataset.badge),
+        note: document.getElementById("mfSupNote").value.trim() || null,
+      };
+    }
+
+    // validation
+    if(!name){ errEl.textContent = "Nome é obrigatório."; errEl.style.display = ""; return; }
+    if(reps.length < 1){ errEl.textContent = "Adicione ao menos 1 série."; errEl.style.display = ""; return; }
+    if(days.length < 1){ errEl.textContent = "Selecione ao menos 1 dia."; errEl.style.display = ""; return; }
+
+    // compute orderByDay for new days (append to end)
+    const orderByDay = docId ? {...(exercisesCatalog.get(docId)?.orderByDay || {})} : {};
+    days.forEach(dk => {
+      if(orderByDay[dk] == null){
+        // find max order for this day
+        let maxOrder = -1;
+        exercisesCatalog.forEach(ex => {
+          if(ex.days?.includes(dk) && ex.orderByDay?.[dk] != null && ex.orderByDay[dk] > maxOrder)
+            maxOrder = ex.orderByDay[dk];
+        });
+        orderByDay[dk] = maxOrder + 1;
+      }
+    });
+    // remove orderByDay for days no longer assigned
+    Object.keys(orderByDay).forEach(k => {
+      if(!days.includes(Number(k))) delete orderByDay[k];
+    });
+
+    const data = { name, muscle, reps, badges, note, active, days, orderByDay, superset };
+
+    try {
+      const id = await saveExerciseDoc(docId, data);
+      exercisesCatalog.set(id, { ...data, createdAt: exercisesCatalog.get(id)?.createdAt || null });
+      rebuildUserDays();
+      closeExEditor();
+      renderExercicios();
+    } catch(e) {
+      errEl.textContent = "Erro ao salvar: " + e.message;
+      errEl.style.display = "";
+    }
+  });
+
+  // delete
+  if(!isNew){
+    document.getElementById("mfDelete").addEventListener("click", async () => {
+      if(!confirm(`Excluir "${ex.name}" permanentemente?`)) return;
+      try {
+        await deleteExerciseDoc(docId);
+        exercisesCatalog.delete(docId);
+        rebuildUserDays();
+        closeExEditor();
+        renderExercicios();
+      } catch(e) { alert("Erro ao excluir: " + e.message); }
+    });
+  }
+}
+
+function escHandler(e){ if(e.key === "Escape") closeExEditor(); }
+function closeExEditor(){
+  $exModal.classList.remove("open");
+  document.removeEventListener("keydown", escHandler);
 }
 
 applyTheme();
