@@ -24,6 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root, [data-theme="dark"]{
     --ink:#0E0F12;
@@ -173,6 +174,56 @@
   .theme-btn:hover{border-color:var(--accent);color:var(--accent)}
   .theme-btn svg{width:18px;height:18px;display:block}
 
+  /* abas principais (Treino / Evolução) */
+  .main-tabs{display:flex;gap:8px;margin:2px 0 16px}
+  .main-tab{
+    font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;
+    text-transform:uppercase;background:var(--surface);border:1px solid var(--border);
+    color:var(--muted);border-radius:12px;padding:10px 18px;cursor:pointer;transition:.15s;
+  }
+  .main-tab:hover{border-color:var(--faint);color:var(--text)}
+  .main-tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+  /* view de evolução */
+  .evo-controls{margin-bottom:16px}
+  .evo-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;display:block;margin-bottom:8px}
+  .evo-select{
+    font-family:var(--body);font-size:14px;font-weight:500;
+    width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    border-radius:12px;padding:12px 14px;cursor:pointer;outline:none;transition:.15s;
+    -webkit-appearance:none;appearance:none;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8F99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:40px;
+  }
+  .evo-select:focus{border-color:var(--accent)}
+  .evo-select optgroup{
+    font-family:var(--display);font-weight:700;font-size:13px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--accent);
+    background:var(--surface-2);padding:4px 0;
+  }
+  .evo-select option{
+    font-family:var(--body);font-weight:500;font-size:14px;
+    text-transform:none;letter-spacing:normal;color:var(--text);
+    background:var(--surface);padding:6px 8px;
+  }
+  .evo-chart-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:18px 16px 12px;margin-bottom:14px;
+  }
+  .evo-chart-wrap{position:relative;height:280px}
+  .evo-legend{display:flex;gap:16px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .evo-legend .item{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:500}
+  .evo-legend .swatch{width:14px;height:3px;border-radius:2px}
+  .evo-empty{text-align:center;color:var(--muted);font-size:14px;padding:40px 20px;line-height:1.6}
+  .evo-empty .big{font-family:var(--display);font-size:18px;color:var(--text);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:8px}
+  .evo-stats{display:flex;gap:10px;margin-bottom:14px}
+  .evo-stat{
+    flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:14px;text-align:center;
+  }
+  .evo-stat .val{font-family:var(--display);font-weight:700;font-size:26px;color:var(--accent);line-height:1}
+  .evo-stat .lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-top:6px}
+
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
@@ -277,33 +328,54 @@
 </div>
 
 <div id="appContent" style="display:none">
-  <nav class="days" aria-label="Dias da semana">
-    <div class="wrap">
-      <div class="days-inner" id="dayStrip" role="tablist"></div>
+  <div class="wrap">
+    <div class="main-tabs" role="tablist">
+      <button class="main-tab active" id="tabTreino" type="button" role="tab">Treino</button>
+      <button class="main-tab" id="tabEvolucao" type="button" role="tab">Evolução</button>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema" style="margin-left:auto"></button>
     </div>
-  </nav>
-  <main class="wrap">
-    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
-      <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema"></button>
-      <div class="mode-toggle" role="group" aria-label="Modo de visualização">
-        <button id="modeCompact" type="button">Compacto</button>
-        <button id="modeLoad" type="button">Carga</button>
+  </div>
+
+  <!-- VIEW: TREINO -->
+  <div id="viewTreino">
+    <nav class="days" aria-label="Dias da semana">
+      <div class="wrap">
+        <div class="days-inner" id="dayStrip" role="tablist"></div>
       </div>
-    </div>
-    <section id="panel" role="tabpanel" aria-live="polite"></section>
-    <footer>
-      <div class="notes">
-        <h3>Notas gerais</h3>
-        <ul>
-          <li><span class="k">⏲</span><div><b>Descanso:</b> 1 a 1min30 entre as séries.</div></li>
-          <li><span class="k">▤</span><div><b>Prancha:</b> 3× por semana — 4 séries até a falha.</div></li>
-          <li><span class="k">⏱</span><div><b>Isometria 2s:</b> contrair 2 segundos em cada pico de contração.</div></li>
-          <li><span class="k">⚡</span><div><b>Acelerar na fadiga:</b> aumentar a velocidade do movimento ao fadigar.</div></li>
-        </ul>
+    </nav>
+    <main class="wrap">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
+        <div class="mode-toggle" role="group" aria-label="Modo de visualização">
+          <button id="modeCompact" type="button">Compacto</button>
+          <button id="modeLoad" type="button">Carga</button>
+        </div>
       </div>
-      <p class="sig">12 · 10 · 8 — pirâmide descendente de carga</p>
-    </footer>
-  </main>
+      <section id="panel" role="tabpanel" aria-live="polite"></section>
+      <footer>
+        <div class="notes">
+          <h3>Notas gerais</h3>
+          <ul>
+            <li><span class="k">⏲</span><div><b>Descanso:</b> 1 a 1min30 entre as séries.</div></li>
+            <li><span class="k">▤</span><div><b>Prancha:</b> 3× por semana — 4 séries até a falha.</div></li>
+            <li><span class="k">⏱</span><div><b>Isometria 2s:</b> contrair 2 segundos em cada pico de contração.</div></li>
+            <li><span class="k">⚡</span><div><b>Acelerar na fadiga:</b> aumentar a velocidade do movimento ao fadigar.</div></li>
+          </ul>
+        </div>
+        <p class="sig">12 · 10 · 8 — pirâmide descendente de carga</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- VIEW: EVOLUÇÃO -->
+  <div id="viewEvolucao" style="display:none">
+    <main class="wrap">
+      <div class="evo-controls">
+        <label class="evo-label" for="evoSelect">Exercício</label>
+        <select class="evo-select" id="evoSelect"></select>
+      </div>
+      <div id="evoBody"></div>
+    </main>
+  </div>
 </div>
 
 <main class="wrap" id="gateWrap">
@@ -324,7 +396,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp
+  doc, setDoc, getDoc, collection, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -346,44 +418,44 @@ const provider = new GoogleAuthProvider();
 // ========= Catálogo do treino =========
 const DAYS = [
   { abbr:"Seg", name:"Segunda", tag:"Ombro · Costas", focus:"Ombro lateral/posterior · Costas", ex:[
-    {name:"Elevação lateral com halter", reps:[8,8,8,8], badges:["drop"]},
-    {name:"Crucifixo invertido com halter", reps:[12,10,10,8], note:"Apoiar o peito no banco da remada cavalinho."},
-    {name:"Remada Hammer (anilhas)", reps:[12,10,10,8], badges:["iso"]},
-    {name:"Remada unilateral com halter", reps:[8,8,8,8], note:"No banco inclinado."},
-    {name:"Pulley frente — pegada supinada", reps:[12,10,10,8]},
+    {name:"Elevação lateral com halter", muscle:"ombro", reps:[8,8,8,8], badges:["drop"]},
+    {name:"Crucifixo invertido com halter", muscle:"ombro", reps:[12,10,10,8], note:"Apoiar o peito no banco da remada cavalinho."},
+    {name:"Remada Hammer (anilhas)", muscle:"costas", reps:[12,10,10,8], badges:["iso"]},
+    {name:"Remada unilateral com halter", muscle:"costas", reps:[8,8,8,8], note:"No banco inclinado."},
+    {name:"Pulley frente — pegada supinada", muscle:"costas", reps:[12,10,10,8]},
   ]},
   { abbr:"Ter", name:"Terça", tag:"Posterior", focus:"Ombro frontal · Posterior de coxa · Glúteo", ex:[
-    {name:"Elevação frontal com anilha", reps:[8,8,8,8]},
-    {name:"Cadeira abdutora", reps:[12,10,8,8], badges:["iso"]},
-    {name:"Meio terra sumô", reps:[12,10,8,8]},
-    {name:"Flexora sentado", reps:[12,10,10,8], badges:["iso","fast"]},
-    {name:"Leg 45 unilateral", reps:[12,10,8,6]},
-    {name:"Panturrilha sentado", reps:[15,15,15]},
+    {name:"Elevação frontal com anilha", muscle:"ombro", reps:[8,8,8,8]},
+    {name:"Cadeira abdutora", muscle:"perna", reps:[12,10,8,8], badges:["iso"]},
+    {name:"Meio terra sumô", muscle:"perna", reps:[12,10,8,8]},
+    {name:"Flexora sentado", muscle:"perna", reps:[12,10,10,8], badges:["iso","fast"]},
+    {name:"Leg 45 unilateral", muscle:"perna", reps:[12,10,8,6]},
+    {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15]},
   ]},
   { abbr:"Qua", name:"Quarta", tag:"Peito", focus:"Peito · Ombro", ex:[
-    {name:"Supino vertical inclinado", reps:[12,10,8,8,8]},
-    {name:"Peck deck", reps:[15,12,10,8,8]},
-    {name:"Supino inclinado com barra", reps:[12,10,8,8,6]},
-    {name:"Elevação frontal com anilha", reps:[6,6,6,6,6],
-      superset:{name:"Elevação lateral com halter (sentado)", reps:[12,10,10,8,8]}},
-    {name:"Desenvolvimento máquina", reps:[12,10,8,8,8]},
+    {name:"Supino vertical inclinado", muscle:"peito", reps:[12,10,8,8,8]},
+    {name:"Peck deck", muscle:"peito", reps:[15,12,10,8,8]},
+    {name:"Supino inclinado com barra", muscle:"peito", reps:[12,10,8,8,6]},
+    {name:"Elevação frontal com anilha", muscle:"ombro", reps:[6,6,6,6,6],
+      superset:{name:"Elevação lateral com halter (sentado)", muscle:"ombro", reps:[12,10,10,8,8]}},
+    {name:"Desenvolvimento máquina", muscle:"ombro", reps:[12,10,8,8,8]},
   ]},
   { abbr:"Qui", name:"Quinta", tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps", ex:[
-    {name:"Face pull no Cross", reps:[12,10,10,8,8], badges:["iso"],
-      superset:{name:"Elevação lateral com halter", reps:[8,8,8,8,8]}},
-    {name:"Tríceps pulley com barra", reps:[9,9,9,9],
-      superset:{name:"Rosca W", reps:[9,9,9,9]}},
-    {name:"Tríceps francês com halter", reps:[8,8,8,8],
-      superset:{name:"Rosca no Cross", reps:[8,8,8,8]}},
-    {name:"Tríceps corda", reps:[12,10,10,8], badges:["iso"],
-      superset:{name:"Martelo simultâneo com halter", reps:[12,10,8,8]}},
+    {name:"Face pull no Cross", muscle:"ombro", reps:[12,10,10,8,8], badges:["iso"],
+      superset:{name:"Elevação lateral com halter", muscle:"ombro", reps:[8,8,8,8,8]}},
+    {name:"Tríceps pulley com barra", muscle:"tríceps", reps:[9,9,9,9],
+      superset:{name:"Rosca W", muscle:"bíceps", reps:[9,9,9,9]}},
+    {name:"Tríceps francês com halter", muscle:"tríceps", reps:[8,8,8,8],
+      superset:{name:"Rosca no Cross", muscle:"bíceps", reps:[8,8,8,8]}},
+    {name:"Tríceps corda", muscle:"tríceps", reps:[12,10,10,8], badges:["iso"],
+      superset:{name:"Martelo simultâneo com halter", muscle:"bíceps", reps:[12,10,8,8]}},
   ]},
   { abbr:"Sex", name:"Sexta", tag:"Pernas", focus:"Quadríceps · Adutor", ex:[
-    {name:"Cadeira extensora", reps:[12,12,12,12], badges:["iso","fast"], note:"Por série: 6 mov. com isometria + 6 acelerando."},
-    {name:"Búlgaro com carga ipsilateral", reps:[12,10,8,8]},
-    {name:"Leg 45", reps:[12,10,8,6]},
-    {name:"Cadeira adutora", reps:[15,12,10,8]},
-    {name:"Panturrilha sentado", reps:[15,15,15]},
+    {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12,12], badges:["iso","fast"], note:"Por série: 6 mov. com isometria + 6 acelerando."},
+    {name:"Búlgaro com carga ipsilateral", muscle:"perna", reps:[12,10,8,8]},
+    {name:"Leg 45", muscle:"perna", reps:[12,10,8,6]},
+    {name:"Cadeira adutora", muscle:"perna", reps:[15,12,10,8]},
+    {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15]},
   ]},
 ];
 const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
@@ -396,6 +468,7 @@ let prevSession = null;  // sessão anterior para o mesmo dia (referência de ca
 let saveTimer = null;
 let viewMode = "load";   // "load" | "compact" — preferência de visualização
 let theme = null;        // "dark" | "light" — null = segue o sistema
+let allSessions = null;  // cache: array de todas as sessões do usuário
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
 current = todayIdx;
@@ -411,6 +484,13 @@ const $sync = document.getElementById("syncStatus");
 const $modeCompact = document.getElementById("modeCompact");
 const $modeLoad = document.getElementById("modeLoad");
 const $themeBtn = document.getElementById("themeBtn");
+const $tabTreino = document.getElementById("tabTreino");
+const $tabEvolucao = document.getElementById("tabEvolucao");
+const $viewTreino = document.getElementById("viewTreino");
+const $viewEvolucao = document.getElementById("viewEvolucao");
+const $evoSelect = document.getElementById("evoSelect");
+const $evoBody = document.getElementById("evoBody");
+let evoChart = null;
 
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -423,20 +503,30 @@ function effectiveTheme(){
 function applyTheme(){
   const t = effectiveTheme();
   document.documentElement.setAttribute("data-theme", t);
-  // no escuro mostra o sol (ação: clarear); no claro mostra a lua (ação: escurecer)
   $themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
   $themeBtn.title = t === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro";
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
 }
 $themeBtn.addEventListener("click", () => {
-  // alterna explicitamente entre claro/escuro
   theme = effectiveTheme() === "dark" ? "light" : "dark";
   applyTheme();
   savePref();
+  if(evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
 });
-// se o usuário não fixou tema, acompanha mudanças do sistema
 prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
+
+// ========= Abas principais =========
+function showTab(which){
+  const evo = which === "evolucao";
+  $tabTreino.classList.toggle("active", !evo);
+  $tabEvolucao.classList.toggle("active", evo);
+  $viewTreino.style.display = evo ? "none" : "";
+  $viewEvolucao.style.display = evo ? "" : "none";
+  if(evo) initEvolucao();
+}
+$tabTreino.addEventListener("click", () => showTab("treino"));
+$tabEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 function applyModeButtons(){
   $modeCompact.classList.toggle("active", viewMode === "compact");
@@ -465,6 +555,7 @@ $loginBtn.addEventListener("click", () => {
 
 onAuthStateChanged(auth, async u => {
   user = u;
+  allSessions = null;
   if(u){
     $authBox.innerHTML = `
       <span class="who">Olá, <b>${(u.displayName||u.email||"").split(" ")[0]}</b></span>
@@ -494,7 +585,6 @@ function todayStr(){
 }
 function sessionId(date, dayKey){ return `${date}_${dayKey}`; }
 
-// preferências do usuário (modo de visualização) — doc users/{uid}/prefs/app
 async function loadPref(){
   if(!user) return;
   try{
@@ -531,7 +621,6 @@ function emptySession(dayKey){
   };
 }
 
-// Ajusta a sessão carregada se o catálogo mudou (ex: você editou DAYS)
 function reconcileSession(s, dayKey){
   const day = DAYS[dayKey];
   const fresh = emptySession(dayKey);
@@ -553,6 +642,25 @@ function reconcileSession(s, dayKey){
   return fresh;
 }
 
+async function loadAllSessions(){
+  if(allSessions || !user) return;
+  try{
+    const snap = await getDocs(collection(db, "users", user.uid, "sessions"));
+    allSessions = [];
+    snap.forEach(d => allSessions.push(d.data()));
+  }catch(e){
+    console.warn("loadAllSessions:", e.message);
+    allSessions = [];
+  }
+}
+
+function findPrevSession(dayKey, beforeDate){
+  if(!allSessions) return null;
+  return allSessions
+    .filter(s => s.dayKey === dayKey && s.date < beforeDate)
+    .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
+}
+
 async function loadDay(dayKey){
   if(!user) return;
   const date = todayStr();
@@ -564,22 +672,8 @@ async function loadDay(dayKey){
     console.warn("loadDay:", e);
     session = emptySession(dayKey);
   }
-  // busca sessão anterior do mesmo dia (referência de carga)
-  prevSession = null;
-  try{
-    const q = query(
-      collection(db, "users", user.uid, "sessions"),
-      where("dayKey","==",dayKey),
-      where("date","<",date),
-      orderBy("date","desc"),
-      limit(1)
-    );
-    const r = await getDocs(q);
-    if(!r.empty) prevSession = r.docs[0].data();
-  }catch(e){
-    // se faltar índice, ignora silenciosamente
-    console.warn("prev session lookup:", e.message);
-  }
+  await loadAllSessions();
+  prevSession = findPrevSession(dayKey, date);
   renderDay();
 }
 
@@ -595,6 +689,11 @@ async function saveNow(){
   try{
     await setDoc(ref, { ...session, updatedAt: serverTimestamp() }, { merge: true });
     setSync(navigator.onLine ? "live" : "offline", navigator.onLine ? "sincronizado" : "offline — salvando local");
+    if(allSessions){
+      const idx = allSessions.findIndex(s => s.date === session.date && s.dayKey === session.dayKey);
+      if(idx >= 0) allSessions[idx] = { ...session };
+      else allSessions.push({ ...session });
+    }
   }catch(e){
     setSync("offline","erro ao salvar");
     console.error(e);
@@ -715,7 +814,6 @@ function attachHandlers(){
         const si = +inp.dataset.si;
         const v = inp.value.replace(",", ".").trim();
         target()[si].weight = v === "" ? null : (isNaN(parseFloat(v)) ? target()[si].weight : parseFloat(v));
-        // atualiza borda da célula sem rerender (mantém o foco)
         inp.parentElement.classList.toggle("filled", v !== "");
         scheduleSave();
       });
@@ -731,7 +829,6 @@ function attachHandlers(){
 
 function renderStrip(){
   $strip.innerHTML = DAYS.map((d,i) => {
-    // não temos info de outros dias em memória — apenas marca o atual
     return `
       <button class="day-btn ${i===todayIdx?'is-today':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
@@ -751,6 +848,173 @@ function renderStrip(){
       renderStrip();
       btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     });
+  });
+}
+
+// ========= Evolução =========
+const MUSCLE_ORDER = ["ombro","costas","peito","tríceps","bíceps","perna"];
+const MUSCLE_LABEL = {ombro:"Ombro",costas:"Costas",peito:"Peito","tríceps":"Tríceps","bíceps":"Bíceps",perna:"Perna"};
+
+function buildExerciseList(){
+  const seen = new Map();
+  DAYS.forEach((d, dk) => {
+    d.ex.forEach((e, ei) => {
+      if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, dayKey:dk, exIdx:ei, isSup:false});
+      if(e.superset && !seen.has(e.superset.name))
+        seen.set(e.superset.name, {name:e.superset.name, muscle:e.superset.muscle||e.muscle, dayKey:dk, exIdx:ei, isSup:true});
+    });
+  });
+  return [...seen.values()];
+}
+const EXERCISES = buildExerciseList();
+
+let evoInitialized = false;
+function initEvolucao(){
+  if(evoInitialized) return;
+  evoInitialized = true;
+  const grouped = new Map();
+  EXERCISES.forEach((x,i) => {
+    const m = x.muscle || "outro";
+    if(!grouped.has(m)) grouped.set(m, []);
+    grouped.get(m).push({...x, idx:i});
+  });
+  let html = "";
+  MUSCLE_ORDER.forEach(m => {
+    const items = grouped.get(m);
+    if(!items) return;
+    items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
+    html += `<optgroup label="${MUSCLE_LABEL[m]}">`;
+    items.forEach(x => { html += `<option value="${x.idx}">${x.name}</option>`; });
+    html += `</optgroup>`;
+  });
+  $evoSelect.innerHTML = html;
+  $evoSelect.addEventListener("change", renderEvolucao);
+  renderEvolucao();
+}
+
+function loadMetrics(sets){
+  if(!sets) return null;
+  const ws = sets.map(s => (s && s.weight != null && s.weight !== "") ? Number(s.weight) : null)
+                 .filter(w => w != null && !isNaN(w));
+  if(!ws.length) return null;
+  const max = Math.max(...ws);
+  const avg = ws.reduce((a,b)=>a+b,0) / ws.length;
+  return { max, avg: Math.round(avg*10)/10 };
+}
+
+async function renderEvolucao(){
+  if(!user){ return; }
+  const sel = EXERCISES[+$evoSelect.value || 0];
+  $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
+
+  await loadAllSessions();
+  const docsData = (allSessions || [])
+    .filter(s => s.dayKey === sel.dayKey)
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  const points = [];
+  docsData.forEach(s => {
+    const ex = s.exercises && s.exercises[sel.exIdx];
+    if(!ex) return;
+    const sets = sel.isSup ? ex.sup : ex.main;
+    if(ex.name !== DAYS[sel.dayKey].ex[sel.exIdx].name) { /* catálogo mudou; segue */ }
+    const m = loadMetrics(sets);
+    if(m) points.push({ date: s.date, max: m.max, avg: m.avg });
+  });
+
+  if(!points.length){
+    $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
+    if(evoChart){ evoChart.destroy(); evoChart = null; }
+    return;
+  }
+
+  const lastMax = points[points.length-1].max;
+  const firstMax = points[0].max;
+  const delta = lastMax - firstMax;
+  const deltaTxt = points.length < 2
+    ? "—"
+    : (delta>0?"+":"") + (Math.round(delta*10)/10) + " kg";
+
+  $evoBody.innerHTML = `
+    <div class="evo-stats">
+      <div class="evo-stat"><div class="val">${lastMax}</div><div class="lbl">Carga máx. atual</div></div>
+      <div class="evo-stat"><div class="val">${deltaTxt}</div><div class="lbl">Variação total</div></div>
+      <div class="evo-stat"><div class="val">${points.length}</div><div class="lbl">Sessões</div></div>
+    </div>
+    <div class="evo-chart-card">
+      <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
+      <div class="evo-legend">
+        <span class="item"><span class="swatch" style="background:var(--accent)"></span>Carga máxima</span>
+        <span class="item"><span class="swatch" style="background:var(--muted)"></span>Carga média</span>
+      </div>
+    </div>`;
+
+  drawChart(points);
+}
+
+function fmtDateBR(iso){
+  const [y,m,d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+function drawChart(points){
+  if(evoChart){ evoChart.destroy(); evoChart = null; }
+  const ctx = document.getElementById("evoCanvas");
+  const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue("--accent").trim() || "#FF5A1F";
+  const muted  = css.getPropertyValue("--muted").trim() || "#8A8F99";
+  const border = css.getPropertyValue("--border").trim() || "#2A2E37";
+  const faint  = css.getPropertyValue("--faint").trim() || "#5A5F69";
+
+  evoChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: points.map(p => fmtDateBR(p.date)),
+      datasets: [
+        {
+          label: "Carga máxima",
+          data: points.map(p => p.max),
+          borderColor: accent,
+          backgroundColor: accent,
+          borderWidth: 2.5,
+          tension: .3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: "Carga média",
+          data: points.map(p => p.avg),
+          borderColor: muted,
+          backgroundColor: muted,
+          borderWidth: 2,
+          borderDash: [5,4],
+          tension: .3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: css.getPropertyValue("--surface-2").trim() || "#1E2128",
+          titleColor: css.getPropertyValue("--text").trim() || "#ECEDEF",
+          bodyColor: muted,
+          borderColor: border,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} kg` }
+        }
+      },
+      scales: {
+        x: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11} } },
+        y: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11}, callback:v=>v+" kg" }, beginAtZero:false }
+      }
+    }
   });
 }
 
