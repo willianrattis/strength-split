@@ -455,6 +455,46 @@
   .ex-list-item.drag-over-top{border-top:2px solid var(--accent)}
   .ex-list-item.drag-over-bottom{border-bottom:2px solid var(--accent)}
 
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 0 8px;
+  }
+  .week-nav-label {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 140px;
+    text-align: center;
+  }
+  .week-nav-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 9px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    transition: .15s;
+    flex: 0 0 auto;
+  }
+  .week-nav-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .week-nav-btn:disabled {
+    opacity: .3;
+    cursor: default;
+  }
+
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* day customization section */
@@ -524,6 +564,13 @@
   <!-- VIEW: TREINO -->
   <div id="viewTreino">
     <nav class="days" aria-label="Dias da semana">
+      <div class="wrap" style="padding-bottom:0">
+        <div class="week-nav" id="weekNav">
+          <button class="week-nav-btn" id="weekPrev" aria-label="Semana anterior">&#8592;</button>
+          <span class="week-nav-label" id="weekLabel">Semana atual</span>
+          <button class="week-nav-btn" id="weekNext" aria-label="Próxima semana" disabled>&#8594;</button>
+        </div>
+      </div>
       <div class="wrap">
         <div class="days-inner" id="dayStrip" role="tablist"></div>
       </div>
@@ -671,6 +718,7 @@ let allSessions = null;  // cache: array de todas as sessões do usuário
 let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
 let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
+let weekOffset = 0; // 0 = current week, -1 = last week, etc.
 
 // exercise list filters
 let exFilterMuscle = null; // null = todos
@@ -688,6 +736,9 @@ const $gateWrap = document.getElementById("gateWrap");
 const $strip = document.getElementById("dayStrip");
 const $panel = document.getElementById("panel");
 const $sync = document.getElementById("syncStatus");
+const $weekPrev = document.getElementById("weekPrev");
+const $weekNext = document.getElementById("weekNext");
+const $weekLabel = document.getElementById("weekLabel");
 const $modeCompact = document.getElementById("modeCompact");
 const $modeLoad = document.getElementById("modeLoad");
 const $themeBtn = document.getElementById("themeBtn");
@@ -806,6 +857,21 @@ function todayStr(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
+function formatDate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function getWeekMonday(offset = 0){
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun,1=Mon...6=Sat
+  const diffToMon = dow === 0 ? -6 : 1 - dow; // days to subtract to get Monday
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon + (offset * 7));
+  return monday;
+}
+function dateForDay(dayKey, offset = 0){
+  const mon = getWeekMonday(offset);
+  const d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + dayKey);
+  return formatDate(d);
+}
 function sessionId(date, dayKey){ return `${date}_${dayKey}`; }
 
 async function loadPref(){
@@ -833,7 +899,7 @@ async function savePref(){
 function emptySession(dayKey){
   const day = activeDays()[dayKey];
   return {
-    date: todayStr(),
+    date: dateForDay(dayKey, weekOffset),
     dayKey,
     dayName: day.name,
     exercises: day.ex.map(e => ({
@@ -886,7 +952,7 @@ function findPrevSession(dayKey, beforeDate){
 
 async function loadDay(dayKey){
   if(!user) return;
-  const date = todayStr();
+  const date = dateForDay(dayKey, weekOffset);
   const ref = doc(db, "users", user.uid, "sessions", sessionId(date, dayKey));
   try{
     const snap = await getDoc(ref);
@@ -1052,8 +1118,9 @@ function attachHandlers(){
 
 function renderStrip(){
   $strip.innerHTML = activeDays().map((d,i) => {
+    const isToday = weekOffset === 0 && i === todayIdx;
     return `
-      <button class="day-btn ${i===todayIdx?'is-today':''}"
+      <button class="day-btn ${isToday?'is-today':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
         <span class="focus">${d.tag || d.focus.split('·')[0].trim()}</span>
@@ -1072,7 +1139,46 @@ function renderStrip(){
       btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     });
   });
+
+  updateWeekLabel();
 }
+
+function updateWeekLabel(){
+  if(weekOffset === 0){
+    $weekLabel.textContent = "Semana atual";
+  } else {
+    const mon = getWeekMonday(weekOffset);
+    const fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
+    const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const monDay = mon.getDate();
+    const friDay = fri.getDate();
+    const friMonth = months[fri.getMonth()];
+    if(mon.getMonth() === fri.getMonth()){
+      $weekLabel.textContent = `${monDay} – ${friDay} ${friMonth}`;
+    } else {
+      const monMonth = months[mon.getMonth()];
+      $weekLabel.textContent = `${monDay} ${monMonth} – ${friDay} ${friMonth}`;
+    }
+  }
+  $weekNext.disabled = weekOffset >= 0;
+}
+
+$weekPrev.addEventListener("click", async () => {
+  weekOffset--;
+  renderStrip();
+  $panel.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px 0">carregando…</div>`;
+  await loadDay(current);
+  renderStrip();
+});
+
+$weekNext.addEventListener("click", async () => {
+  if(weekOffset >= 0) return;
+  weekOffset++;
+  renderStrip();
+  $panel.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px 0">carregando…</div>`;
+  await loadDay(current);
+  renderStrip();
+});
 
 // ========= Evolução =========
 const MUSCLE_ORDER = ["ombro","costas","peito","tríceps","bíceps","perna"];
