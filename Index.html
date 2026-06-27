@@ -335,7 +335,12 @@
   .ex-icon-btn.active-toggle.is-active{color:#34D399;border-color:#34D399}
 
   /* filter bar */
-  .ex-filter-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;align-items:center}
+  .ex-filter-bar{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .ex-filter-row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .ex-filter-row-label{
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);font-weight:600;margin-right:2px;white-space:nowrap;
+  }
   .filter-chip{
     font-family:var(--body);font-size:12px;font-weight:600;
     background:var(--surface);border:1px solid var(--border);color:var(--muted);
@@ -344,13 +349,24 @@
   }
   .filter-chip:hover{border-color:var(--faint);color:var(--text)}
   .filter-chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
-  .filter-sep{width:1px;height:22px;background:var(--border);margin:0 4px}
   .ex-new-btn{
     font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.04em;
     text-transform:uppercase;background:var(--accent);color:#fff;border:none;
-    border-radius:10px;padding:9px 16px;cursor:pointer;transition:.15s;margin-left:auto;
+    border-radius:10px;padding:9px 16px;cursor:pointer;transition:.15s;width:100%;
   }
   .ex-new-btn:hover{opacity:.85}
+  @media(min-width:600px){
+    .ex-new-btn{width:auto;margin-left:auto}
+  }
+  /* exercise section headers (grouped by day) */
+  .ex-section-header{
+    font-family:var(--display);font-weight:700;font-size:13px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--accent);
+    margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);
+  }
+  .ex-section-header:first-child{margin-top:0}
+  /* bottom breathing room */
+  .ex-list-footer{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
 
   /* toggle switch */
   .switch{position:relative;display:inline-block;width:40px;height:22px;flex:0 0 auto}
@@ -717,6 +733,7 @@
       <div id="dayCustomSection" class="days-section"></div>
       <div id="exFilterBar"></div>
       <div id="exList"></div>
+      <div class="ex-list-footer"></div>
     </main>
   </div>
 
@@ -1889,19 +1906,28 @@ function renderExFilterBar(){
   const muscles = Object.entries(MUSCLE_LABEL);
   let html = `<button class="ex-new-btn" id="exNewBtn">+ Novo exercício</button>`;
   html += `<div class="ex-filter-bar" style="margin-top:10px">`;
+  // Row 1: muscle chips
+  html += `<div class="ex-filter-row">`;
+  html += `<span class="ex-filter-row-label">Grupo</span>`;
   html += `<span class="filter-chip ${exFilterMuscle===null?'active':''}" data-muscle="">Todos</span>`;
   muscles.forEach(([k,v]) => {
     html += `<span class="filter-chip ${exFilterMuscle===k?'active':''}" data-muscle="${k}">${v}</span>`;
   });
-  html += `<span class="filter-sep"></span>`;
+  html += `</div>`;
+  // Row 2: day chips
+  html += `<div class="ex-filter-row">`;
+  html += `<span class="ex-filter-row-label">Dia</span>`;
   html += `<span class="filter-chip ${exFilterDay===null?'active':''}" data-day="">Todos</span>`;
   DAY_NAMES_SHORT.forEach((d,i) => {
     html += `<span class="filter-chip ${exFilterDay===i?'active':''}" data-day="${i}">${d}</span>`;
   });
-  html += `<span class="filter-sep"></span>`;
+  html += `</div>`;
+  // Row 3: inactive toggle
+  html += `<div class="ex-filter-row">`;
   html += `<label class="filter-chip" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
     <input type="checkbox" ${exShowInactive?'checked':''} id="exInactiveToggle" style="accent-color:var(--accent)"> Inativos
   </label>`;
+  html += `</div>`;
   html += `</div>`;
   $exFilterBar.innerHTML = html;
 
@@ -1925,6 +1951,35 @@ function renderExFilterBar(){
   document.getElementById("exNewBtn").addEventListener("click", () => openExEditor(null));
 }
 
+function renderExItemHtml(ex, canDrag){
+  const isInactive = ex.active === false;
+  const dayPills = (ex.days||[]).sort().map(d => DAY_NAMES_SHORT[d]).join(" · ");
+  const repsSummary = (ex.reps||[]).length + "×" + (ex.reps||[])[0];
+  const badgeTags = (ex.badges||[]).map(b => `<span class="ex-tag accent">${b}</span>`).join("");
+
+  let h = `<div class="ex-list-item ${isInactive?'inactive':''}" data-id="${ex._id}" ${canDrag?'draggable="true"':''}>`;
+  if(canDrag) h += `<div class="drag-handle"><span></span><span></span><span></span></div>`;
+  h += `<div class="ex-list-body">
+    <div class="ex-list-name">${ex.name}</div>
+    <div class="ex-list-meta">
+      <span class="ex-tag">${MUSCLE_LABEL[ex.muscle]||ex.muscle}</span>
+      <span class="ex-tag">${dayPills}</span>
+      <span class="ex-tag">${repsSummary}</span>
+      ${badgeTags}
+      ${isInactive ? '<span class="ex-tag inactive-tag">Inativo</span>' : ''}
+      ${ex.superset ? '<span class="ex-tag accent">supersérie</span>' : ''}
+    </div>
+  </div>`;
+  h += `<div class="ex-list-actions">
+    <button class="ex-icon-btn active-toggle ${!isInactive?'is-active':''}" data-id="${ex._id}" title="${isInactive?'Ativar':'Desativar'}">
+      ${isInactive ? '○' : '●'}
+    </button>
+    <button class="ex-icon-btn edit-btn" data-id="${ex._id}" title="Editar">✎</button>
+  </div>`;
+  h += `</div>`;
+  return h;
+}
+
 function renderExList(){
   let items = [];
   exercisesCatalog.forEach((ex, id) => items.push({...ex, _id: id}));
@@ -1934,52 +1989,65 @@ function renderExList(){
   if(exFilterDay !== null) items = items.filter(e => (e.days||[]).includes(exFilterDay));
   if(!exShowInactive) items = items.filter(e => e.active !== false);
 
-  // sort: by name
-  if(exFilterDay !== null){
-    items.sort((a,b) => {
-      const oa = (a.orderByDay && a.orderByDay[exFilterDay] != null) ? a.orderByDay[exFilterDay] : 999;
-      const ob = (b.orderByDay && b.orderByDay[exFilterDay] != null) ? b.orderByDay[exFilterDay] : 999;
-      return oa - ob;
-    });
-  } else {
-    items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
-  }
-
   if(!items.length){
     $exList.innerHTML = `<div class="evo-empty"><span class="big">Nenhum exercício encontrado</span></div>`;
     return;
   }
 
   const canDrag = exFilterDay !== null;
-
   let html = "";
-  items.forEach(ex => {
-    const isInactive = ex.active === false;
-    const dayPills = (ex.days||[]).sort().map(d => DAY_NAMES_SHORT[d]).join(" · ");
-    const repsSummary = (ex.reps||[]).length + "×" + (ex.reps||[])[0];
-    const badgeTags = (ex.badges||[]).map(b => `<span class="ex-tag accent">${b}</span>`).join("");
 
-    html += `<div class="ex-list-item ${isInactive?'inactive':''}" data-id="${ex._id}" ${canDrag?'draggable="true"':''}>`;
-    if(canDrag) html += `<div class="drag-handle"><span></span><span></span><span></span></div>`;
-    html += `<div class="ex-list-body">
-      <div class="ex-list-name">${ex.name}</div>
-      <div class="ex-list-meta">
-        <span class="ex-tag">${MUSCLE_LABEL[ex.muscle]||ex.muscle}</span>
-        <span class="ex-tag">${dayPills}</span>
-        <span class="ex-tag">${repsSummary}</span>
-        ${badgeTags}
-        ${isInactive ? '<span class="ex-tag inactive-tag">Inativo</span>' : ''}
-        ${ex.superset ? '<span class="ex-tag accent">supersérie</span>' : ''}
-      </div>
-    </div>`;
-    html += `<div class="ex-list-actions">
-      <button class="ex-icon-btn active-toggle ${!isInactive?'is-active':''}" data-id="${ex._id}" title="${isInactive?'Ativar':'Desativar'}">
-        ${isInactive ? '○' : '●'}
-      </button>
-      <button class="ex-icon-btn edit-btn" data-id="${ex._id}" title="Editar">✎</button>
-    </div>`;
-    html += `</div>`;
-  });
+  if(canDrag){
+    // Flat list sorted by day order — drag-and-drop enabled
+    items.sort((a,b) => {
+      const oa = (a.orderByDay && a.orderByDay[exFilterDay] != null) ? a.orderByDay[exFilterDay] : 999;
+      const ob = (b.orderByDay && b.orderByDay[exFilterDay] != null) ? b.orderByDay[exFilterDay] : 999;
+      return oa - ob;
+    });
+    items.forEach(ex => { html += renderExItemHtml(ex, true); });
+  } else {
+    // Grouped by weekday — no drag-and-drop
+    const dayGroups = new Map(); // dayIndex -> items[]
+    const noDayItems = [];
+    items.forEach(ex => {
+      const days = ex.days || [];
+      if(!days.length){ noDayItems.push(ex); return; }
+      days.forEach(dk => {
+        if(!dayGroups.has(dk)) dayGroups.set(dk, []);
+        dayGroups.get(dk).push(ex);
+      });
+    });
+    // Sort each group by orderByDay within that day, then by name
+    dayGroups.forEach((list, dk) => {
+      list.sort((a,b) => {
+        const oa = (a.orderByDay && a.orderByDay[dk] != null) ? a.orderByDay[dk] : 999;
+        const ob = (b.orderByDay && b.orderByDay[dk] != null) ? b.orderByDay[dk] : 999;
+        return oa - ob || a.name.localeCompare(b.name, "pt-BR");
+      });
+    });
+    noDayItems.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
+
+    // Render in day order 0–4
+    const seenIds = new Set();
+    for(let dk = 0; dk < DAY_NAMES_SHORT.length; dk++){
+      const group = dayGroups.get(dk);
+      if(!group || !group.length) continue;
+      // Apply muscle/inactive filters already done above, but also deduplicate
+      const filtered = group.filter(ex => {
+        if(seenIds.has(ex._id + "_" + dk)) return false;
+        seenIds.add(ex._id + "_" + dk);
+        return true;
+      });
+      if(!filtered.length) continue;
+      html += `<div class="ex-section-header">${DAY_NAMES_SHORT[dk]}</div>`;
+      filtered.forEach(ex => { html += renderExItemHtml(ex, false); });
+    }
+    if(noDayItems.length){
+      html += `<div class="ex-section-header">Sem dia</div>`;
+      noDayItems.forEach(ex => { html += renderExItemHtml(ex, false); });
+    }
+  }
+
   $exList.innerHTML = html;
 
   // bind clicks
