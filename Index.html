@@ -401,6 +401,15 @@
     border-radius:10px;padding:10px 12px;outline:none;transition:.15s;
   }
   .modal-input:focus,.modal-select:focus,.modal-textarea:focus{border-color:var(--accent)}
+  .ac-wrap{position:relative}
+  .ac-list{position:absolute;left:0;right:0;top:100%;z-index:120;max-height:220px;overflow-y:auto;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:10px;margin-top:4px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);display:none}
+  .ac-list.open{display:block}
+  .ac-item{padding:9px 12px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border)}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.active{background:var(--accent-soft);color:var(--accent)}
+  .ac-item .ac-muscle{font-size:11px;color:var(--muted);margin-left:6px}
   .modal-textarea{min-height:60px;resize:vertical}
   .modal-select{-webkit-appearance:none;appearance:none;cursor:pointer;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8F99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
@@ -959,6 +968,200 @@ const PLAN_TEMPLATES = [
   ]},
 ];
 
+// ========= Catálogo canônico de exercícios (autocomplete) =========
+const EXERCISE_CATALOG = [
+  // — Peito —
+  {name:"Supino reto com barra",muscle:"peito"},
+  {name:"Supino reto com halter",muscle:"peito"},
+  {name:"Supino inclinado com barra",muscle:"peito"},
+  {name:"Supino inclinado com halter",muscle:"peito"},
+  {name:"Supino declinado com barra",muscle:"peito"},
+  {name:"Supino declinado com halter",muscle:"peito"},
+  {name:"Supino vertical inclinado",muscle:"peito"},
+  {name:"Supino máquina",muscle:"peito"},
+  {name:"Crucifixo reto com halter",muscle:"peito"},
+  {name:"Crucifixo inclinado com halter",muscle:"peito"},
+  {name:"Crucifixo no cabo (crossover)",muscle:"peito"},
+  {name:"Crossover alto",muscle:"peito"},
+  {name:"Crossover baixo",muscle:"peito"},
+  {name:"Peck deck",muscle:"peito"},
+  {name:"Flexão de braço",muscle:"peito"},
+  {name:"Flexão com apoio",muscle:"peito"},
+  {name:"Pullover com halter",muscle:"peito"},
+  {name:"Pullover na máquina",muscle:"peito"},
+  {name:"Chest press máquina",muscle:"peito"},
+  {name:"Mergulho no paralelas (peito)",muscle:"peito"},
+  // — Costas —
+  {name:"Puxada frontal aberta",muscle:"costas"},
+  {name:"Puxada frontal fechada",muscle:"costas"},
+  {name:"Puxada frontal triângulo",muscle:"costas"},
+  {name:"Puxada frontal supinada",muscle:"costas"},
+  {name:"Pulley frente — pegada supinada",muscle:"costas"},
+  {name:"Pulley frente — pegada pronada",muscle:"costas"},
+  {name:"Pulley frente — triângulo",muscle:"costas"},
+  {name:"Remada curvada com barra",muscle:"costas"},
+  {name:"Remada curvada com halter",muscle:"costas"},
+  {name:"Remada unilateral com halter",muscle:"costas"},
+  {name:"Remada cavalinho",muscle:"costas"},
+  {name:"Remada Hammer (anilhas)",muscle:"costas"},
+  {name:"Remada baixa no cabo",muscle:"costas"},
+  {name:"Remada alta com barra",muscle:"costas"},
+  {name:"Remada na máquina",muscle:"costas"},
+  {name:"Remada T-bar",muscle:"costas"},
+  {name:"Barra fixa (pull-up)",muscle:"costas"},
+  {name:"Barra fixa supinada (chin-up)",muscle:"costas"},
+  {name:"Pulldown reto no cabo",muscle:"costas"},
+  {name:"Serrátil no cabo",muscle:"costas"},
+  {name:"Levantamento terra convencional",muscle:"costas"},
+  {name:"Levantamento terra romeno",muscle:"costas"},
+  {name:"Hiperextensão lombar",muscle:"costas"},
+  {name:"Good morning",muscle:"costas"},
+  // — Ombro —
+  {name:"Desenvolvimento com barra",muscle:"ombro"},
+  {name:"Desenvolvimento com halter",muscle:"ombro"},
+  {name:"Desenvolvimento máquina",muscle:"ombro"},
+  {name:"Desenvolvimento Arnold",muscle:"ombro"},
+  {name:"Elevação lateral com halter",muscle:"ombro"},
+  {name:"Elevação lateral com halter (sentado)",muscle:"ombro"},
+  {name:"Elevação lateral no cabo",muscle:"ombro"},
+  {name:"Elevação lateral na máquina",muscle:"ombro"},
+  {name:"Elevação frontal com halter",muscle:"ombro"},
+  {name:"Elevação frontal com barra",muscle:"ombro"},
+  {name:"Elevação frontal com anilha",muscle:"ombro"},
+  {name:"Elevação frontal no cabo",muscle:"ombro"},
+  {name:"Crucifixo invertido com halter",muscle:"ombro"},
+  {name:"Crucifixo invertido na máquina",muscle:"ombro"},
+  {name:"Crucifixo invertido no cabo",muscle:"ombro"},
+  {name:"Face pull no Cross",muscle:"ombro"},
+  {name:"Face pull com corda",muscle:"ombro"},
+  {name:"Press militar com barra",muscle:"ombro"},
+  {name:"Remada alta com halter",muscle:"ombro"},
+  {name:"Ombro máquina lateral",muscle:"ombro"},
+  // — Trapézio —
+  {name:"Encolhimento com halter",muscle:"trapézio"},
+  {name:"Encolhimento com barra",muscle:"trapézio"},
+  {name:"Encolhimento na máquina Smith",muscle:"trapézio"},
+  {name:"Remada alta com barra (trapézio)",muscle:"trapézio"},
+  {name:"Encolhimento com halter inclinado",muscle:"trapézio"},
+  {name:"Face pull (trapézio)",muscle:"trapézio"},
+  // — Bíceps —
+  {name:"Rosca direta com barra",muscle:"bíceps"},
+  {name:"Rosca direta com halter",muscle:"bíceps"},
+  {name:"Rosca alternada com halter",muscle:"bíceps"},
+  {name:"Rosca W (barra EZ)",muscle:"bíceps"},
+  {name:"Rosca Scott com barra",muscle:"bíceps"},
+  {name:"Rosca Scott com halter",muscle:"bíceps"},
+  {name:"Rosca Scott na máquina",muscle:"bíceps"},
+  {name:"Rosca concentrada",muscle:"bíceps"},
+  {name:"Rosca martelo com halter",muscle:"bíceps"},
+  {name:"Rosca martelo simultâneo",muscle:"bíceps"},
+  {name:"Rosca no cabo",muscle:"bíceps"},
+  {name:"Rosca no Cross",muscle:"bíceps"},
+  {name:"Rosca inclinada com halter",muscle:"bíceps"},
+  {name:"Rosca 21 (barra EZ)",muscle:"bíceps"},
+  {name:"Rosca spider com barra EZ",muscle:"bíceps"},
+  {name:"Martelo simultâneo com halter",muscle:"bíceps"},
+  {name:"Martelo no cabo com corda",muscle:"bíceps"},
+  // — Tríceps —
+  {name:"Tríceps pulley com barra",muscle:"tríceps"},
+  {name:"Tríceps corda",muscle:"tríceps"},
+  {name:"Tríceps corda no crossover",muscle:"tríceps"},
+  {name:"Tríceps francês com halter",muscle:"tríceps"},
+  {name:"Tríceps francês com barra EZ",muscle:"tríceps"},
+  {name:"Tríceps testa (barra EZ)",muscle:"tríceps"},
+  {name:"Tríceps testa com halter",muscle:"tríceps"},
+  {name:"Tríceps banco",muscle:"tríceps"},
+  {name:"Tríceps coice com halter",muscle:"tríceps"},
+  {name:"Tríceps coice no cabo",muscle:"tríceps"},
+  {name:"Tríceps mergulho no paralelas",muscle:"tríceps"},
+  {name:"Tríceps overhead com corda",muscle:"tríceps"},
+  {name:"Tríceps overhead com halter",muscle:"tríceps"},
+  {name:"Tríceps supino fechado",muscle:"tríceps"},
+  {name:"Tríceps máquina",muscle:"tríceps"},
+  {name:"Tríceps pulley inverso",muscle:"tríceps"},
+  // — Antebraço —
+  {name:"Rosca punho com barra",muscle:"antebraço"},
+  {name:"Rosca punho com halter",muscle:"antebraço"},
+  {name:"Rosca punho invertida com barra",muscle:"antebraço"},
+  {name:"Rosca punho invertida com halter",muscle:"antebraço"},
+  {name:"Rosca punho (antebraço)",muscle:"antebraço"},
+  {name:"Farmer's walk",muscle:"antebraço"},
+  {name:"Wrist roller",muscle:"antebraço"},
+  {name:"Martelo braquiorradial",muscle:"antebraço"},
+  // — Perna (quadríceps / posterior / adutores) —
+  {name:"Agachamento livre com barra",muscle:"perna"},
+  {name:"Agachamento frontal",muscle:"perna"},
+  {name:"Agachamento no Smith",muscle:"perna"},
+  {name:"Agachamento sumô",muscle:"perna"},
+  {name:"Agachamento hack",muscle:"perna"},
+  {name:"Agachamento goblet",muscle:"perna"},
+  {name:"Agachamento búlgaro",muscle:"perna"},
+  {name:"Leg press 45",muscle:"perna"},
+  {name:"Leg press horizontal",muscle:"perna"},
+  {name:"Leg 45",muscle:"perna"},
+  {name:"Leg 45 unilateral",muscle:"perna"},
+  {name:"Cadeira extensora",muscle:"perna"},
+  {name:"Flexora deitado",muscle:"perna"},
+  {name:"Flexora sentado",muscle:"perna"},
+  {name:"Mesa flexora",muscle:"perna"},
+  {name:"Stiff com barra",muscle:"perna"},
+  {name:"Stiff com halter",muscle:"perna"},
+  {name:"Meio terra sumô",muscle:"perna"},
+  {name:"Avanço com halter",muscle:"perna"},
+  {name:"Avanço no Smith",muscle:"perna"},
+  {name:"Passada com halter",muscle:"perna"},
+  {name:"Búlgaro com carga ipsilateral",muscle:"perna"},
+  {name:"Búlgaro com halter",muscle:"perna"},
+  {name:"Cadeira adutora",muscle:"perna"},
+  {name:"Cadeira abdutora",muscle:"perna"},
+  {name:"Sissy squat",muscle:"perna"},
+  {name:"Hack squat invertido",muscle:"perna"},
+  {name:"Afundo no Smith",muscle:"perna"},
+  {name:"Prensa unilateral",muscle:"perna"},
+  // — Glúteo —
+  {name:"Hip thrust com barra",muscle:"glúteo"},
+  {name:"Hip thrust na máquina",muscle:"glúteo"},
+  {name:"Elevação pélvica no solo",muscle:"glúteo"},
+  {name:"Glúteo na máquina",muscle:"glúteo"},
+  {name:"Glúteo no cabo (kickback)",muscle:"glúteo"},
+  {name:"Coice no cabo",muscle:"glúteo"},
+  {name:"Abdução no cabo",muscle:"glúteo"},
+  {name:"Abdução com faixa elástica",muscle:"glúteo"},
+  {name:"Step-up com halter",muscle:"glúteo"},
+  {name:"Ponte glútea unilateral",muscle:"glúteo"},
+  {name:"Glúteo quatro apoios",muscle:"glúteo"},
+  // — Panturrilha —
+  {name:"Panturrilha sentado",muscle:"panturrilha"},
+  {name:"Panturrilha em pé na máquina",muscle:"panturrilha"},
+  {name:"Panturrilha no leg press",muscle:"panturrilha"},
+  {name:"Panturrilha no Smith",muscle:"panturrilha"},
+  {name:"Panturrilha unilateral com halter",muscle:"panturrilha"},
+  {name:"Panturrilha no hack",muscle:"panturrilha"},
+  {name:"Gêmeos em pé (donkey calf)",muscle:"panturrilha"},
+  {name:"Sóleo sentado",muscle:"panturrilha"},
+  // — Abdômen —
+  {name:"Abdominal crunch",muscle:"abdômen"},
+  {name:"Abdominal infra",muscle:"abdômen"},
+  {name:"Abdominal na máquina",muscle:"abdômen"},
+  {name:"Abdominal no cabo (rope crunch)",muscle:"abdômen"},
+  {name:"Abdominal bicicleta",muscle:"abdômen"},
+  {name:"Prancha frontal",muscle:"abdômen"},
+  {name:"Prancha lateral",muscle:"abdômen"},
+  {name:"Elevação de pernas suspenso",muscle:"abdômen"},
+  {name:"Elevação de pernas no banco",muscle:"abdômen"},
+  {name:"Russian twist",muscle:"abdômen"},
+  {name:"Oblíquo no cabo",muscle:"abdômen"},
+  {name:"Roda abdominal (ab wheel)",muscle:"abdômen"},
+  {name:"Leg raise na barra fixa",muscle:"abdômen"},
+  {name:"Mountain climber",muscle:"abdômen"},
+  {name:"Pallof press no cabo",muscle:"abdômen"},
+  {name:"Woodchop no cabo",muscle:"abdômen"},
+  {name:"Crunch invertido",muscle:"abdômen"},
+  {name:"Sit-up",muscle:"abdômen"},
+  {name:"Dragon flag",muscle:"abdômen"},
+  {name:"Hollow hold",muscle:"abdômen"},
+];
+
 // ========= Estado em memória =========
 let user = null;
 let current = 0;
@@ -1181,6 +1384,7 @@ function emptySession(dayKey){
     dayName: day.name,
     exercises: day.ex.map(e => ({
       name: e.name,
+      supName: e.superset ? e.superset.name : null,
       main: e.reps.map(r => ({done:false, reps:r, weight:null})),
       sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null})) : null
     }))
@@ -1202,6 +1406,7 @@ function reconcileSession(s, dayKey){
       : arr;
     return {
       name: e.name,
+      supName: e.superset ? e.superset.name : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null}))),
       sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null}))) : null
     };
@@ -1471,8 +1676,8 @@ $weekNext.addEventListener("click", async () => {
 });
 
 // ========= Evolução =========
-const MUSCLE_ORDER = ["ombro","costas","peito","tríceps","bíceps","perna"];
-const MUSCLE_LABEL = {ombro:"Ombro",costas:"Costas",peito:"Peito","tríceps":"Tríceps","bíceps":"Bíceps",perna:"Perna"};
+const MUSCLE_ORDER = ["peito","costas","ombro","trapézio","bíceps","tríceps","antebraço","perna","glúteo","panturrilha","abdômen"];
+const MUSCLE_LABEL = {peito:"Peito",costas:"Costas",ombro:"Ombro","trapézio":"Trapézio","bíceps":"Bíceps","tríceps":"Tríceps","antebraço":"Antebraço",perna:"Perna","glúteo":"Glúteo","panturrilha":"Panturrilha","abdômen":"Abdômen"};
 
 function buildExerciseList(){
   const seen = new Map();
@@ -1527,19 +1732,25 @@ async function renderEvolucao(){
   $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
 
   await loadAllSessions();
-  const docsData = (allSessions || [])
-    .filter(s => s.dayKey === sel.dayKey)
-    .sort((a,b) => a.date.localeCompare(b.date));
-
-  const points = [];
-  docsData.forEach(s => {
-    const ex = s.exercises && s.exercises[sel.exIdx];
-    if(!ex) return;
-    const sets = sel.isSup ? ex.sup : ex.main;
-    if(ex.name !== activeDays()[sel.dayKey]?.ex[sel.exIdx]?.name) { /* catálogo mudou; segue */ }
-    const m = loadMetrics(sets);
-    if(m) points.push({ date: s.date, max: m.max, avg: m.avg });
+  const byDate = new Map();
+  (allSessions || []).forEach(s => {
+    if(!s.exercises) return;
+    let matched = [];
+    s.exercises.forEach(entry => {
+      if(entry.name === sel.name && entry.main) matched.push(...entry.main);
+      if(entry.supName === sel.name && entry.sup) matched.push(...entry.sup);
+    });
+    if(!matched.length) return;
+    const prev = byDate.get(s.date);
+    if(prev) prev.push(...matched); else byDate.set(s.date, [...matched]);
   });
+  const points = [];
+  [...byDate.entries()]
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .forEach(([date, sets]) => {
+      const m = loadMetrics(sets);
+      if(m) points.push({ date, max: m.max, avg: m.avg });
+    });
 
   if(!points.length){
     $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
@@ -2749,7 +2960,10 @@ function openExEditor(docId){
   // Nome
   html += `<div class="modal-field">
     <label>Nome</label>
-    <input class="modal-input" id="mfName" value="${ex.name||''}" placeholder="Nome do exercício">
+    <div class="ac-wrap">
+      <input class="modal-input" id="mfName" value="${ex.name||''}" placeholder="Nome do exercício" autocomplete="off">
+      <div class="ac-list" id="acName"></div>
+    </div>
   </div>`;
 
   // Grupo muscular
@@ -2807,7 +3021,10 @@ function openExEditor(docId){
     <div class="superset-fields ${hasSup?'open':''}" id="mfSupFields">
       <div class="modal-field">
         <label>Nome</label>
-        <input class="modal-input" id="mfSupName" value="${sup.name||''}" placeholder="Nome da supersérie">
+        <div class="ac-wrap">
+          <input class="modal-input" id="mfSupName" value="${sup.name||''}" placeholder="Nome da supersérie" autocomplete="off">
+          <div class="ac-list" id="acSupName"></div>
+        </div>
       </div>
       <div class="modal-field">
         <label>Grupo muscular</label>
@@ -2890,6 +3107,62 @@ function openExEditor(docId){
     f.classList.toggle("open");
     a.textContent = f.classList.contains("open") ? "▼" : "▶";
   });
+
+  // autocomplete helper
+  function bindAutocomplete(inputId, listId, muscleSelectId){
+    const inp = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    const mSel = document.getElementById(muscleSelectId);
+    let activeIdx = -1;
+
+    function stripDiacritics(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+
+    function filter(q){
+      if(!q || q.length < 1){ list.classList.remove("open"); return; }
+      const nq = stripDiacritics(q);
+      const prefix = [], sub = [];
+      EXERCISE_CATALOG.forEach(c => {
+        const nc = stripDiacritics(c.name);
+        if(nc.startsWith(nq)) prefix.push(c);
+        else if(nc.includes(nq)) sub.push(c);
+      });
+      const results = prefix.concat(sub).slice(0, 8);
+      if(!results.length){ list.classList.remove("open"); return; }
+      activeIdx = -1;
+      list.innerHTML = results.map((c,i) =>
+        `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+      ).join("");
+      list.classList.add("open");
+      list.querySelectorAll(".ac-item").forEach(el => {
+        el.addEventListener("mousedown", e => {
+          e.preventDefault();
+          pick(el.dataset.name, el.dataset.muscle);
+        });
+      });
+    }
+
+    function pick(name, muscle){
+      inp.value = name;
+      if(mSel) mSel.value = muscle;
+      list.classList.remove("open");
+    }
+
+    inp.addEventListener("input", () => filter(inp.value.trim()));
+    inp.addEventListener("focus", () => { if(inp.value.trim()) filter(inp.value.trim()); });
+    inp.addEventListener("blur", () => { setTimeout(() => list.classList.remove("open"), 150); });
+    inp.addEventListener("keydown", e => {
+      const items = list.querySelectorAll(".ac-item");
+      if(!items.length || !list.classList.contains("open")) return;
+      if(e.key === "ArrowDown"){ e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); }
+      else if(e.key === "ArrowUp"){ e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); }
+      else if(e.key === "Enter" && activeIdx >= 0){ e.preventDefault(); pick(items[activeIdx].dataset.name, items[activeIdx].dataset.muscle); return; }
+      else if(e.key === "Escape"){ list.classList.remove("open"); return; }
+      else return;
+      items.forEach((it,i) => it.classList.toggle("active", i === activeIdx));
+    });
+  }
+  bindAutocomplete("mfName","acName","mfMuscle");
+  bindAutocomplete("mfSupName","acSupName","mfSupMuscle");
 
   // cancel
   document.getElementById("mfCancel").addEventListener("click", closeExEditor);
