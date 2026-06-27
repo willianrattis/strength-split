@@ -96,6 +96,9 @@
   .sync-status.saving .dot{background:#FFD27A;animation:pulse 1s infinite}
   .sync-status.offline .dot{background:#F87171}
   @keyframes pulse{50%{opacity:.4}}
+  @keyframes spin-apply{to{transform:rotate(360deg)}}
+  .modal-btn.primary.loading{pointer-events:none;opacity:.85;display:inline-flex;align-items:center;gap:8px}
+  .modal-btn.primary.loading .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin-apply .6s linear infinite}
 
   /* logged-out overlay */
   .gate{
@@ -2403,10 +2406,25 @@ function openApplyPlanModal(plan, planDocId){
 
     if(!valid) return;
 
+    const $confirmBtn = document.getElementById("applyConfirm");
+    const $cancelBtn = document.getElementById("applyCancel");
+    $confirmBtn.disabled = true;
+    $confirmBtn.classList.add("loading");
+    $confirmBtn.innerHTML = '<span class="spinner"></span>Aplicando…';
+    $cancelBtn.disabled = true;
+    $cancelBtn.style.opacity = ".4";
+    $cancelBtn.style.pointerEvents = "none";
+
     try{
       await applyPlan(plan, planDocId, mapping);
       closeApply();
     }catch(e){
+      $confirmBtn.disabled = false;
+      $confirmBtn.classList.remove("loading");
+      $confirmBtn.textContent = "Aplicar";
+      $cancelBtn.disabled = false;
+      $cancelBtn.style.opacity = "";
+      $cancelBtn.style.pointerEvents = "";
       errEl.textContent = "Erro: " + e.message;
       errEl.style.display = "";
     }
