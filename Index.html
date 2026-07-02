@@ -145,7 +145,7 @@
   .ex{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.18s}
   .ex.done{border-color:var(--accent);opacity:.72}
   .ex-header{display:flex;gap:14px;align-items:flex-start;padding:15px 16px 10px}
-  .unit-toggle{flex:0 0 auto;font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.06em;background:var(--surface-3);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;transition:.15s;line-height:1.2;align-self:center}
+  .unit-toggle{flex:0 0 auto;font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.06em;font-variant-numeric:tabular-nums;white-space:nowrap;background:var(--surface-2);color:var(--muted);border:1px solid var(--border);border-radius:9px;width:34px;height:34px;padding:0;cursor:pointer;display:grid;place-items:center;transition:.15s}
   .unit-toggle:hover{border-color:var(--accent);color:var(--accent)}
   .superset .unit-toggle{margin-left:8px;vertical-align:middle}
   .num{flex:0 0 auto;font-family:var(--display);font-weight:700;font-size:15px;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--surface-3);color:var(--accent);transition:.18s}
@@ -414,6 +414,19 @@
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:var(--accent-soft);color:var(--accent)}
   .ac-item .ac-muscle{font-size:11px;color:var(--muted);margin-left:6px}
+
+  /* substitution modal */
+  .sub-desc{font-size:12px;color:var(--muted);margin:-4px 0 14px}
+  .sub-section-label{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:14px 0 6px}
+  .sub-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .sub-chip{font-size:12px;font-weight:500;padding:6px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;transition:.15s}
+  .sub-chip:hover{border-color:var(--accent);color:var(--accent)}
+  .sub-input-wrap{position:relative;margin-bottom:8px}
+  .sub-revert{margin-top:12px;width:100%;padding:10px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .sub-revert:hover{border-color:var(--accent);color:var(--accent)}
+  .sub-current{font-size:13px;color:var(--accent);font-weight:600;margin-bottom:4px}
+  .sub-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--accent-soft);color:var(--accent);margin-left:6px}
+
   .modal-textarea{min-height:60px;resize:vertical}
   .modal-select{-webkit-appearance:none;appearance:none;cursor:pointer;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8F99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
@@ -779,6 +792,10 @@
   <!-- MODAL: Aplicar plano (mapeamento de dias) -->
   <div class="modal-overlay" id="applyPlanModal">
     <div class="modal" id="applyPlanModalInner"></div>
+  </div>
+  <!-- MODAL: Trocar exercício (só hoje) -->
+  <div class="modal-overlay" id="subModal">
+    <div class="modal" id="subModalInner"></div>
   </div>
 </div>
 
@@ -1462,6 +1479,8 @@ function emptySession(dayKey){
     dayName: day.name,
     exercises: day.ex.map(e => ({
       name: e.name,
+      subName: null,
+      subMuscle: null,
       supName: e.superset ? e.superset.name : null,
       main: e.reps.map(r => ({done:false, reps:r, weight:null})),
       sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null})) : null
@@ -1484,6 +1503,8 @@ function reconcileSession(s, dayKey){
       : arr;
     return {
       name: e.name,
+      subName: old && old.subName ? old.subName : null,
+      subMuscle: old && old.subMuscle ? old.subMuscle : null,
       supName: e.superset ? e.superset.name : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null}))),
       sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null}))) : null
@@ -1632,17 +1653,20 @@ function renderDay(){
     const isDone = exDone(ex);
 
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
+    const isSub = !!ex.subName;
+    const effectiveName = ex.subName || e.name;
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name">${e.name}</div>
-        ${e.note?`<div class="note">${e.note}</div>`:""}
-        ${prevLoadText(i,false,e.unit)}
+        <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}</div>
+        ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
+        ${!isSub?prevLoadText(i,false,e.unit):""}
       </div>
+      <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
     html += seriesHTML(ex.main, i, false, e.unit);
-    html += badgesHTML(e.badges);
+    html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
       html += `<div class="superset">
@@ -1703,11 +1727,133 @@ function attachHandlers(){
     });
   });
 
+  $panel.querySelectorAll(".sub-btn").forEach(btn => {
+    btn.addEventListener("click", () => openSubModal(+btn.dataset.i));
+  });
+
   document.getElementById("resetBtn").addEventListener("click", () => {
     if(!confirm("Limpar séries e cargas deste dia?")) return;
     session = emptySession(current);
     scheduleSave(); renderDay(); renderStrip();
   });
+}
+
+// ========= Substitution Modal =========
+const $subModal = document.getElementById("subModal");
+const $subModalInner = document.getElementById("subModalInner");
+$subModal.addEventListener("click", e => { if(e.target === $subModal) closeSubModal(); });
+
+function closeSubModal(){ $subModal.classList.remove("open"); }
+
+function openSubModal(exIdx){
+  const day = activeDays()[current];
+  const planEx = day.ex[exIdx];
+  const ex = session.exercises[exIdx];
+  const originalName = planEx.name;
+  const originalMuscle = planEx.muscle;
+  const isSub = !!ex.subName;
+
+  // Build suggestions: same muscle, exclude original name, cap 8
+  const suggestions = EXERCISE_CATALOG
+    .filter(c => c.muscle === originalMuscle && c.name !== originalName)
+    .slice(0, 8);
+
+  let html = `<h3 style="margin:0 0 4px">Trocar exercício (só hoje)</h3>`;
+  html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${originalName}</b>.</p>`;
+
+  if(isSub){
+    html += `<div class="sub-current">Atual: ${ex.subName}</div>`;
+    html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
+  }
+
+  if(suggestions.length){
+    html += `<div class="sub-section-label">Sugestões (${MUSCLE_LABEL[originalMuscle]||originalMuscle})</div>`;
+    html += `<div class="sub-chips">`;
+    suggestions.forEach(c => {
+      html += `<button class="sub-chip" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="sub-section-label">Buscar exercício</div>`;
+  html += `<div class="sub-input-wrap">`;
+  html += `<input class="modal-input" id="subSearchInput" placeholder="Digite o nome do exercício" autocomplete="off">`;
+  html += `<div class="ac-list" id="subAcList"></div>`;
+  html += `</div>`;
+
+  $subModalInner.innerHTML = html;
+  $subModal.classList.add("open");
+
+  function applySub(name, muscle){
+    ex.subName = name;
+    ex.subMuscle = muscle || originalMuscle;
+    scheduleSave(); renderDay(); closeSubModal();
+  }
+
+  // Revert button
+  const revertBtn = document.getElementById("subRevertBtn");
+  if(revertBtn){
+    revertBtn.addEventListener("click", () => {
+      ex.subName = null;
+      ex.subMuscle = null;
+      scheduleSave(); renderDay(); closeSubModal();
+    });
+  }
+
+  // Suggestion chips
+  $subModalInner.querySelectorAll(".sub-chip").forEach(chip => {
+    chip.addEventListener("click", () => applySub(chip.dataset.name, chip.dataset.muscle));
+  });
+
+  // Autocomplete on search input
+  const subInp = document.getElementById("subSearchInput");
+  const subList = document.getElementById("subAcList");
+  let subActiveIdx = -1;
+
+  function subFilter(q){
+    if(!q || q.length < 1){ subList.classList.remove("open"); return; }
+    const nq = stripDiacritics(q);
+    const prefix = [], sub = [];
+    EXERCISE_CATALOG.forEach(c => {
+      const nc = stripDiacritics(c.name);
+      if(nc.startsWith(nq)) prefix.push(c);
+      else if(nc.includes(nq)) sub.push(c);
+    });
+    const results = prefix.concat(sub).slice(0, 8);
+    if(!results.length){ subList.classList.remove("open"); return; }
+    subActiveIdx = -1;
+    subList.innerHTML = results.map((c,i) =>
+      `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+    ).join("");
+    subList.classList.add("open");
+    subList.querySelectorAll(".ac-item").forEach(el => {
+      el.addEventListener("mousedown", e => {
+        e.preventDefault();
+        applySub(el.dataset.name, el.dataset.muscle);
+      });
+    });
+  }
+
+  subInp.addEventListener("input", () => subFilter(subInp.value.trim()));
+  subInp.addEventListener("focus", () => { if(subInp.value.trim()) subFilter(subInp.value.trim()); });
+  subInp.addEventListener("blur", () => { setTimeout(() => subList.classList.remove("open"), 150); });
+  subInp.addEventListener("keydown", e => {
+    const items = subList.querySelectorAll(".ac-item");
+    if(!items.length || !subList.classList.contains("open")) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); subActiveIdx = Math.min(subActiveIdx+1, items.length-1); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); subActiveIdx = Math.max(subActiveIdx-1, 0); }
+    else if(e.key === "Enter" && subActiveIdx >= 0){ e.preventDefault(); applySub(items[subActiveIdx].dataset.name, items[subActiveIdx].dataset.muscle); return; }
+    else if(e.key === "Enter" && subInp.value.trim()){
+      e.preventDefault();
+      applySub(subInp.value.trim(), originalMuscle);
+      return;
+    }
+    else if(e.key === "Escape"){ subList.classList.remove("open"); return; }
+    else return;
+    items.forEach((el,j) => el.classList.toggle("active", j === subActiveIdx));
+  });
+
+  setTimeout(() => subInp.focus(), 100);
 }
 
 function renderStrip(){
@@ -1788,14 +1934,22 @@ function buildExerciseList(){
         seen.set(e.superset.name, {name:e.superset.name, muscle:e.superset.muscle||e.muscle, unit:e.superset.unit||"kg", dayKey:dk, exIdx:ei, isSup:true});
     });
   });
+  // Add substituted exercise names from session history
+  if(allSessions){
+    allSessions.forEach(s => {
+      if(!s.exercises) return;
+      s.exercises.forEach(entry => {
+        if(entry.subName && !seen.has(entry.subName)){
+          seen.set(entry.subName, {name:entry.subName, muscle:entry.subMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:false});
+        }
+      });
+    });
+  }
   return [...seen.values()];
 }
 let EXERCISES = buildExerciseList();
 
-let evoInitialized = false;
-function initEvolucao(){
-  if(evoInitialized) return;
-  evoInitialized = true;
+function rebuildEvoDropdown(){
   const grouped = new Map();
   EXERCISES.forEach((x,i) => {
     const m = x.muscle || "outro";
@@ -1812,6 +1966,13 @@ function initEvolucao(){
     html += `</optgroup>`;
   });
   $evoSelect.innerHTML = html;
+}
+
+let evoInitialized = false;
+function initEvolucao(){
+  if(evoInitialized) return;
+  evoInitialized = true;
+  rebuildEvoDropdown();
   $evoSelect.addEventListener("change", renderEvolucao);
   renderEvolucao();
 }
@@ -1828,17 +1989,28 @@ function loadMetrics(sets){
 
 async function renderEvolucao(){
   if(!user){ return; }
-  const sel = EXERCISES[+$evoSelect.value || 0];
-  const evoUnit = sel.unit || "kg";
   $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
 
   await loadAllSessions();
+  // Rebuild exercise list to include substitutes from session history
+  const prevSelected = $evoSelect.value;
+  const prevName = EXERCISES[+prevSelected]?.name;
+  EXERCISES = buildExerciseList();
+  rebuildEvoDropdown();
+  // Try to restore previous selection by name
+  if(prevName){
+    const newIdx = EXERCISES.findIndex(x => x.name === prevName);
+    if(newIdx >= 0) $evoSelect.value = newIdx;
+  }
+  const sel = EXERCISES[+$evoSelect.value || 0];
+  const evoUnit = sel.unit || "kg";
   const byDate = new Map();
   (allSessions || []).forEach(s => {
     if(!s.exercises) return;
     let matched = [];
     s.exercises.forEach(entry => {
-      if(entry.name === sel.name && entry.main) matched.push(...entry.main);
+      const effectiveName = entry.subName || entry.name;
+      if(effectiveName === sel.name && entry.main) matched.push(...entry.main);
       if(entry.supName === sel.name && entry.sup) matched.push(...entry.sup);
     });
     if(!matched.length) return;
@@ -3050,6 +3222,9 @@ function closePlanEditor(){
   $planModal.classList.remove("open");
 }
 
+// ========= Shared helpers =========
+function stripDiacritics(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+
 // ========= Exercise editor modal =========
 
 function openExEditor(docId){
@@ -3218,8 +3393,6 @@ function openExEditor(docId){
     const list = document.getElementById(listId);
     const mSel = document.getElementById(muscleSelectId);
     let activeIdx = -1;
-
-    function stripDiacritics(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
 
     function filter(q){
       if(!q || q.length < 1){ list.classList.remove("open"); return; }
