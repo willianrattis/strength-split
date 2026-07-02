@@ -752,6 +752,12 @@
     .day-btn .dot{max-height:10px}
     .days.condensed .day-btn .abbr{font-size:14px;text-align:center}
 
+    /* Condensed: no fade, no scroll, pills fill row */
+    .days.condensed .days-inner{
+      -webkit-mask-image:none;mask-image:none;
+      overflow-x:visible;
+    }
+
     /* Compact mode-toggle in condensed */
     .days.condensed .mode-toggle button{padding:4px 10px;font-size:11px}
     .days.condensed .days-toolbar{padding-top:4px}
@@ -851,10 +857,10 @@
     /* 3b. Safe-area header padding for notch */
     header.top{padding-top:calc(28px + env(safe-area-inset-top))}
 
-    /* 5. Day strip edge fade */
+    /* 5. Day strip — no fade, right padding so last card clears edge */
     .days-inner{
-      -webkit-mask-image:linear-gradient(to right, black 0%, black 85%, transparent 100%);
-      mask-image:linear-gradient(to right, black 0%, black 85%, transparent 100%);
+      -webkit-mask-image:none;mask-image:none;
+      scroll-padding-inline-end:16px;padding-right:16px;
     }
 
     /* 6. Bottom nav: show on mobile, hide top tabs */
