@@ -98,6 +98,14 @@
   .sync-status.offline .dot{background:#F87171}
   @keyframes pulse{50%{opacity:.4}}
   @keyframes spin-apply{to{transform:rotate(360deg)}}
+  @keyframes skeleton-shimmer{to{background-position:-200% 0}}
+  .skeleton{
+    background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);
+    background-size:200% 100%;
+    animation:skeleton-shimmer 1.3s linear infinite;
+    border-radius:6px;
+  }
+  @media(prefers-reduced-motion:reduce){.skeleton{animation:none}}
   .modal-btn.primary.loading{pointer-events:none;opacity:.85;display:inline-flex;align-items:center;gap:8px}
   .modal-btn.primary.loading .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin-apply .6s linear infinite}
 
@@ -1390,6 +1398,8 @@ onAuthStateChanged(auth, async u => {
     document.getElementById("logoutBtn").addEventListener("click", ()=>signOut(auth));
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
+    $strip.innerHTML = skeletonStrip();
+    $panel.innerHTML = skeletonPanel();
     setSync("live", "sincronizado");
     await initializeFeatureFlags();
     await loadPref();
@@ -1613,6 +1623,55 @@ function seriesHTML(sets, exIdx, isSup, unit){
 function badgesHTML(b){
   if(!b||!b.length) return "";
   return `<div class="badges">${b.map(x=>`<span class="badge ${x}">${BADGE_LABEL[x]}</span>`).join("")}</div>`;
+}
+
+function skeletonStrip(){
+  let h = "";
+  for(let i=0;i<5;i++){
+    h += `<button class="day-btn" disabled>
+      <span class="abbr"><div class="skeleton" style="width:28px;height:14px;margin:0 auto"></div></span>
+      <span class="focus"><div class="skeleton" style="width:44px;height:10px;margin:0 auto"></div></span>
+    </button>`;
+  }
+  return h;
+}
+
+function skeletonPanel(n=5){
+  let h = `<div class="panel-head"><div>
+    <div class="skeleton" style="width:120px;height:20px;margin-bottom:6px"></div>
+    <div class="skeleton" style="width:80px;height:12px"></div>
+  </div></div>
+  <div class="bar"><span style="width:0%"></span></div>`;
+  for(let i=0;i<n;i++){
+    h += `<article class="ex"><div class="ex-header">
+      <div class="num"><div class="skeleton" style="width:32px;height:32px;border-radius:8px"></div></div>
+      <div class="body">
+        <div class="skeleton" style="width:60%;height:14px;margin-bottom:6px"></div>
+        <div class="skeleton" style="width:40%;height:10px"></div>
+      </div>
+    </div>
+    <div class="series-table">
+      <div class="skeleton" style="width:100%;height:34px;margin-bottom:7px"></div>
+      <div class="skeleton" style="width:100%;height:34px;margin-bottom:7px"></div>
+      <div class="skeleton" style="width:100%;height:34px"></div>
+    </div></article>`;
+  }
+  return h;
+}
+
+function skeletonEvo(){
+  let stats = `<div class="evo-stats">`;
+  for(let i=0;i<3;i++){
+    stats += `<div class="evo-stat">
+      <div class="skeleton" style="width:50px;height:26px;margin:0 auto 6px"></div>
+      <div class="skeleton" style="width:70px;height:10px;margin:0 auto"></div>
+    </div>`;
+  }
+  stats += `</div>`;
+  stats += `<div class="evo-chart-card"><div class="evo-chart-wrap">
+    <div class="skeleton" style="width:100%;height:100%"></div>
+  </div></div>`;
+  return stats;
 }
 
 function renderDay(){
@@ -1874,7 +1933,7 @@ function renderStrip(){
     btn.addEventListener("click", async () => {
       current = +btn.dataset.i;
       renderStrip();
-      $panel.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px 0">carregando…</div>`;
+      $panel.innerHTML = skeletonPanel();
       await loadDay(current);
       renderStrip();
       btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
@@ -1907,7 +1966,7 @@ function updateWeekLabel(){
 $weekPrev.addEventListener("click", async () => {
   weekOffset--;
   renderStrip();
-  $panel.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px 0">carregando…</div>`;
+  $panel.innerHTML = skeletonPanel();
   await loadDay(current);
   renderStrip();
 });
@@ -1916,7 +1975,7 @@ $weekNext.addEventListener("click", async () => {
   if(weekOffset >= 0) return;
   weekOffset++;
   renderStrip();
-  $panel.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px 0">carregando…</div>`;
+  $panel.innerHTML = skeletonPanel();
   await loadDay(current);
   renderStrip();
 });
@@ -1989,7 +2048,7 @@ function loadMetrics(sets){
 
 async function renderEvolucao(){
   if(!user){ return; }
-  $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
+  $evoBody.innerHTML = skeletonEvo();
 
   await loadAllSessions();
   // Rebuild exercise list to include substitutes from session history
