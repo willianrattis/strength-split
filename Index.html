@@ -718,7 +718,7 @@
     </nav>
     <main class="wrap">
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
-        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px">
+        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px;display:none" data-flag="sharePdf">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           Compartilhar
         </button>
@@ -797,7 +797,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp
+  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -815,6 +815,71 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 const provider = new GoogleAuthProvider();
+
+// ========= Feature Flags =========
+const FeatureFlags = (() => {
+  let flags = {};
+  let unsub = null;
+  let initialized = false;
+  const LS_KEY = "ss_featureFlags";
+
+  function applyFlagBindings() {
+    document.querySelectorAll("[data-flag]").forEach(el => {
+      el.style.display = isFeatureEnabled(el.dataset.flag) ? "" : "none";
+    });
+  }
+
+  function isFeatureEnabled(name) {
+    return flags[name] === true;
+  }
+
+  function getAllFlags() {
+    return { ...flags };
+  }
+
+  async function initializeFeatureFlags() {
+    if (initialized) return;
+    initialized = true;
+    try {
+      const ref = doc(db, "config", "featureFlags");
+      unsub = onSnapshot(ref, snap => {
+        flags = snap.exists() ? snap.data() : {};
+        try { localStorage.setItem(LS_KEY, JSON.stringify(flags)); } catch(_) {}
+        window.dispatchEvent(new CustomEvent("flagsUpdated"));
+        applyFlagBindings();
+      }, err => {
+        console.error("FeatureFlags: onSnapshot error", err);
+        try {
+          const cached = localStorage.getItem(LS_KEY);
+          if (cached) {
+            flags = JSON.parse(cached);
+            window.dispatchEvent(new CustomEvent("flagsUpdated"));
+            applyFlagBindings();
+          }
+        } catch(_) {}
+      });
+    } catch (err) {
+      console.error("FeatureFlags: init error", err);
+    }
+  }
+
+  function teardownFeatureFlags() {
+    if (unsub) { unsub(); unsub = null; }
+    flags = {};
+    initialized = false;
+    applyFlagBindings();
+  }
+
+  return { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags };
+})();
+
+const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
+
+// Reactivity example:
+// window.addEventListener("flagsUpdated", () => {
+//   // e.g. react to a flag flip live:
+//   // if (isFeatureEnabled("darkMode")) { /* apply theme */ }
+// });
 
 // ========= Catálogo do treino =========
 const DAYS = [
@@ -1303,6 +1368,7 @@ onAuthStateChanged(auth, async u => {
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
     setSync("live", "sincronizado");
+    await initializeFeatureFlags();
     await loadPref();
     await loadDayCustomizations();
     await seedExercises(u.uid);
@@ -1322,6 +1388,7 @@ onAuthStateChanged(auth, async u => {
     currentPlanName = null;
     currentPlanId = null;
     currentPlanKey = null;
+    teardownFeatureFlags();
   }
 });
 
