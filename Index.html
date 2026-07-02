@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   :root, [data-theme="dark"]{
     --ink:#0E0F12;
@@ -717,6 +718,10 @@
     </nav>
     <main class="wrap">
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
+        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px;display:none" data-flag="sharePdf">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Compartilhar
+        </button>
         <div class="mode-toggle" role="group" aria-label="Modo de visualização">
           <button id="modeCompact" type="button">Compacto</button>
           <button id="modeLoad" type="button">Carga</button>
@@ -792,7 +797,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp
+  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -810,6 +815,71 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 const provider = new GoogleAuthProvider();
+
+// ========= Feature Flags =========
+const FeatureFlags = (() => {
+  let flags = {};
+  let unsub = null;
+  let initialized = false;
+  const LS_KEY = "ss_featureFlags";
+
+  function applyFlagBindings() {
+    document.querySelectorAll("[data-flag]").forEach(el => {
+      el.style.display = isFeatureEnabled(el.dataset.flag) ? "" : "none";
+    });
+  }
+
+  function isFeatureEnabled(name) {
+    return flags[name] === true;
+  }
+
+  function getAllFlags() {
+    return { ...flags };
+  }
+
+  async function initializeFeatureFlags() {
+    if (initialized) return;
+    initialized = true;
+    try {
+      const ref = doc(db, "config", "featureFlags");
+      unsub = onSnapshot(ref, snap => {
+        flags = snap.exists() ? snap.data() : {};
+        try { localStorage.setItem(LS_KEY, JSON.stringify(flags)); } catch(_) {}
+        window.dispatchEvent(new CustomEvent("flagsUpdated"));
+        applyFlagBindings();
+      }, err => {
+        console.error("FeatureFlags: onSnapshot error", err);
+        try {
+          const cached = localStorage.getItem(LS_KEY);
+          if (cached) {
+            flags = JSON.parse(cached);
+            window.dispatchEvent(new CustomEvent("flagsUpdated"));
+            applyFlagBindings();
+          }
+        } catch(_) {}
+      });
+    } catch (err) {
+      console.error("FeatureFlags: init error", err);
+    }
+  }
+
+  function teardownFeatureFlags() {
+    if (unsub) { unsub(); unsub = null; }
+    flags = {};
+    initialized = false;
+    applyFlagBindings();
+  }
+
+  return { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags };
+})();
+
+const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
+
+// Reactivity example:
+// window.addEventListener("flagsUpdated", () => {
+//   // e.g. react to a flag flip live:
+//   // if (isFeatureEnabled("darkMode")) { /* apply theme */ }
+// });
 
 // ========= Catálogo do treino =========
 const DAYS = [
@@ -1298,6 +1368,7 @@ onAuthStateChanged(auth, async u => {
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
     setSync("live", "sincronizado");
+    await initializeFeatureFlags();
     await loadPref();
     await loadDayCustomizations();
     await seedExercises(u.uid);
@@ -1317,6 +1388,7 @@ onAuthStateChanged(auth, async u => {
     currentPlanName = null;
     currentPlanId = null;
     currentPlanKey = null;
+    teardownFeatureFlags();
   }
 });
 
@@ -3251,6 +3323,195 @@ function escHandler(e){ if(e.key === "Escape") closeExEditor(); }
 function closeExEditor(){
   $exModal.classList.remove("open");
   document.removeEventListener("keydown", escHandler);
+}
+
+// ========= Share PDF =========
+
+const $btnSharePdf = document.getElementById("btnSharePdf");
+let sharingPdf = false;
+$btnSharePdf.addEventListener("click", buildAndSharePdf);
+
+async function buildAndSharePdf(){
+  if(sharingPdf) return;
+  sharingPdf = true;
+  $btnSharePdf.disabled = true;
+  try { await _buildAndSharePdf(); } finally { sharingPdf = false; $btnSharePdf.disabled = false; }
+}
+
+async function _buildAndSharePdf(){
+  const days = activeDays().filter(d => d.ex && d.ex.length > 0);
+  if(!days.length){ alert("Nenhum dia de treino para exportar."); return; }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit:"mm", format:"a4" });
+  const pw = 210, ph = 297, mx = 16, my = 16;
+  const cw = pw - mx * 2;
+  let y = my;
+  let pg = 1;
+
+  function checkPage(need){
+    if(y + need > ph - my){
+      drawFooter();
+      pdf.addPage();
+      pg++;
+      y = my;
+    }
+  }
+
+  function drawFooter(){
+    pdf.setFontSize(8);
+    pdf.setTextColor(150);
+    pdf.text("strength-split", mx, ph - 8);
+    pdf.text(String(pg), pw - mx, ph - 8, { align:"right" });
+  }
+
+  function fmtDate(d){
+    return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
+  }
+
+  const planName = currentPlanName || "Meu Treino";
+  const today = new Date();
+
+  // Header
+  pdf.setFont("helvetica","bold");
+  pdf.setFontSize(22);
+  pdf.setTextColor(255, 90, 31);
+  pdf.text("STRENGTH SPLIT", mx, y);
+  y += 8;
+
+  pdf.setFont("helvetica","normal");
+  pdf.setFontSize(13);
+  pdf.setTextColor(60);
+  pdf.text(planName, mx, y);
+  y += 6;
+
+  pdf.setFontSize(10);
+  pdf.setTextColor(140);
+  pdf.text(fmtDate(today), mx, y);
+  y += 12;
+
+  // Days
+  days.forEach(day => {
+    checkPage(24);
+
+    // Day heading
+    pdf.setFont("helvetica","bold");
+    pdf.setFontSize(14);
+    pdf.setTextColor(30);
+    pdf.text(day.name, mx, y);
+
+    const tagText = day.tag || day.focus || "";
+    if(tagText){
+      const nameW = pdf.getTextWidth(day.name);
+      pdf.setFont("helvetica","normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(140);
+      pdf.text("  " + tagText, mx + nameW, y);
+    }
+    y += 3;
+    pdf.setDrawColor(220);
+    pdf.line(mx, y, pw - mx, y);
+    y += 6;
+
+    day.ex.forEach((ex, idx) => {
+      checkPage(18);
+      renderExerciseLine(pdf, ex, idx + 1, mx, false);
+
+      if(ex.superset){
+        checkPage(14);
+        renderExerciseLine(pdf, ex.superset, null, mx, true);
+      }
+    });
+
+    y += 6;
+  });
+
+  drawFooter();
+
+  function renderExerciseLine(p, ex, num, lx, isSuperset){
+    const indent = isSuperset ? 8 : 0;
+    const x = lx + indent;
+
+    // Prefix
+    if(isSuperset){
+      p.setFont("helvetica","italic");
+      p.setFontSize(9);
+      p.setTextColor(255, 90, 31);
+      p.text("+ Supersérie", x, y);
+      y += 4.5;
+    }
+
+    // Name line
+    p.setFont("helvetica","bold");
+    p.setFontSize(10);
+    p.setTextColor(30);
+    const prefix = num ? num + ". " : "";
+    p.text(prefix + ex.name, x, y);
+
+    // Muscle tag
+    const muscleLabel = MUSCLE_LABEL[ex.muscle] || ex.muscle || "";
+    if(muscleLabel){
+      const nameW = p.getTextWidth(prefix + ex.name);
+      p.setFont("helvetica","normal");
+      p.setFontSize(8);
+      p.setTextColor(120);
+      p.text("  " + muscleLabel, x + nameW, y);
+    }
+    y += 5;
+
+    // Reps
+    if(ex.reps && ex.reps.length){
+      p.setFont("helvetica","normal");
+      p.setFontSize(9);
+      p.setTextColor(80);
+      const repsStr = ex.reps.length + "× " + ex.reps.join("·");
+      p.text(repsStr, x, y);
+      y += 4.5;
+    }
+
+    // Badges
+    const badges = (ex.badges || []).filter(b => BADGE_LABEL[b]);
+    if(badges.length){
+      p.setFont("helvetica","italic");
+      p.setFontSize(8);
+      p.setTextColor(140);
+      p.text(badges.map(b => BADGE_LABEL[b]).join(" | "), x, y);
+      y += 4.5;
+    }
+
+    // Note
+    if(ex.note){
+      p.setFont("helvetica","italic");
+      p.setFontSize(8);
+      p.setTextColor(160);
+      const noteLines = p.splitTextToSize(ex.note, cw - indent);
+      noteLines.forEach(ln => {
+        checkPage(5);
+        p.text(ln, x, y);
+        y += 4;
+      });
+      y += 0.5;
+    }
+
+    y += 2;
+  }
+
+  // Share or download
+  const dateStr = today.toISOString().slice(0,10);
+  const slug = (currentPlanName || "treino").toLowerCase().replace(/\s+/g, "-");
+  const filename = `strength-split-${slug}-${dateStr}.pdf`;
+
+  try {
+    const blob = pdf.output("blob");
+    const file = new File([blob], filename, { type:"application/pdf" });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:"Meu treino", text: planName });
+    } else {
+      pdf.save(filename);
+    }
+  } catch(e){
+    if(e.name !== "AbortError") alert("Erro ao gerar PDF: " + e.message);
+  }
 }
 
 applyTheme();
