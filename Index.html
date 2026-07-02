@@ -303,7 +303,8 @@
   /* supersérie */
   .superset{margin:0 16px 15px 60px;border-left:2px solid var(--accent);padding:12px 0 2px 14px}
   .superset .tag{font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:6px}
-  .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15;margin-bottom:8px}
+  .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .superset .sname .unit-toggle{flex:0 0 auto;margin:0;margin-left:auto}
   .superset .prev-load{margin-bottom:8px;margin-top:0}
   .superset .series-table{padding-left:0;padding-right:0}
 
@@ -701,6 +702,186 @@
   @media(max-width:480px){
     .day-custom-fields{flex-direction:column;gap:8px}
   }
+
+  /* ===== COLLAPSE-ON-SCROLL STICKY HEADER ===== */
+
+  /* Share PDF wrapper — flag system sets display:"" (removes inline), so CSS display:flex takes over */
+  .share-pdf-wrap{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px}
+
+  /* Toolbar row (mode-toggle relocated into nav.days) */
+  .days-toolbar{display:flex;justify-content:flex-end;align-items:center;padding-top:8px;padding-bottom:0}
+
+  /* Smooth transitions for condensed state — only with motion allowed */
+  @media(prefers-reduced-motion:no-preference){
+    .week-nav{transition:max-height .2s ease, opacity .2s ease, margin .2s ease}
+    .day-btn{transition:padding .2s ease, flex-basis .2s ease, width .2s ease, border-radius .2s ease, .18s}
+    .day-btn .focus,
+    .day-btn .today,
+    .day-btn .dot{transition:max-height .2s ease, opacity .2s ease, margin .2s ease, .18s}
+    .days{transition:padding .2s ease, background .2s ease, border-color .2s ease}
+    .days-toolbar{transition:padding .2s ease}
+    .mode-toggle,.mode-toggle button{transition:padding .15s ease, font-size .15s ease, .15s}
+  }
+
+  /* Condensed state — mobile only */
+  @media(max-width:600px){
+    .days.condensed{
+      padding:6px 0 4px;
+      background:var(--ink);border-bottom:1px solid var(--border);
+    }
+
+    /* Hide week-nav */
+    .days.condensed .week-nav{
+      max-height:0;opacity:0;overflow:hidden;margin:0;pointer-events:none;
+    }
+    .week-nav{max-height:60px;opacity:1;overflow:hidden}
+
+    /* Shrink day-btn to compact pills */
+    .days.condensed .day-btn{
+      flex:1 1 0;width:auto;min-width:0;
+      padding:6px 12px;border-radius:10px;
+    }
+    .days.condensed .day-btn .focus,
+    .days.condensed .day-btn .today{
+      display:none;
+    }
+    .day-btn .focus,.day-btn .today{max-height:30px;opacity:1;overflow:hidden}
+    .days.condensed .day-btn .dot{
+      display:none;
+    }
+    .day-btn .dot{max-height:10px}
+    .days.condensed .day-btn .abbr{font-size:14px;text-align:center}
+
+    /* Condensed: no fade, no scroll, pills fill row */
+    .days.condensed .days-inner{
+      -webkit-mask-image:none;mask-image:none;
+      overflow-x:visible;
+    }
+
+    /* Compact mode-toggle in condensed */
+    .days.condensed .mode-toggle button{padding:4px 10px;font-size:11px}
+    .days.condensed .days-toolbar{padding-top:4px}
+  }
+
+  /* Desktop: never condensed */
+  @media(min-width:601px){
+    .days.condensed{
+      padding:10px 0 14px;
+      background:linear-gradient(var(--ink) 70%,rgba(14,15,18,0));border-bottom:none;
+    }
+    .days.condensed .week-nav{max-height:60px;opacity:1;pointer-events:auto}
+    .days.condensed .day-btn{flex:0 0 116px;width:116px;padding:10px 8px 9px;border-radius:14px}
+    .days.condensed .day-btn .focus,
+    .days.condensed .day-btn .today,
+    .days.condensed .day-btn .dot{max-height:30px;opacity:1}
+    .days.condensed .day-btn .abbr{font-size:18px}
+  }
+
+  /* ===== MOBILE UX PASS ===== */
+
+  /* 3a. Global touch feel */
+  button,a,[role="tab"],.chip,.filter-chip,.main-tab,.day-btn,.modal-btn,.ex-icon-btn,.theme-btn,.auth-btn,.unit-toggle,.week-nav-btn,.rep-add,.rep-remove,.plan-ex-remove,.plan-remove-day{
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,.chip,.filter-chip,.main-tab,.day-btn,.modal-btn{
+    touch-action:manipulation;
+  }
+
+  /* 4. Modal polish — grab handle */
+  .modal::before{
+    content:"";display:block;width:36px;height:4px;border-radius:99px;
+    background:var(--border);margin:0 auto 16px;flex:0 0 auto;
+  }
+  .modal{overscroll-behavior:contain}
+
+  /* 4. Modal max-height dvh fallback */
+  .modal{max-height:90vh;max-height:90dvh}
+
+  /* 4. Modal sticky footer */
+  .modal-footer{
+    position:sticky;bottom:0;background:var(--surface);
+    border-top:1px solid var(--border);
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));
+    margin:-32px -20px 0;padding-left:20px;padding-right:20px;padding-top:12px;
+    z-index:2;
+  }
+
+  /* 5. Day strip scroll-snap mandatory + edge fade */
+  .days-inner{scroll-snap-type:x mandatory}
+
+  /* 6. Bottom nav */
+  .bottom-nav{
+    display:none;position:fixed;left:0;right:0;bottom:0;
+    background:var(--surface);border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom);z-index:50;
+  }
+  .bottom-nav-inner{display:flex;height:56px}
+  .bottom-nav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;background:none;border:none;color:var(--muted);cursor:pointer;
+    font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.04em;
+    min-height:44px;min-width:44px;padding:0;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  }
+  .bottom-nav-btn svg{width:22px;height:22px;display:block}
+  .bottom-nav-btn[aria-selected="true"]{color:var(--accent)}
+
+  @media(max-width:600px){
+    /* 1. iOS input auto-zoom: force 16px on all focusable fields */
+    .modal-input,.modal-select,.modal-textarea,
+    .weight-input,.rep-input,.evo-select,
+    .day-map-select,.plan-day-type-label-input,
+    .day-custom-fields .modal-input,
+    .plan-ex-row input,.plan-ex-row select{
+      font-size:16px !important;
+    }
+    /* Compensate density for small inline inputs */
+    .weight-input{padding:6px 4px 6px 6px}
+    .rep-input{width:56px;padding:7px 4px}
+    .plan-ex-row input,.plan-ex-row select{padding:8px 10px}
+    .plan-day-type-label-input{padding:8px 10px}
+
+    /* 2. Tap targets >=44px */
+    .theme-btn{width:44px;height:44px}
+    .ex-icon-btn{width:44px;height:44px;border-radius:11px}
+    .unit-toggle{width:44px;height:44px;border-radius:11px}
+    .week-nav-btn{width:44px;height:44px;border-radius:11px}
+    .rep-add,.rep-remove{width:44px;height:44px;border-radius:10px}
+    .plan-ex-remove{width:44px;height:44px;border-radius:10px}
+    .plan-remove-day{width:44px;height:44px;border-radius:10px}
+    .reset{min-height:44px;padding:10px 14px}
+    .day-custom-actions button{min-height:44px;padding:10px 14px}
+    .plan-apply-btn{min-height:44px;padding:10px 14px}
+    .plan-add-ex-btn{min-height:44px;padding:10px 14px}
+
+    /* 3b. Safe-area header padding for notch */
+    header.top{padding-top:calc(28px + env(safe-area-inset-top))}
+
+    /* 5. Day strip — no fade, right padding so last card clears edge */
+    .days-inner{
+      -webkit-mask-image:none;mask-image:none;
+      scroll-padding-inline-end:16px;padding-right:16px;
+    }
+
+    /* 6. Bottom nav: show on mobile, hide top tabs */
+    .bottom-nav{display:block}
+    .main-tabs{display:none !important}
+
+    /* 6. Bottom padding so fixed bar never covers content */
+    #viewTreino footer,
+    .ex-list-footer,
+    #viewEvolucao main.wrap{
+      padding-bottom:calc(72px + env(safe-area-inset-bottom));
+    }
+  }
+
+  @media(min-width:601px){
+    /* Desktop: no edge fade (all days fit) */
+    .days-inner{
+      -webkit-mask-image:none;mask-image:none;
+    }
+    .bottom-nav{display:none !important}
+  }
 </style>
 </head>
 <body>
@@ -739,17 +920,19 @@
       <div class="wrap">
         <div class="days-inner" id="dayStrip" role="tablist"></div>
       </div>
-    </nav>
-    <main class="wrap">
-      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px">
-        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px;display:none" data-flag="sharePdf">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          Compartilhar
-        </button>
+      <div class="wrap days-toolbar">
         <div class="mode-toggle" role="group" aria-label="Modo de visualização">
           <button id="modeCompact" type="button">Compacto</button>
           <button id="modeLoad" type="button">Carga</button>
         </div>
+      </div>
+    </nav>
+    <main class="wrap">
+      <div id="sharePdfWrap" class="share-pdf-wrap" style="display:none" data-flag="sharePdf">
+        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Compartilhar
+        </button>
       </div>
       <section id="panel" role="tabpanel" aria-live="polite"></section>
       <footer>
@@ -805,6 +988,24 @@
   <div class="modal-overlay" id="subModal">
     <div class="modal" id="subModalInner"></div>
   </div>
+
+  <!-- Bottom navigation (mobile only) -->
+  <nav class="bottom-nav" id="bottomNav" role="tablist">
+    <div class="bottom-nav-inner">
+      <button class="bottom-nav-btn" id="bnTreino" type="button" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+        <span>Treino</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnExercicios" type="button" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Exercícios</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnEvolucao" type="button" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Evolução</span>
+      </button>
+    </div>
+  </nav>
 </div>
 
 <main class="wrap" id="gateWrap">
@@ -1356,12 +1557,152 @@ function showTab(which){
   $viewTreino.style.display = which === "treino" ? "" : "none";
   $viewExercicios.style.display = which === "exercicios" ? "" : "none";
   $viewEvolucao.style.display = which === "evolucao" ? "" : "none";
+  syncBottomNav(which);
+  if(window._updateCondensed) window._updateCondensed();
   if(which === "evolucao") initEvolucao();
   if(which === "exercicios") renderExercicios();
 }
 $tabTreino.addEventListener("click", () => showTab("treino"));
 $tabExercicios.addEventListener("click", () => showTab("exercicios"));
 $tabEvolucao.addEventListener("click", () => showTab("evolucao"));
+
+// ========= Bottom nav (mobile) =========
+const $bnTreino = document.getElementById("bnTreino");
+const $bnExercicios = document.getElementById("bnExercicios");
+const $bnEvolucao = document.getElementById("bnEvolucao");
+function syncBottomNav(which){
+  $bnTreino.setAttribute("aria-selected", which === "treino");
+  $bnExercicios.setAttribute("aria-selected", which === "exercicios");
+  $bnEvolucao.setAttribute("aria-selected", which === "evolucao");
+}
+$bnTreino.addEventListener("click", () => showTab("treino"));
+$bnExercicios.addEventListener("click", () => showTab("exercicios"));
+$bnEvolucao.addEventListener("click", () => showTab("evolucao"));
+
+// ========= Collapse-on-scroll sticky header =========
+{
+  const $days = document.querySelector("nav.days");
+  const mql = window.matchMedia("(max-width:600px)");
+  let ticking = false;
+
+  function updateCondensed(){
+    if(!mql.matches || $viewTreino.style.display === "none"){
+      $days.classList.remove("condensed");
+      return;
+    }
+    const sy = window.scrollY;
+    if(sy > 48 && !$days.classList.contains("condensed")){
+      $days.classList.add("condensed");
+    } else if(sy < 16 && $days.classList.contains("condensed")){
+      $days.classList.remove("condensed");
+    }
+  }
+
+  window.addEventListener("scroll", () => {
+    if(!ticking){
+      ticking = true;
+      requestAnimationFrame(() => { updateCondensed(); ticking = false; });
+    }
+  }, { passive: true });
+
+  // Reset on media query change
+  mql.addEventListener("change", () => updateCondensed());
+
+  // Expose for showTab to call
+  window._updateCondensed = updateCondensed;
+}
+
+// ========= Modal scroll lock + drag-to-dismiss =========
+let _modalScrollY = 0;
+function lockBodyScroll(){
+  _modalScrollY = window.scrollY;
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${_modalScrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+}
+function unlockBodyScroll(){
+  document.body.style.overflow = "";
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  window.scrollTo(0, _modalScrollY);
+}
+
+// Observe all modal overlays for .open class changes
+const _allOverlays = document.querySelectorAll(".modal-overlay");
+const _modalObserver = new MutationObserver(mutations => {
+  for(const m of mutations){
+    if(m.attributeName !== "class") continue;
+    const el = m.target;
+    if(el.classList.contains("open")) lockBodyScroll();
+    else unlockBodyScroll();
+  }
+});
+_allOverlays.forEach(ov => _modalObserver.observe(ov, { attributes:true }));
+
+// Drag-to-dismiss on .modal elements
+_allOverlays.forEach(overlay => {
+  const modal = overlay.querySelector(".modal");
+  if(!modal) return;
+  let startY = 0, currentY = 0, dragging = false;
+  const THRESHOLD = 100;
+
+  function findCloseAction(){
+    // close the modal using the same path as overlay click
+    overlay.classList.remove("open");
+  }
+
+  modal.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    // Only start drag on the grab handle zone (top 28px) OR when scrolled to top
+    const rect = modal.getBoundingClientRect();
+    const touchInHandle = (t.clientY - rect.top) < 28;
+    if(!touchInHandle && modal.scrollTop > 0) return;
+    startY = t.clientY;
+    currentY = startY;
+    dragging = true;
+    modal.style.transition = "none";
+  }, { passive: true });
+
+  modal.addEventListener("touchmove", e => {
+    if(!dragging) return;
+    currentY = e.touches[0].clientY;
+    const dy = currentY - startY;
+    if(dy < 0){ // dragging up — ignore
+      modal.style.transform = "";
+      return;
+    }
+    // If user started scrolling content, abort drag
+    if(modal.scrollTop > 0){
+      dragging = false;
+      modal.style.transform = "";
+      modal.style.transition = "";
+      return;
+    }
+    modal.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+
+  modal.addEventListener("touchend", () => {
+    if(!dragging) return;
+    dragging = false;
+    const dy = currentY - startY;
+    modal.style.transition = "transform .25s ease";
+    if(dy > THRESHOLD){
+      modal.style.transform = "translateY(100%)";
+      setTimeout(() => {
+        findCloseAction();
+        modal.style.transform = "";
+        modal.style.transition = "";
+      }, 250);
+    } else {
+      modal.style.transform = "";
+      setTimeout(() => { modal.style.transition = ""; }, 250);
+    }
+  }, { passive: true });
+});
 
 function applyModeButtons(){
   $modeCompact.classList.toggle("active", viewMode === "compact");
