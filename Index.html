@@ -149,6 +149,12 @@
   .bar{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:18px}
   .bar span{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
 
+  /* fixed day-progress bar (inside nav.days) */
+  .day-progress{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .day-progress-track{flex:1;height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+  .day-progress-track span{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+  .day-progress-pct{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.04em;color:var(--muted);font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+
   /* cartões */
   .ex{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.18s}
   .ex.done{border-color:var(--accent);opacity:.72}
@@ -761,13 +767,15 @@
     /* Compact mode-toggle in condensed */
     .days.condensed .mode-toggle button{padding:4px 10px;font-size:11px}
     .days.condensed .days-toolbar{padding-top:4px}
+    .days.condensed .day-progress{margin-top:4px}
   }
 
-  /* Desktop: never condensed */
+  /* Desktop: solid header, never condensed */
   @media(min-width:601px){
+    .days{background:var(--ink);border-bottom:1px solid var(--border)}
     .days.condensed{
       padding:10px 0 14px;
-      background:linear-gradient(var(--ink) 70%,rgba(14,15,18,0));border-bottom:none;
+      background:var(--ink);border-bottom:1px solid var(--border);
     }
     .days.condensed .week-nav{max-height:60px;opacity:1;pointer-events:auto}
     .days.condensed .day-btn{flex:0 0 116px;width:116px;padding:10px 8px 9px;border-radius:14px}
@@ -924,6 +932,12 @@
         <div class="mode-toggle" role="group" aria-label="Modo de visualização">
           <button id="modeCompact" type="button">Compacto</button>
           <button id="modeLoad" type="button">Carga</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="day-progress" id="dayProgress" aria-hidden="true">
+          <div class="day-progress-track"><span id="dayProgressFill" style="width:0%"></span></div>
+          <span class="day-progress-pct" id="dayProgressPct">0%</span>
         </div>
       </div>
     </nav>
@@ -1982,7 +1996,7 @@ function skeletonPanel(n=5){
     <div class="skeleton" style="width:120px;height:20px;margin-bottom:6px"></div>
     <div class="skeleton" style="width:80px;height:12px"></div>
   </div></div>
-  <div class="bar"><span style="width:0%"></span></div>`;
+`;
   for(let i=0;i<n;i++){
     h += `<article class="ex"><div class="ex-header">
       <div class="num"><div class="skeleton" style="width:32px;height:32px;border-radius:8px"></div></div>
@@ -2022,6 +2036,8 @@ function renderDay(){
   const total = day.ex.length;
 
   if(total === 0){
+    document.getElementById("dayProgressFill").style.width = "0%";
+    document.getElementById("dayProgressPct").textContent = "0%";
     $panel.innerHTML = `
       <div class="panel-head"><div><h2>${day.name}</h2></div></div>
       <div class="rest-placeholder">
@@ -2045,8 +2061,9 @@ function renderDay(){
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
     </div>
-    <div class="bar"><span style="width:${pct}%"></span></div>
   `;
+  document.getElementById("dayProgressFill").style.width = pct + "%";
+  document.getElementById("dayProgressPct").textContent = pct + "%";
 
   day.ex.forEach((e, i) => {
     const ex = session.exercises[i];
