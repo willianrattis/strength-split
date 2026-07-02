@@ -145,6 +145,9 @@
   .ex{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.18s}
   .ex.done{border-color:var(--accent);opacity:.72}
   .ex-header{display:flex;gap:14px;align-items:flex-start;padding:15px 16px 10px}
+  .unit-toggle{flex:0 0 auto;font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.06em;background:var(--surface-3);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;transition:.15s;line-height:1.2;align-self:center}
+  .unit-toggle:hover{border-color:var(--accent);color:var(--accent)}
+  .superset .unit-toggle{margin-left:8px;vertical-align:middle}
   .num{flex:0 0 auto;font-family:var(--display);font-weight:700;font-size:15px;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--surface-3);color:var(--accent);transition:.18s}
   .ex.done .num{background:var(--accent-soft)}
   .ex.done .num::after{content:"✓"}
@@ -925,6 +928,9 @@ const DAYS = [
   ]},
 ];
 const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
+const UNIT_CYCLE = ["kg","lb","placas"];
+const UNIT_ABBR  = { kg:"kg", lb:"lb", placas:"pl" };
+const UNIT_BTN   = { kg:"KG", lb:"LB", placas:"PL" };
 
 // ========= Plan Templates =========
 const PLAN_TEMPLATES = [
@@ -1552,16 +1558,17 @@ function exDone(ex){
 }
 function countDone(){ return session.exercises.filter(exDone).length; }
 
-function prevLoadText(exIdx, isSup){
+function prevLoadText(exIdx, isSup, unit){
   if(!prevSession || !prevSession.exercises || !prevSession.exercises[exIdx]) return "";
   const sets = isSup ? prevSession.exercises[exIdx].sup : prevSession.exercises[exIdx].main;
   if(!sets || !sets.length) return "";
   const weights = sets.map(s => s.weight).filter(w => w!=null && w!=="");
   if(!weights.length) return "";
-  return `<div class="prev-load">Última: <b>${weights.join(" · ")}</b> kg <span style="color:var(--faint)">(${prevSession.date})</span></div>`;
+  return `<div class="prev-load">Última: <b>${weights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${prevSession.date})</span></div>`;
 }
 
-function seriesHTML(sets, exIdx, isSup){
+function seriesHTML(sets, exIdx, isSup, unit){
+  const u = unit || "kg";
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
@@ -1574,8 +1581,8 @@ function seriesHTML(sets, exIdx, isSup){
       <span class="set-idx">${si+1}ª</span>
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
       <div class="load-cell${filled}">
-        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em kg">
-        <span class="unit">kg</span>
+        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
+        <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
     </div>`;
   });
@@ -1630,18 +1637,19 @@ function renderDay(){
       <div class="body">
         <div class="name">${e.name}</div>
         ${e.note?`<div class="note">${e.note}</div>`:""}
-        ${prevLoadText(i,false)}
+        ${prevLoadText(i,false,e.unit)}
       </div>
+      <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
-    html += seriesHTML(ex.main, i, false);
+    html += seriesHTML(ex.main, i, false, e.unit);
     html += badgesHTML(e.badges);
 
     if(e.superset){
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname">${e.superset.name}</div>
-        ${prevLoadText(i,true)}`;
-      html += seriesHTML(ex.sup, i, true);
+        <div class="sname">${e.superset.name}<button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        ${prevLoadText(i,true,e.superset.unit)}`;
+      html += seriesHTML(ex.sup, i, true, e.superset.unit);
       html += `</div>`;
     }
     html += `</article>`;
@@ -1672,6 +1680,26 @@ function attachHandlers(){
         inp.parentElement.classList.toggle("filled", v !== "");
         scheduleSave();
       });
+    });
+  });
+
+  $panel.querySelectorAll(".unit-toggle").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const ei = +btn.dataset.ex;
+      const isSup = btn.dataset.sup === "1";
+      const id = activeDays()[current].ex[ei]._id;
+      const exDoc = exercisesCatalog.get(id);
+      if(!exDoc) return;
+      const cur = isSup ? (exDoc.superset && exDoc.superset.unit || "kg") : (exDoc.unit || "kg");
+      const next = UNIT_CYCLE[(UNIT_CYCLE.indexOf(cur) + 1) % 3];
+      if(isSup){
+        exDoc.superset.unit = next;
+        await saveExerciseDoc(id, {superset: {unit: next}});
+      } else {
+        exDoc.unit = next;
+        await saveExerciseDoc(id, {unit: next});
+      }
+      rebuildUserDays(); renderDay();
     });
   });
 
@@ -1755,9 +1783,9 @@ function buildExerciseList(){
   const seen = new Map();
   activeDays().forEach((d, dk) => {
     d.ex.forEach((e, ei) => {
-      if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, dayKey:dk, exIdx:ei, isSup:false});
+      if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, unit:e.unit||"kg", dayKey:dk, exIdx:ei, isSup:false});
       if(e.superset && !seen.has(e.superset.name))
-        seen.set(e.superset.name, {name:e.superset.name, muscle:e.superset.muscle||e.muscle, dayKey:dk, exIdx:ei, isSup:true});
+        seen.set(e.superset.name, {name:e.superset.name, muscle:e.superset.muscle||e.muscle, unit:e.superset.unit||"kg", dayKey:dk, exIdx:ei, isSup:true});
     });
   });
   return [...seen.values()];
@@ -1801,6 +1829,7 @@ function loadMetrics(sets){
 async function renderEvolucao(){
   if(!user){ return; }
   const sel = EXERCISES[+$evoSelect.value || 0];
+  const evoUnit = sel.unit || "kg";
   $evoBody.innerHTML = `<div class="evo-empty">carregando histórico…</div>`;
 
   await loadAllSessions();
@@ -1835,7 +1864,7 @@ async function renderEvolucao(){
   const delta = lastMax - firstMax;
   const deltaTxt = points.length < 2
     ? "—"
-    : (delta>0?"+":"") + (Math.round(delta*10)/10) + " kg";
+    : (delta>0?"+":"") + (Math.round(delta*10)/10) + " " + UNIT_ABBR[evoUnit];
 
   $evoBody.innerHTML = `
     <div class="evo-stats">
@@ -1851,7 +1880,7 @@ async function renderEvolucao(){
       </div>
     </div>`;
 
-  drawChart(points);
+  drawChart(points, evoUnit);
 }
 
 function fmtDateBR(iso){
@@ -1859,7 +1888,8 @@ function fmtDateBR(iso){
   return `${d}/${m}`;
 }
 
-function drawChart(points){
+function drawChart(points, unit){
+  const uLabel = UNIT_ABBR[unit || "kg"];
   if(evoChart){ evoChart.destroy(); evoChart = null; }
   const ctx = document.getElementById("evoCanvas");
   const css = getComputedStyle(document.documentElement);
@@ -1909,12 +1939,12 @@ function drawChart(points){
           borderColor: border,
           borderWidth: 1,
           padding: 10,
-          callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} kg` }
+          callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} ${uLabel}` }
         }
       },
       scales: {
         x: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11} } },
-        y: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11}, callback:v=>v+" kg" }, beginAtZero:false }
+        y: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11}, callback:v=>v+" "+uLabel }, beginAtZero:false }
       }
     }
   });
@@ -1948,6 +1978,7 @@ function rebuildUserDays(){
     (ex.days || []).forEach(dk => {
       if(dk < 0 || dk > 4) return;
       const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
+      const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
       base[dk].ex.push({
         _id: id,
         _order: order,
@@ -1956,7 +1987,8 @@ function rebuildUserDays(){
         reps: ex.reps || [12,10,8],
         badges: ex.badges || [],
         note: ex.note || null,
-        superset: ex.superset || null,
+        unit: ex.unit || "kg",
+        superset: sup,
       });
     });
   });
