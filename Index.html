@@ -7,7 +7,7 @@
 <title>Strength Split · Treino da Semana</title>
 <meta name="description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
 
-<!-- Open Graph  -->
+<!-- Open Graph -->
 <meta property="og:title" content="Strength Split · Treino da Semana">
 <meta property="og:description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
 <meta property="og:image" content="https://willianrattis.com/strength-split/preview.png">
@@ -171,6 +171,51 @@
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
   .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
   .prev-load b{color:var(--muted);font-weight:600}
+  .suggest{display:none;font-family:var(--body);font-size:11px;color:var(--faint);margin-top:4px;letter-spacing:.02em}
+  .flag-periodization .suggest{display:block}
+  .compact .suggest{display:none !important}
+  .suggest b{color:var(--muted);font-weight:600}
+  .suggest-apply{
+    display:inline-flex;align-items:center;background:var(--accent-soft);color:var(--accent);
+    border:1px solid var(--accent);border-radius:6px;padding:4px 10px;margin-left:6px;
+    font-family:var(--body);font-size:11px;font-weight:600;cursor:pointer;
+    min-height:28px;letter-spacing:.02em;
+  }
+  .suggest-apply:active{opacity:.7}
+
+  /* deload card */
+  .deload-card{
+    display:none;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:14px;padding:18px;margin-bottom:16px;
+  }
+  .flag-periodization .deload-card{display:block}
+  .deload-title{
+    font-family:var(--display);font-weight:700;font-size:16px;
+    color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;
+  }
+  .deload-reason{font-family:var(--body);font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:14px}
+  .deload-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .deload-apply{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--accent);color:#fff;border:none;border-radius:8px;
+    padding:10px 18px;font-family:var(--body);font-size:14px;font-weight:600;
+    cursor:pointer;min-height:44px;letter-spacing:.02em;
+  }
+  .deload-apply:active{opacity:.8}
+  .deload-skip{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;
+    padding:10px 18px;font-family:var(--body);font-size:14px;font-weight:500;
+    cursor:pointer;min-height:44px;letter-spacing:.02em;
+  }
+  .deload-skip:active{opacity:.7}
+  .deload-tag{
+    display:none;font-family:var(--body);font-size:11px;font-weight:600;
+    color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);
+    border-radius:6px;padding:2px 8px;margin-left:8px;letter-spacing:.04em;
+    vertical-align:middle;
+  }
+  .flag-periodization .deload-tag{display:inline}
 
   /* toggle de modo */
   .mode-toggle{
@@ -248,11 +293,23 @@
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
+  .flag-periodization .series-grid{grid-template-columns:50px 1fr 60px 100px}
   .series-head span{
     font-size:10px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--faint);font-weight:600;
   }
-  .series-head .h-reps,.series-head .h-load{text-align:center}
+  .series-head .h-reps,.series-head .h-done,.series-head .h-load{text-align:center}
+  .reps-input,.series-head .h-done{display:none}
+  .flag-periodization .reps-input,.flag-periodization .series-head .h-done{display:block}
+  .reps-input{
+    font-family:var(--display);font-weight:500;font-size:16px;
+    text-align:center;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-variant-numeric:tabular-nums;
+    outline:none;width:100%;padding:8px 4px;min-width:0;min-height:44px;
+    box-sizing:border-box;
+  }
+  .reps-input:focus{border-color:var(--accent)}
+  .reps-input::placeholder{color:var(--faint);font-weight:400}
   .set-idx{font-family:var(--display);font-size:14px;color:var(--muted)}
 
   .chip{
@@ -289,6 +346,7 @@
   .compact .series-grid:not(.series-head){display:contents}   /* dissolve só as linhas de série */
   .compact .set-idx{display:none}
   .compact .load-cell{display:none}
+  .compact .reps-input{display:none !important}
   .compact .chip{width:auto;padding:7px 16px}
   .compact-reps-lbl{display:none}
   .compact .compact-reps-lbl{
@@ -329,6 +387,8 @@
     .superset{margin-left:46px}
     .series-table{padding-left:46px}
     .series-grid{grid-template-columns:38px 1fr 84px;gap:8px}
+    .flag-periodization .series-grid{grid-template-columns:38px 1fr 50px 84px}
+    .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
     .weight-input{font-size:13px}
@@ -397,6 +457,10 @@
   .slider::before{content:"";position:absolute;width:16px;height:16px;left:2px;bottom:2px;background:var(--muted);border-radius:50%;transition:.2s}
   .switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent)}
   .switch input:checked + .slider::before{background:var(--accent);transform:translateX(18px)}
+
+  #settingsPeriodizationRow{display:none}
+  .flag-periodization-available #settingsPeriodizationRow{display:flex}
+  #periodToggle button{padding:4px 10px;font-size:11px}
 
   /* modal */
   .modal-overlay{
@@ -922,6 +986,7 @@
       <button class="main-tab" id="tabExercicios" type="button" role="tab">Exercícios</button>
       <button class="main-tab" id="tabEvolucao" type="button" role="tab">Evolução</button>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema" style="margin-left:auto"></button>
+      <button class="theme-btn" id="settingsBtnDesktop" type="button" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg></button>
     </div>
   </div>
 
@@ -1018,6 +1083,13 @@
     <div class="modal" id="settingsModalInner">
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
+      <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <span class="period-label">Periodização</span>
+        <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
+          <button type="button" data-period="on">Ligada</button>
+          <button type="button" data-period="off">Desligada</button>
+        </div>
+      </div>
       <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
     </div>
   </div>
@@ -1141,11 +1213,15 @@ const FeatureFlags = (() => {
 
 const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
 
-// Reactivity example:
-// window.addEventListener("flagsUpdated", () => {
-//   // e.g. react to a flag flip live:
-//   // if (isFeatureEnabled("darkMode")) { /* apply theme */ }
-// });
+function applyPeriodizationState(){
+  const available = isFeatureEnabled("periodization");
+  const active = available && periodizationEnabled;
+  document.body.classList.toggle("flag-periodization-available", available);
+  document.body.classList.toggle("flag-periodization", active);
+}
+window.addEventListener("flagsUpdated", () => {
+  applyPeriodizationState();
+});
 
 // ========= Catálogo do treino =========
 const DAYS = [
@@ -1194,6 +1270,15 @@ const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelera
 const UNIT_CYCLE = ["kg","lb","placas"];
 const UNIT_ABBR  = { kg:"kg", lb:"lb", placas:"pl" };
 const UNIT_BTN   = { kg:"KG", lb:"LB", placas:"PL" };
+const UNIT_STEP  = { kg:2.5, lb:5, placas:1 };
+
+// ========= Periodization tuning =========
+const STALL_SESSIONS = 3;
+const DELOAD_WEEKS_MAX = 5;
+const STALL_RATIO = 0.5;
+const MIN_TRACKED = 3;
+const MIN_TOTAL_SESSIONS = 8;
+const DELOAD_FACTOR = 0.55;
 
 // ========= Plan Templates =========
 const PLAN_TEMPLATES = [
@@ -1519,6 +1604,9 @@ let currentPlanName = null;
 let currentPlanId = null;   // custom plan doc id
 let currentPlanKey = null;  // predefined template key
 let plansSectionOpen = false;
+let lastDeloadDate = null;
+let periodizationEnabled = true;
+let deloadDismissed = false;
 
 // exercise list filters
 let exFilterMuscle = null; // null = todos
@@ -1629,12 +1717,31 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
-function openSettings(){ $settingsModal.classList.add("open"); }
+function syncPeriodToggle(){
+  const $on = document.querySelector('#periodToggle [data-period="on"]');
+  const $off = document.querySelector('#periodToggle [data-period="off"]');
+  $on.classList.toggle("active", periodizationEnabled);
+  $off.classList.toggle("active", !periodizationEnabled);
+}
+function openSettings(){
+  syncPeriodToggle();
+  $settingsModal.classList.add("open");
+}
 function closeSettings(){ $settingsModal.classList.remove("open"); }
 $bnConfig.addEventListener("click", openSettings);
 $settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
 $settingsThemeToggle.addEventListener("click", toggleTheme);
+document.getElementById("periodToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-period]");
+  if(!btn) return;
+  periodizationEnabled = btn.dataset.period === "on";
+  syncPeriodToggle();
+  savePref();
+  applyPeriodizationState();
+  if($viewTreino.style.display !== "none") renderDay();
+});
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
+document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
 // ========= Collapse-on-scroll sticky header =========
 {
@@ -1860,10 +1967,13 @@ async function loadPref(){
       if(d.currentPlanName) currentPlanName = d.currentPlanName;
       if(d.currentPlanId) currentPlanId = d.currentPlanId;
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
+      if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
+      if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
   applyTheme();
+  applyPeriodizationState();
 }
 async function savePref(){
   if(!user) return;
@@ -1874,8 +1984,16 @@ async function savePref(){
       currentPlanName: currentPlanName || null,
       currentPlanId: currentPlanId || null,
       currentPlanKey: currentPlanKey || null,
+      periodizationEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
+}
+async function saveDeloadDate(){
+  if(!user) return;
+  try{
+    const ref = doc(db, "users", user.uid, "prefs", "app");
+    await setDoc(ref, { lastDeloadDate }, { merge: true });
+  }catch(e){ console.warn("saveDeloadDate:", e.message); }
 }
 
 function emptySession(dayKey){
@@ -1890,8 +2008,8 @@ function emptySession(dayKey){
       subName: null,
       subMuscle: null,
       supName: e.superset ? e.superset.name : null,
-      main: e.reps.map(r => ({done:false, reps:r, weight:null})),
-      sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null})) : null
+      main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
+      sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
     }))
   };
 }
@@ -1904,18 +2022,18 @@ function reconcileSession(s, dayKey){
   fresh.exercises = day.ex.map((e, i) => {
     const old = s.exercises[i];
     const merge = arr => (old && Array.isArray(old.main))
-      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null} : cell)
+      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null} : cell)
       : arr;
     const mergeSup = arr => (old && old.sup && Array.isArray(old.sup))
-      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null} : cell)
+      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null} : cell)
       : arr;
     return {
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
       supName: e.superset ? e.superset.name : null,
-      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null}))),
-      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null}))) : null
+      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
+      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))) : null
     };
   });
   return fresh;
@@ -2006,12 +2124,130 @@ function prevLoadText(exIdx, isSup, unit){
   return `<div class="prev-load">Última: <b>${weights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${prevSession.date})</span></div>`;
 }
 
+function suggestLoads(name, unit){
+  if(!allSessions || !allSessions.length) return null;
+  const u = unit || "kg";
+  const step = UNIT_STEP[u] || 2.5;
+  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
+  let best = null;
+  let bestDate = "";
+  for(const sess of allSessions){
+    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
+    if(!sess.exercises) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name) sets = entry.main;
+      else if(entry.supName === name) sets = entry.sup;
+      if(!sets || !sets.length) continue;
+      if(!sets.some(s => typeof s.weight === "number")) continue;
+      if(sess.date > bestDate){ bestDate = sess.date; best = sets; }
+    }
+  }
+  if(!best) return null;
+  let anyUp = false;
+  const suggestions = best.map(s => {
+    const w = s.weight;
+    if(typeof w !== "number") return null;
+    const target = s.reps;
+    const didReps = s.repsDone ?? (s.done ? s.reps : null);
+    let suggested;
+    if(didReps != null && didReps >= target){
+      suggested = w + step;
+      anyUp = true;
+    } else {
+      suggested = w;
+    }
+    const rounded = Math.round(suggested / step) * step;
+    return u === "placas" ? Math.round(rounded) : rounded;
+  });
+  return { loads: suggestions, dir: anyUp ? "↑" : "→", date: bestDate };
+}
+
+function suggestHTML(name, unit, isSup, exIdx){
+  if(!session || !session.exercises[exIdx]) return "";
+  const sets = isSup ? session.exercises[exIdx].sup : session.exercises[exIdx].main;
+  if(sets && sets.some(s => typeof s.weight === "number")) return "";
+  const result = suggestLoads(name, unit);
+  if(!result) return "";
+  const u = unit || "kg";
+  const display = result.loads.map(v => v != null ? v : "—").join(" · ");
+  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
+}
+
+function exerciseTopHistory(name, since=null){
+  if(!allSessions || !allSessions.length) return [];
+  const map = new Map();
+  for(const sess of allSessions){
+    if(!sess.exercises || !sess.date) continue;
+    if(since && sess.date < since) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name) sets = entry.main;
+      else if(entry.supName === name) sets = entry.sup;
+      if(!sets || !sets.length) continue;
+      const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
+      if(!nums.length) continue;
+      const top = Math.max(...nums);
+      const prev = map.get(sess.date);
+      if(!prev || top > prev) map.set(sess.date, top);
+    }
+  }
+  return Array.from(map, ([date, top]) => ({date, top})).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function isStalled(name, since=null){
+  const hist = exerciseTopHistory(name, since);
+  if(hist.length <= STALL_SESSIONS) return false;
+  const window = hist.slice(-STALL_SESSIONS);
+  const before = hist.slice(0, -STALL_SESSIONS);
+  const windowMax = Math.max(...window.map(h => h.top));
+  const beforeMax = Math.max(...before.map(h => h.top));
+  return windowMax <= beforeMax;
+}
+
+function isDeloadActive(){
+  if(!lastDeloadDate) return false;
+  const today = formatDate(new Date());
+  return (Date.parse(today) - Date.parse(lastDeloadDate)) < 7 * 864e5;
+}
+
+function deloadDue(){
+  if((allSessions?.length || 0) < MIN_TOTAL_SESSIONS) return { due: false };
+  const today = formatDate(new Date());
+  let earliest = today;
+  for(const s of allSessions){ if(s.date && s.date < earliest) earliest = s.date; }
+  const cycleStart = lastDeloadDate || earliest;
+  const weeksSince = Math.floor((Date.parse(today) - Date.parse(cycleStart)) / (7 * 864e5));
+
+  const nameSet = new Set();
+  const days = activeDays();
+  for(const k in days){
+    const d = days[k];
+    if(!d.ex) continue;
+    d.ex.forEach(e => {
+      nameSet.add(e.name);
+      if(e.superset) nameSet.add(e.superset.name);
+    });
+  }
+  const tracked = nameSet.size;
+  let stalled = 0;
+  nameSet.forEach(n => { if(isStalled(n, cycleStart)) stalled++; });
+
+  if(weeksSince >= DELOAD_WEEKS_MAX){
+    return { due: true, reason: `${weeksSince} semanas sem descarga` };
+  }
+  if(tracked >= MIN_TRACKED && stalled / tracked >= STALL_RATIO){
+    return { due: true, reason: `${stalled} de ${tracked} exercícios estagnados` };
+  }
+  return { due: false };
+}
+
 function seriesHTML(sets, exIdx, isSup, unit){
   const u = unit || "kg";
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
-    <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
+    <span>Série</span><span class="h-reps">Reps</span><span class="h-done">Feitas</span><span class="h-load">Carga</span>
   </div>`;
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
@@ -2019,6 +2255,7 @@ function seriesHTML(sets, exIdx, isSup, unit){
     html += `<div class="series-grid">
       <span class="set-idx">${si+1}ª</span>
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
+      <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
       <div class="load-cell${filled}">
         <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
         <span class="unit">${UNIT_ABBR[u]}</span>
@@ -2103,11 +2340,14 @@ function renderDay(){
   const completed = countDone();
   const pct = Math.round(completed/total*100);
 
+  const _deloadActive = isDeloadActive();
+  const _deload = !_deloadActive && !deloadDismissed ? deloadDue() : { due: false };
+
   let html = `
     <div class="panel-head">
       <div>
         <h2>${day.name}</h2>
-        <div class="focus-tag">${day.focus}</div>
+        <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       </div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
@@ -2115,6 +2355,16 @@ function renderDay(){
       </div>
     </div>
   `;
+  if(_deload.due){
+    html += `<div class="deload-card">
+      <div class="deload-title">Hora de uma semana de descarga</div>
+      <div class="deload-reason">${_deload.reason}. Reduza carga/volume por uma semana para recuperar e voltar a progredir.</div>
+      <div class="deload-actions">
+        <button class="deload-apply">Aplicar descarga</button>
+        <button class="deload-skip">Agora não</button>
+      </div>
+    </div>`;
+  }
   const barPct = setPct();
   document.getElementById("dayProgressFill").style.width = barPct + "%";
   document.getElementById("dayProgressPct").textContent = barPct + "%";
@@ -2132,6 +2382,7 @@ function renderDay(){
         <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
         ${!isSub?prevLoadText(i,false,e.unit):""}
+        ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
       <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
@@ -2143,7 +2394,8 @@ function renderDay(){
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname">${e.superset.name}<button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${prevLoadText(i,true,e.superset.unit)}`;
+        ${prevLoadText(i,true,e.superset.unit)}
+        ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit);
       html += `</div>`;
     }
@@ -2176,6 +2428,14 @@ function attachHandlers(){
         scheduleSave();
       });
     });
+    row.querySelectorAll(".reps-input").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const si = +inp.dataset.si;
+        const v = inp.value.trim();
+        target()[si].repsDone = v === "" ? null : (isNaN(parseInt(v, 10)) ? target()[si].repsDone : parseInt(v, 10));
+        scheduleSave();
+      });
+    });
   });
 
   $panel.querySelectorAll(".unit-toggle").forEach(btn => {
@@ -2198,6 +2458,23 @@ function attachHandlers(){
     });
   });
 
+  $panel.querySelectorAll(".suggest-apply").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ei = +btn.dataset.ex;
+      const isSup = btn.dataset.sup === "1";
+      const e = activeDays()[current].ex[ei];
+      const name = isSup ? e.superset.name : (session.exercises[ei].subName || e.name);
+      const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
+      const result = suggestLoads(name, unit);
+      if(!result) return;
+      const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
+      result.loads.forEach((v, si) => {
+        if(v != null && sets[si]) sets[si].weight = v;
+      });
+      scheduleSave(); renderDay(); renderStrip();
+    });
+  });
+
   $panel.querySelectorAll(".sub-btn").forEach(btn => {
     btn.addEventListener("click", () => openSubModal(+btn.dataset.i));
   });
@@ -2205,6 +2482,51 @@ function attachHandlers(){
   document.getElementById("resetBtn").addEventListener("click", () => {
     if(!confirm("Limpar séries e cargas deste dia?")) return;
     session = emptySession(current);
+    scheduleSave(); renderDay(); renderStrip();
+  });
+
+  const $skipBtn = $panel.querySelector(".deload-skip");
+  if($skipBtn) $skipBtn.addEventListener("click", () => { deloadDismissed = true; renderDay(); });
+
+  const $applyBtn = $panel.querySelector(".deload-apply");
+  if($applyBtn) $applyBtn.addEventListener("click", async () => {
+    const day = activeDays()[current];
+    day.ex.forEach((e, ei) => {
+      const ex = session.exercises[ei];
+      const applyDeload = (sets, name, unit) => {
+        if(!sets) return;
+        const u = unit || "kg";
+        const step = UNIT_STEP[u] || 2.5;
+        const hist = exerciseTopHistory(name);
+        if(!hist.length) return;
+        const lastEntry = hist[hist.length - 1];
+        // find the session's per-set weights for this exercise
+        let refSets = null;
+        for(let k = allSessions.length - 1; k >= 0; k--){
+          const sess = allSessions[k];
+          if(sess.date !== lastEntry.date || !sess.exercises) continue;
+          for(const entry of sess.exercises){
+            if((entry.subName || entry.name) === name && entry.main) refSets = entry.main;
+            else if(entry.supName === name && entry.sup) refSets = entry.sup;
+            if(refSets) break;
+          }
+          if(refSets) break;
+        }
+        sets.forEach((s, si) => {
+          const ref = refSets && refSets[si] && typeof refSets[si].weight === "number" ? refSets[si].weight : null;
+          if(ref == null) return;
+          const deloaded = ref * DELOAD_FACTOR;
+          const rounded = Math.round(deloaded / step) * step;
+          s.weight = u === "placas" ? Math.round(rounded) : rounded;
+        });
+      };
+      const mainName = ex.subName || e.name;
+      applyDeload(ex.main, mainName, e.unit);
+      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit);
+    });
+    const today = formatDate(new Date());
+    lastDeloadDate = today;
+    await saveDeloadDate();
     scheduleSave(); renderDay(); renderStrip();
   });
 }
