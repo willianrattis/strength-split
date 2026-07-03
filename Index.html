@@ -2435,6 +2435,11 @@ function attachHandlers(){
         target()[si].repsDone = v === "" ? null : (isNaN(parseInt(v, 10)) ? target()[si].repsDone : parseInt(v, 10));
         scheduleSave();
       });
+      inp.addEventListener("change", () => {
+        const si = +inp.dataset.si;
+        target()[si].done = target()[si].repsDone != null;
+        scheduleSave(); renderDay(); renderStrip();
+      });
     });
   });
 
