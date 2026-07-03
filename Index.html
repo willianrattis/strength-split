@@ -1987,6 +1987,16 @@ function exDone(ex){
 }
 function countDone(){ return session.exercises.filter(exDone).length; }
 
+function setPct(){
+  let done = 0, total = 0;
+  for(const ex of session.exercises){
+    total += ex.main.length;
+    done  += ex.main.filter(s => s.done).length;
+    if(ex.sup){ total += ex.sup.length; done += ex.sup.filter(s => s.done).length; }
+  }
+  return total ? Math.round(done / total * 100) : 0;
+}
+
 function prevLoadText(exIdx, isSup, unit){
   if(!prevSession || !prevSession.exercises || !prevSession.exercises[exIdx]) return "";
   const sets = isSup ? prevSession.exercises[exIdx].sup : prevSession.exercises[exIdx].main;
@@ -2105,8 +2115,9 @@ function renderDay(){
       </div>
     </div>
   `;
-  document.getElementById("dayProgressFill").style.width = pct + "%";
-  document.getElementById("dayProgressPct").textContent = pct + "%";
+  const barPct = setPct();
+  document.getElementById("dayProgressFill").style.width = barPct + "%";
+  document.getElementById("dayProgressPct").textContent = barPct + "%";
 
   day.ex.forEach((e, i) => {
     const ex = session.exercises[i];
