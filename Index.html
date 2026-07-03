@@ -715,7 +715,8 @@
   .share-pdf-wrap{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px}
 
   /* Toolbar row (mode-toggle relocated into nav.days) */
-  .days-toolbar{display:flex;justify-content:flex-end;align-items:center;padding-top:8px;padding-bottom:0}
+  .days-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px;padding-bottom:0}
+  .days-toolbar-label{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 
   /* Smooth transitions for condensed state — only with motion allowed */
   @media(prefers-reduced-motion:no-preference){
@@ -768,6 +769,9 @@
     .days.condensed .mode-toggle button{padding:4px 10px;font-size:11px}
     .days.condensed .days-toolbar{padding-top:4px}
     .days.condensed .day-progress{margin-top:4px}
+    .days-toolbar-label{display:none}
+    .mode-toggle{width:100%;display:flex}
+    .mode-toggle button{flex:1;justify-content:center}
   }
 
   /* Desktop: solid header, never condensed */
@@ -929,6 +933,7 @@
         <div class="days-inner" id="dayStrip" role="tablist"></div>
       </div>
       <div class="wrap days-toolbar">
+        <span class="days-toolbar-label">Visualização</span>
         <div class="mode-toggle" role="group" aria-label="Modo de visualização">
           <button id="modeCompact" type="button">Compacto</button>
           <button id="modeLoad" type="button">Carga</button>
