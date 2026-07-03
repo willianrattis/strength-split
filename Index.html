@@ -458,6 +458,10 @@
   .switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent)}
   .switch input:checked + .slider::before{background:var(--accent);transform:translateX(18px)}
 
+  #settingsPeriodizationRow{display:none}
+  .flag-periodization-available #settingsPeriodizationRow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;margin-bottom:10px}
+  #settingsPeriodizationRow span{font-family:var(--body);font-weight:500;font-size:14px;color:var(--text)}
+
   /* modal */
   .modal-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;
@@ -982,6 +986,7 @@
       <button class="main-tab" id="tabExercicios" type="button" role="tab">Exercícios</button>
       <button class="main-tab" id="tabEvolucao" type="button" role="tab">Evolução</button>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema" style="margin-left:auto"></button>
+      <button class="theme-btn" id="settingsBtnDesktop" type="button" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg></button>
     </div>
   </div>
 
@@ -1078,6 +1083,10 @@
     <div class="modal" id="settingsModalInner">
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
+      <div class="settings-row" id="settingsPeriodizationRow">
+        <span>Periodização</span>
+        <label class="switch"><input type="checkbox" id="settingsPeriodizationToggle"><span class="slider"></span></label>
+      </div>
       <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
     </div>
   </div>
@@ -1201,8 +1210,14 @@ const FeatureFlags = (() => {
 
 const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
 
+function applyPeriodizationState(){
+  const available = isFeatureEnabled("periodization");
+  const active = available && periodizationEnabled;
+  document.body.classList.toggle("flag-periodization-available", available);
+  document.body.classList.toggle("flag-periodization", active);
+}
 window.addEventListener("flagsUpdated", () => {
-  document.body.classList.toggle("flag-periodization", isFeatureEnabled("periodization"));
+  applyPeriodizationState();
 });
 
 // ========= Catálogo do treino =========
@@ -1587,6 +1602,7 @@ let currentPlanId = null;   // custom plan doc id
 let currentPlanKey = null;  // predefined template key
 let plansSectionOpen = false;
 let lastDeloadDate = null;
+let periodizationEnabled = true;
 let deloadDismissed = false;
 
 // exercise list filters
@@ -1698,12 +1714,22 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
-function openSettings(){ $settingsModal.classList.add("open"); }
+function openSettings(){
+  document.getElementById("settingsPeriodizationToggle").checked = periodizationEnabled;
+  $settingsModal.classList.add("open");
+}
 function closeSettings(){ $settingsModal.classList.remove("open"); }
 $bnConfig.addEventListener("click", openSettings);
 $settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
 $settingsThemeToggle.addEventListener("click", toggleTheme);
+document.getElementById("settingsPeriodizationToggle").addEventListener("change", e => {
+  periodizationEnabled = e.target.checked;
+  savePref();
+  applyPeriodizationState();
+  if($viewTreino.style.display !== "none") renderDay();
+});
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
+document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
 // ========= Collapse-on-scroll sticky header =========
 {
@@ -1930,10 +1956,12 @@ async function loadPref(){
       if(d.currentPlanId) currentPlanId = d.currentPlanId;
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
       if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
+      if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
   applyTheme();
+  applyPeriodizationState();
 }
 async function savePref(){
   if(!user) return;
@@ -1944,6 +1972,7 @@ async function savePref(){
       currentPlanName: currentPlanName || null,
       currentPlanId: currentPlanId || null,
       currentPlanKey: currentPlanKey || null,
+      periodizationEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
