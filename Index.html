@@ -183,6 +183,40 @@
   }
   .suggest-apply:active{opacity:.7}
 
+  /* deload card */
+  .deload-card{
+    display:none;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:14px;padding:18px;margin-bottom:16px;
+  }
+  .flag-periodization .deload-card{display:block}
+  .deload-title{
+    font-family:var(--display);font-weight:700;font-size:16px;
+    color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;
+  }
+  .deload-reason{font-family:var(--body);font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:14px}
+  .deload-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .deload-apply{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--accent);color:#fff;border:none;border-radius:8px;
+    padding:10px 18px;font-family:var(--body);font-size:14px;font-weight:600;
+    cursor:pointer;min-height:44px;letter-spacing:.02em;
+  }
+  .deload-apply:active{opacity:.8}
+  .deload-skip{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;
+    padding:10px 18px;font-family:var(--body);font-size:14px;font-weight:500;
+    cursor:pointer;min-height:44px;letter-spacing:.02em;
+  }
+  .deload-skip:active{opacity:.7}
+  .deload-tag{
+    display:none;font-family:var(--body);font-size:11px;font-weight:600;
+    color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);
+    border-radius:6px;padding:2px 8px;margin-left:8px;letter-spacing:.04em;
+    vertical-align:middle;
+  }
+  .flag-periodization .deload-tag{display:inline}
+
   /* toggle de modo */
   .mode-toggle{
     display:inline-flex;background:var(--surface-2);border:1px solid var(--border);
@@ -1220,6 +1254,14 @@ const UNIT_ABBR  = { kg:"kg", lb:"lb", placas:"pl" };
 const UNIT_BTN   = { kg:"KG", lb:"LB", placas:"PL" };
 const UNIT_STEP  = { kg:2.5, lb:5, placas:1 };
 
+// ========= Periodization tuning =========
+const STALL_SESSIONS = 3;
+const DELOAD_WEEKS_MAX = 5;
+const STALL_RATIO = 0.5;
+const MIN_TRACKED = 3;
+const MIN_TOTAL_SESSIONS = 8;
+const DELOAD_FACTOR = 0.55;
+
 // ========= Plan Templates =========
 const PLAN_TEMPLATES = [
   { templateKey:"AB", name:"AB \u00b7 Superiores / Inferiores", days:[
@@ -1544,6 +1586,8 @@ let currentPlanName = null;
 let currentPlanId = null;   // custom plan doc id
 let currentPlanKey = null;  // predefined template key
 let plansSectionOpen = false;
+let lastDeloadDate = null;
+let deloadDismissed = false;
 
 // exercise list filters
 let exFilterMuscle = null; // null = todos
@@ -1885,6 +1929,7 @@ async function loadPref(){
       if(d.currentPlanName) currentPlanName = d.currentPlanName;
       if(d.currentPlanId) currentPlanId = d.currentPlanId;
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
+      if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
@@ -1901,6 +1946,13 @@ async function savePref(){
       currentPlanKey: currentPlanKey || null,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
+}
+async function saveDeloadDate(){
+  if(!user) return;
+  try{
+    const ref = doc(db, "users", user.uid, "prefs", "app");
+    await setDoc(ref, { lastDeloadDate }, { merge: true });
+  }catch(e){ console.warn("saveDeloadDate:", e.message); }
 }
 
 function emptySession(dayKey){
@@ -2081,6 +2133,73 @@ function suggestHTML(name, unit, isSup, exIdx){
   return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
 }
 
+function exerciseTopHistory(name){
+  if(!allSessions || !allSessions.length) return [];
+  const map = new Map();
+  for(const sess of allSessions){
+    if(!sess.exercises || !sess.date) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name) sets = entry.main;
+      else if(entry.supName === name) sets = entry.sup;
+      if(!sets || !sets.length) continue;
+      const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
+      if(!nums.length) continue;
+      const top = Math.max(...nums);
+      const prev = map.get(sess.date);
+      if(!prev || top > prev) map.set(sess.date, top);
+    }
+  }
+  return Array.from(map, ([date, top]) => ({date, top})).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function isStalled(name){
+  const hist = exerciseTopHistory(name);
+  if(hist.length <= STALL_SESSIONS) return false;
+  const window = hist.slice(-STALL_SESSIONS);
+  const before = hist.slice(0, -STALL_SESSIONS);
+  const windowMax = Math.max(...window.map(h => h.top));
+  const beforeMax = Math.max(...before.map(h => h.top));
+  return windowMax <= beforeMax;
+}
+
+function isDeloadActive(){
+  if(!lastDeloadDate) return false;
+  const today = formatDate(new Date());
+  return (Date.parse(today) - Date.parse(lastDeloadDate)) < 7 * 864e5;
+}
+
+function deloadDue(){
+  if((allSessions?.length || 0) < MIN_TOTAL_SESSIONS) return { due: false };
+  const today = formatDate(new Date());
+  let earliest = today;
+  for(const s of allSessions){ if(s.date && s.date < earliest) earliest = s.date; }
+  const cycleStart = lastDeloadDate || earliest;
+  const weeksSince = Math.floor((Date.parse(today) - Date.parse(cycleStart)) / (7 * 864e5));
+
+  const nameSet = new Set();
+  const days = activeDays();
+  for(const k in days){
+    const d = days[k];
+    if(!d.ex) continue;
+    d.ex.forEach(e => {
+      nameSet.add(e.name);
+      if(e.superset) nameSet.add(e.superset.name);
+    });
+  }
+  const tracked = nameSet.size;
+  let stalled = 0;
+  nameSet.forEach(n => { if(isStalled(n)) stalled++; });
+
+  if(weeksSince >= DELOAD_WEEKS_MAX){
+    return { due: true, reason: `${weeksSince} semanas sem descarga` };
+  }
+  if(tracked >= MIN_TRACKED && stalled / tracked >= STALL_RATIO){
+    return { due: true, reason: `${stalled} de ${tracked} exercícios estagnados` };
+  }
+  return { due: false };
+}
+
 function seriesHTML(sets, exIdx, isSup, unit){
   const u = unit || "kg";
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
@@ -2179,11 +2298,14 @@ function renderDay(){
   const completed = countDone();
   const pct = Math.round(completed/total*100);
 
+  const _deloadActive = isDeloadActive();
+  const _deload = !_deloadActive && !deloadDismissed ? deloadDue() : { due: false };
+
   let html = `
     <div class="panel-head">
       <div>
         <h2>${day.name}</h2>
-        <div class="focus-tag">${day.focus}</div>
+        <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       </div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
@@ -2191,6 +2313,16 @@ function renderDay(){
       </div>
     </div>
   `;
+  if(_deload.due){
+    html += `<div class="deload-card">
+      <div class="deload-title">Hora de uma semana de descarga</div>
+      <div class="deload-reason">${_deload.reason}. Reduza carga/volume por uma semana para recuperar e voltar a progredir.</div>
+      <div class="deload-actions">
+        <button class="deload-apply">Aplicar descarga</button>
+        <button class="deload-skip">Agora não</button>
+      </div>
+    </div>`;
+  }
   const barPct = setPct();
   document.getElementById("dayProgressFill").style.width = barPct + "%";
   document.getElementById("dayProgressPct").textContent = barPct + "%";
@@ -2308,6 +2440,51 @@ function attachHandlers(){
   document.getElementById("resetBtn").addEventListener("click", () => {
     if(!confirm("Limpar séries e cargas deste dia?")) return;
     session = emptySession(current);
+    scheduleSave(); renderDay(); renderStrip();
+  });
+
+  const $skipBtn = $panel.querySelector(".deload-skip");
+  if($skipBtn) $skipBtn.addEventListener("click", () => { deloadDismissed = true; renderDay(); });
+
+  const $applyBtn = $panel.querySelector(".deload-apply");
+  if($applyBtn) $applyBtn.addEventListener("click", async () => {
+    const day = activeDays()[current];
+    day.ex.forEach((e, ei) => {
+      const ex = session.exercises[ei];
+      const applyDeload = (sets, name, unit) => {
+        if(!sets) return;
+        const u = unit || "kg";
+        const step = UNIT_STEP[u] || 2.5;
+        const hist = exerciseTopHistory(name);
+        if(!hist.length) return;
+        const lastEntry = hist[hist.length - 1];
+        // find the session's per-set weights for this exercise
+        let refSets = null;
+        for(let k = allSessions.length - 1; k >= 0; k--){
+          const sess = allSessions[k];
+          if(sess.date !== lastEntry.date || !sess.exercises) continue;
+          for(const entry of sess.exercises){
+            if((entry.subName || entry.name) === name && entry.main) refSets = entry.main;
+            else if(entry.supName === name && entry.sup) refSets = entry.sup;
+            if(refSets) break;
+          }
+          if(refSets) break;
+        }
+        sets.forEach((s, si) => {
+          const ref = refSets && refSets[si] && typeof refSets[si].weight === "number" ? refSets[si].weight : null;
+          if(ref == null) return;
+          const deloaded = ref * DELOAD_FACTOR;
+          const rounded = Math.round(deloaded / step) * step;
+          s.weight = u === "placas" ? Math.round(rounded) : rounded;
+        });
+      };
+      const mainName = ex.subName || e.name;
+      applyDeload(ex.main, mainName, e.unit);
+      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit);
+    });
+    const today = formatDate(new Date());
+    lastDeloadDate = today;
+    await saveDeloadDate();
     scheduleSave(); renderDay(); renderStrip();
   });
 }
