@@ -501,6 +501,8 @@
   .modal-btn.secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
   .modal-btn.secondary:hover{border-color:var(--faint);color:var(--text)}
   .modal-btn.danger{background:none;border:1px solid #F87171;color:#F87171;margin-left:auto}
+  #settingsThemeToggle svg{width:20px;height:20px;flex-shrink:0}
+  #settingsModal .modal-btn.danger{margin-left:0}
   .modal-btn.danger:hover{background:rgba(248,113,113,.1)}
   .modal-error{color:#F87171;font-size:12px;font-weight:600;margin-top:8px}
 
@@ -878,6 +880,8 @@
     /* 6. Bottom nav: show on mobile, hide top tabs */
     .bottom-nav{display:block}
     .main-tabs{display:none !important}
+    /* Hide header logout on mobile (settings sheet has it) */
+    .auth-box .auth-btn{display:none}
 
     /* 6. Bottom padding so fixed bar never covers content */
     #viewTreino footer,
@@ -1009,6 +1013,14 @@
   <div class="modal-overlay" id="subModal">
     <div class="modal" id="subModalInner"></div>
   </div>
+  <!-- MODAL: Configurações (mobile) -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal" id="settingsModalInner">
+      <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
+      <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
+      <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
+    </div>
+  </div>
 
   <!-- Bottom navigation (mobile only) -->
   <nav class="bottom-nav" id="bottomNav" role="tablist">
@@ -1024,6 +1036,10 @@
       <button class="bottom-nav-btn" id="bnEvolucao" type="button" role="tab" aria-selected="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <span>Evolução</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnConfig" type="button" aria-label="Ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg>
+        <span>Ajustes</span>
       </button>
     </div>
   </nav>
@@ -1554,20 +1570,31 @@ const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 function effectiveTheme(){
   return theme || (prefersDark.matches ? "dark" : "light");
 }
+const $settingsModal = document.getElementById("settingsModal");
+const $settingsThemeToggle = document.getElementById("settingsThemeToggle");
+const $settingsLogoutBtn = document.getElementById("settingsLogoutBtn");
+
 function applyTheme(){
   const t = effectiveTheme();
   document.documentElement.setAttribute("data-theme", t);
   $themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
   $themeBtn.title = t === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro";
+  if($settingsThemeToggle){
+    $settingsThemeToggle.innerHTML = (t === "dark" ? ICON_SUN : ICON_MOON) +
+      `<span>${t === "dark" ? "Tema claro" : "Tema escuro"}</span>`;
+  }
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
 }
-$themeBtn.addEventListener("click", () => {
+
+function toggleTheme(){
   theme = effectiveTheme() === "dark" ? "light" : "dark";
   applyTheme();
   savePref();
   if(evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
-});
+}
+
+$themeBtn.addEventListener("click", toggleTheme);
 prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
 
 // ========= Abas principais =========
@@ -1599,6 +1626,15 @@ function syncBottomNav(which){
 $bnTreino.addEventListener("click", () => showTab("treino"));
 $bnExercicios.addEventListener("click", () => showTab("exercicios"));
 $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
+
+// ========= Settings bottom-sheet (mobile) =========
+const $bnConfig = document.getElementById("bnConfig");
+function openSettings(){ $settingsModal.classList.add("open"); }
+function closeSettings(){ $settingsModal.classList.remove("open"); }
+$bnConfig.addEventListener("click", openSettings);
+$settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
+$settingsThemeToggle.addEventListener("click", toggleTheme);
+$settingsLogoutBtn.addEventListener("click", () => signOut(auth));
 
 // ========= Collapse-on-scroll sticky header =========
 {
