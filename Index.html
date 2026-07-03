@@ -458,9 +458,10 @@
   .switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent)}
   .switch input:checked + .slider::before{background:var(--accent);transform:translateX(18px)}
 
-  #settingsPeriodizationRow{display:none}
-  .flag-periodization-available #settingsPeriodizationRow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;margin-bottom:10px}
-  #settingsPeriodizationRow span{font-family:var(--body);font-weight:500;font-size:14px;color:var(--text)}
+  #settingsPeriodizationRow{display:none;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;margin-bottom:10px;border-radius:12px;padding:12px 22px;cursor:default}
+  .flag-periodization-available #settingsPeriodizationRow{display:flex}
+  #settingsPeriodizationRow .period-label{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+  #periodToggle button{padding:4px 10px;font-size:11px}
 
   /* modal */
   .modal-overlay{
@@ -1083,9 +1084,12 @@
     <div class="modal" id="settingsModalInner">
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
-      <div class="settings-row" id="settingsPeriodizationRow">
-        <span>Periodização</span>
-        <label class="switch"><input type="checkbox" id="settingsPeriodizationToggle"><span class="slider"></span></label>
+      <div id="settingsPeriodizationRow">
+        <span class="period-label">Periodização</span>
+        <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
+          <button type="button" data-period="on">Ligada</button>
+          <button type="button" data-period="off">Desligada</button>
+        </div>
       </div>
       <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
     </div>
@@ -1714,16 +1718,25 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
+function syncPeriodToggle(){
+  const $on = document.querySelector('#periodToggle [data-period="on"]');
+  const $off = document.querySelector('#periodToggle [data-period="off"]');
+  $on.classList.toggle("active", periodizationEnabled);
+  $off.classList.toggle("active", !periodizationEnabled);
+}
 function openSettings(){
-  document.getElementById("settingsPeriodizationToggle").checked = periodizationEnabled;
+  syncPeriodToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
 $bnConfig.addEventListener("click", openSettings);
 $settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
 $settingsThemeToggle.addEventListener("click", toggleTheme);
-document.getElementById("settingsPeriodizationToggle").addEventListener("change", e => {
-  periodizationEnabled = e.target.checked;
+document.getElementById("periodToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-period]");
+  if(!btn) return;
+  periodizationEnabled = btn.dataset.period === "on";
+  syncPeriodToggle();
   savePref();
   applyPeriodizationState();
   if($viewTreino.style.display !== "none") renderDay();
