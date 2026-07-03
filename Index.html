@@ -171,6 +171,17 @@
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
   .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
   .prev-load b{color:var(--muted);font-weight:600}
+  .suggest{display:none;font-family:var(--body);font-size:11px;color:var(--faint);margin-top:4px;letter-spacing:.02em}
+  .flag-periodization .suggest{display:block}
+  .compact .suggest{display:none !important}
+  .suggest b{color:var(--muted);font-weight:600}
+  .suggest-apply{
+    display:inline-flex;align-items:center;background:var(--accent-soft);color:var(--accent);
+    border:1px solid var(--accent);border-radius:6px;padding:4px 10px;margin-left:6px;
+    font-family:var(--body);font-size:11px;font-weight:600;cursor:pointer;
+    min-height:28px;letter-spacing:.02em;
+  }
+  .suggest-apply:active{opacity:.7}
 
   /* toggle de modo */
   .mode-toggle{
@@ -1207,6 +1218,7 @@ const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelera
 const UNIT_CYCLE = ["kg","lb","placas"];
 const UNIT_ABBR  = { kg:"kg", lb:"lb", placas:"pl" };
 const UNIT_BTN   = { kg:"KG", lb:"LB", placas:"PL" };
+const UNIT_STEP  = { kg:2.5, lb:5, placas:1 };
 
 // ========= Plan Templates =========
 const PLAN_TEMPLATES = [
@@ -2019,6 +2031,56 @@ function prevLoadText(exIdx, isSup, unit){
   return `<div class="prev-load">Última: <b>${weights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${prevSession.date})</span></div>`;
 }
 
+function suggestLoads(name, unit){
+  if(!allSessions || !allSessions.length) return null;
+  const u = unit || "kg";
+  const step = UNIT_STEP[u] || 2.5;
+  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
+  let best = null;
+  let bestDate = "";
+  for(const sess of allSessions){
+    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
+    if(!sess.exercises) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name) sets = entry.main;
+      else if(entry.supName === name) sets = entry.sup;
+      if(!sets || !sets.length) continue;
+      if(!sets.some(s => typeof s.weight === "number")) continue;
+      if(sess.date > bestDate){ bestDate = sess.date; best = sets; }
+    }
+  }
+  if(!best) return null;
+  let anyUp = false;
+  const suggestions = best.map(s => {
+    const w = s.weight;
+    if(typeof w !== "number") return null;
+    const target = s.reps;
+    const didReps = s.repsDone ?? (s.done ? s.reps : null);
+    let suggested;
+    if(didReps != null && didReps >= target){
+      suggested = w + step;
+      anyUp = true;
+    } else {
+      suggested = w;
+    }
+    const rounded = Math.round(suggested / step) * step;
+    return u === "placas" ? Math.round(rounded) : rounded;
+  });
+  return { loads: suggestions, dir: anyUp ? "↑" : "→", date: bestDate };
+}
+
+function suggestHTML(name, unit, isSup, exIdx){
+  if(!session || !session.exercises[exIdx]) return "";
+  const sets = isSup ? session.exercises[exIdx].sup : session.exercises[exIdx].main;
+  if(sets && sets.some(s => typeof s.weight === "number")) return "";
+  const result = suggestLoads(name, unit);
+  if(!result) return "";
+  const u = unit || "kg";
+  const display = result.loads.map(v => v != null ? v : "—").join(" · ");
+  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
+}
+
 function seriesHTML(sets, exIdx, isSup, unit){
   const u = unit || "kg";
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
@@ -2146,6 +2208,7 @@ function renderDay(){
         <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
         ${!isSub?prevLoadText(i,false,e.unit):""}
+        ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
       <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
@@ -2157,7 +2220,8 @@ function renderDay(){
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname">${e.superset.name}<button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${prevLoadText(i,true,e.superset.unit)}`;
+        ${prevLoadText(i,true,e.superset.unit)}
+        ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit);
       html += `</div>`;
     }
@@ -2217,6 +2281,23 @@ function attachHandlers(){
         await saveExerciseDoc(id, {unit: next});
       }
       rebuildUserDays(); renderDay();
+    });
+  });
+
+  $panel.querySelectorAll(".suggest-apply").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ei = +btn.dataset.ex;
+      const isSup = btn.dataset.sup === "1";
+      const e = activeDays()[current].ex[ei];
+      const name = isSup ? e.superset.name : (session.exercises[ei].subName || e.name);
+      const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
+      const result = suggestLoads(name, unit);
+      if(!result) return;
+      const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
+      result.loads.forEach((v, si) => {
+        if(v != null && sets[si]) sets[si].weight = v;
+      });
+      scheduleSave(); renderDay(); renderStrip();
     });
   });
 
