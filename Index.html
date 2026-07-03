@@ -248,11 +248,23 @@
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
+  .flag-periodization .series-grid{grid-template-columns:50px 1fr 60px 100px}
   .series-head span{
     font-size:10px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--faint);font-weight:600;
   }
-  .series-head .h-reps,.series-head .h-load{text-align:center}
+  .series-head .h-reps,.series-head .h-done,.series-head .h-load{text-align:center}
+  .reps-input,.series-head .h-done{display:none}
+  .flag-periodization .reps-input,.flag-periodization .series-head .h-done{display:block}
+  .reps-input{
+    font-family:var(--display);font-weight:500;font-size:16px;
+    text-align:center;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-variant-numeric:tabular-nums;
+    outline:none;width:100%;padding:8px 4px;min-width:0;min-height:44px;
+    box-sizing:border-box;
+  }
+  .reps-input:focus{border-color:var(--accent)}
+  .reps-input::placeholder{color:var(--faint);font-weight:400}
   .set-idx{font-family:var(--display);font-size:14px;color:var(--muted)}
 
   .chip{
@@ -289,6 +301,7 @@
   .compact .series-grid:not(.series-head){display:contents}   /* dissolve só as linhas de série */
   .compact .set-idx{display:none}
   .compact .load-cell{display:none}
+  .compact .reps-input{display:none !important}
   .compact .chip{width:auto;padding:7px 16px}
   .compact-reps-lbl{display:none}
   .compact .compact-reps-lbl{
@@ -329,6 +342,8 @@
     .superset{margin-left:46px}
     .series-table{padding-left:46px}
     .series-grid{grid-template-columns:38px 1fr 84px;gap:8px}
+    .flag-periodization .series-grid{grid-template-columns:38px 1fr 50px 84px}
+    .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
     .weight-input{font-size:13px}
@@ -1141,11 +1156,9 @@ const FeatureFlags = (() => {
 
 const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
 
-// Reactivity example:
-// window.addEventListener("flagsUpdated", () => {
-//   // e.g. react to a flag flip live:
-//   // if (isFeatureEnabled("darkMode")) { /* apply theme */ }
-// });
+window.addEventListener("flagsUpdated", () => {
+  document.body.classList.toggle("flag-periodization", isFeatureEnabled("periodization"));
+});
 
 // ========= Catálogo do treino =========
 const DAYS = [
@@ -1890,8 +1903,8 @@ function emptySession(dayKey){
       subName: null,
       subMuscle: null,
       supName: e.superset ? e.superset.name : null,
-      main: e.reps.map(r => ({done:false, reps:r, weight:null})),
-      sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null})) : null
+      main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
+      sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
     }))
   };
 }
@@ -1904,18 +1917,18 @@ function reconcileSession(s, dayKey){
   fresh.exercises = day.ex.map((e, i) => {
     const old = s.exercises[i];
     const merge = arr => (old && Array.isArray(old.main))
-      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null} : cell)
+      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null} : cell)
       : arr;
     const mergeSup = arr => (old && old.sup && Array.isArray(old.sup))
-      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null} : cell)
+      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null} : cell)
       : arr;
     return {
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
       supName: e.superset ? e.superset.name : null,
-      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null}))),
-      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null}))) : null
+      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
+      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))) : null
     };
   });
   return fresh;
@@ -2011,7 +2024,7 @@ function seriesHTML(sets, exIdx, isSup, unit){
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
-    <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
+    <span>Série</span><span class="h-reps">Reps</span><span class="h-done">Feitas</span><span class="h-load">Carga</span>
   </div>`;
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
@@ -2019,6 +2032,7 @@ function seriesHTML(sets, exIdx, isSup, unit){
     html += `<div class="series-grid">
       <span class="set-idx">${si+1}ª</span>
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
+      <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
       <div class="load-cell${filled}">
         <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
         <span class="unit">${UNIT_ABBR[u]}</span>
@@ -2173,6 +2187,14 @@ function attachHandlers(){
         const v = inp.value.replace(",", ".").trim();
         target()[si].weight = v === "" ? null : (isNaN(parseFloat(v)) ? target()[si].weight : parseFloat(v));
         inp.parentElement.classList.toggle("filled", v !== "");
+        scheduleSave();
+      });
+    });
+    row.querySelectorAll(".reps-input").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const si = +inp.dataset.si;
+        const v = inp.value.trim();
+        target()[si].repsDone = v === "" ? null : (isNaN(parseInt(v, 10)) ? target()[si].repsDone : parseInt(v, 10));
         scheduleSave();
       });
     });
