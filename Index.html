@@ -347,6 +347,7 @@
   .compact .set-idx{display:none}
   .compact .load-cell{display:none}
   .compact .reps-input{display:none !important}
+  .compact .unit-toggle{display:none !important}
   .compact .chip{width:auto;padding:7px 16px}
   .compact-reps-lbl{display:none}
   .compact .compact-reps-lbl{
@@ -409,6 +410,7 @@
   .ex-tag.inactive-tag{background:var(--surface-3);color:var(--faint);font-style:italic}
   .ex-list-actions{display:flex;gap:6px;flex:0 0 auto}
   .ex-icon-btn{
+    flex:0 0 auto;
     background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
     border-radius:9px;width:34px;height:34px;cursor:pointer;display:grid;place-items:center;
     transition:.15s;font-size:14px;
@@ -2434,6 +2436,11 @@ function attachHandlers(){
         const v = inp.value.trim();
         target()[si].repsDone = v === "" ? null : (isNaN(parseInt(v, 10)) ? target()[si].repsDone : parseInt(v, 10));
         scheduleSave();
+      });
+      inp.addEventListener("change", () => {
+        const si = +inp.dataset.si;
+        target()[si].done = target()[si].repsDone != null;
+        scheduleSave(); renderDay(); renderStrip();
       });
     });
   });
