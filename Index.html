@@ -2174,11 +2174,12 @@ function suggestHTML(name, unit, isSup, exIdx){
   return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
 }
 
-function exerciseTopHistory(name){
+function exerciseTopHistory(name, since=null){
   if(!allSessions || !allSessions.length) return [];
   const map = new Map();
   for(const sess of allSessions){
     if(!sess.exercises || !sess.date) continue;
+    if(since && sess.date < since) continue;
     for(const entry of sess.exercises){
       let sets = null;
       if((entry.subName || entry.name) === name) sets = entry.main;
@@ -2194,8 +2195,8 @@ function exerciseTopHistory(name){
   return Array.from(map, ([date, top]) => ({date, top})).sort((a, b) => a.date < b.date ? -1 : 1);
 }
 
-function isStalled(name){
-  const hist = exerciseTopHistory(name);
+function isStalled(name, since=null){
+  const hist = exerciseTopHistory(name, since);
   if(hist.length <= STALL_SESSIONS) return false;
   const window = hist.slice(-STALL_SESSIONS);
   const before = hist.slice(0, -STALL_SESSIONS);
@@ -2230,7 +2231,7 @@ function deloadDue(){
   }
   const tracked = nameSet.size;
   let stalled = 0;
-  nameSet.forEach(n => { if(isStalled(n)) stalled++; });
+  nameSet.forEach(n => { if(isStalled(n, cycleStart)) stalled++; });
 
   if(weeksSince >= DELOAD_WEEKS_MAX){
     return { due: true, reason: `${weeksSince} semanas sem descarga` };
