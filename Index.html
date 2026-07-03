@@ -458,9 +458,8 @@
   .switch input:checked + .slider{background:var(--accent-soft);border-color:var(--accent)}
   .switch input:checked + .slider::before{background:var(--accent);transform:translateX(18px)}
 
-  #settingsPeriodizationRow{display:none;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;margin-bottom:10px;border-radius:12px;padding:12px 22px;cursor:default}
+  #settingsPeriodizationRow{display:none}
   .flag-periodization-available #settingsPeriodizationRow{display:flex}
-  #settingsPeriodizationRow .period-label{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
   #periodToggle button{padding:4px 10px;font-size:11px}
 
   /* modal */
@@ -1084,7 +1083,7 @@
     <div class="modal" id="settingsModalInner">
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
-      <div id="settingsPeriodizationRow">
+      <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
         <span class="period-label">Periodização</span>
         <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
           <button type="button" data-period="on">Ligada</button>
