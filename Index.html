@@ -939,10 +939,17 @@
     /* 3b. Safe-area header padding for notch */
     header.top{padding-top:calc(28px + env(safe-area-inset-top))}
 
-    /* 5. Day strip — no fade, right padding so last card clears edge */
+    /* 5. Day strip — no fade, no right padding so 3 cards fit exactly */
     .days-inner{
       -webkit-mask-image:none;mask-image:none;
-      scroll-padding-inline-end:16px;padding-right:16px;
+      scroll-padding-inline-end:0;padding-right:0;
+    }
+
+    /* Expanded strip: exactly 3 day-cards fill the width, none cut */
+    .days:not(.condensed) .day-btn{
+      flex:0 0 calc((100% - 16px) / 3);
+      width:auto;
+      scroll-snap-align:center;
     }
 
     /* 6. Bottom nav: show on mobile, hide top tabs */
