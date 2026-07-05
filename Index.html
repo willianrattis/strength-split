@@ -1910,6 +1910,7 @@ $loginBtn.addEventListener("click", () => {
 onAuthStateChanged(auth, async u => {
   user = u;
   allSessions = null;
+  allSessionsPromise = null;
   if(u){
     $authBox.innerHTML = `
       <span class="who">Olá, <b>${(u.displayName||u.email||"").split(" ")[0]}</b></span>
@@ -1920,14 +1921,12 @@ onAuthStateChanged(auth, async u => {
     $strip.innerHTML = skeletonStrip();
     $panel.innerHTML = skeletonPanel();
     setSync("live", "sincronizado");
-    await initializeFeatureFlags();
-    await loadPref();
-    await loadDayCustomizations();
-    await seedExercises(u.uid);
-    await loadExercises();
-    await loadPlans();
-    await loadDay(current);
-    renderStrip();
+    try {
+      await initWithTimeout(u);
+    } catch(e) {
+      console.error("init:", e);
+      renderInitError();
+    }
   } else {
     $authBox.innerHTML = "";
     $gateWrap.style.display = "";
@@ -1946,6 +1945,36 @@ onAuthStateChanged(auth, async u => {
 
 window.addEventListener("online", ()=>{ if(user) setSync("live","sincronizado"); });
 window.addEventListener("offline", ()=>{ setSync("offline","offline — salvando local"); });
+
+async function initApp(u){
+  await Promise.all([
+    initializeFeatureFlags(),
+    loadPref(),
+    loadDayCustomizations(),
+    loadExercises(u.uid),
+    loadPlans(),
+  ]);
+  rebuildUserDays();
+  renderStrip();
+  await loadDay(current);
+}
+function initWithTimeout(u, ms = 15000){
+  return Promise.race([
+    initApp(u),
+    new Promise((_, rej) => setTimeout(() => rej(new Error("init timeout")), ms)),
+  ]);
+}
+function renderInitError(){
+  $panel.innerHTML = `<div class="evo-empty">
+    <span class="big">Não foi possível carregar</span>
+    <p style="color:var(--muted);font-size:13px;margin:8px 0 14px">Verifique sua conexão e tente novamente.</p>
+    <button class="ex-new-btn" id="initRetryBtn">Tentar novamente</button></div>`;
+  document.getElementById("initRetryBtn").addEventListener("click", () => {
+    $strip.innerHTML = skeletonStrip();
+    $panel.innerHTML = skeletonPanel();
+    initWithTimeout(user).catch(e => { console.error(e); renderInitError(); });
+  });
+}
 
 // ========= Firestore =========
 function todayStr(){
@@ -2053,16 +2082,21 @@ function reconcileSession(s, dayKey){
   return fresh;
 }
 
+let allSessionsPromise = null;
 async function loadAllSessions(){
   if(allSessions || !user) return;
-  try{
-    const snap = await getDocs(collection(db, "users", user.uid, "sessions"));
-    allSessions = [];
-    snap.forEach(d => allSessions.push(d.data()));
-  }catch(e){
-    console.warn("loadAllSessions:", e.message);
-    allSessions = [];
-  }
+  if(allSessionsPromise) return allSessionsPromise;
+  allSessionsPromise = (async () => {
+    try{
+      const snap = await getDocs(collection(db, "users", user.uid, "sessions"));
+      allSessions = [];
+      snap.forEach(d => allSessions.push(d.data()));
+    }catch(e){
+      console.warn("loadAllSessions:", e.message);
+      allSessions = [];
+    } finally { allSessionsPromise = null; }
+  })();
+  return allSessionsPromise;
 }
 
 function findPrevSession(dayKey, beforeDate){
@@ -2072,20 +2106,29 @@ function findPrevSession(dayKey, beforeDate){
     .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
 }
 
+let loadDayToken = 0;
 async function loadDay(dayKey){
   if(!user) return;
+  const token = ++loadDayToken;
   const date = dateForDay(dayKey, weekOffset);
   const ref = doc(db, "users", user.uid, "sessions", sessionId(date, dayKey));
   try{
     const snap = await getDoc(ref);
+    if(token !== loadDayToken) return;
     session = reconcileSession(snap.exists() ? snap.data() : null, dayKey);
   }catch(e){
+    if(token !== loadDayToken) return;
     console.warn("loadDay:", e);
     session = emptySession(dayKey);
   }
-  await loadAllSessions();
   prevSession = findPrevSession(dayKey, date);
   renderDay();
+  if(!allSessions){
+    await loadAllSessions();
+    if(token !== loadDayToken) return;
+    prevSession = findPrevSession(dayKey, date);
+    renderDay();
+  }
 }
 
 function scheduleSave(){
@@ -2995,14 +3038,20 @@ function rebuildUserDays(){
   evoInitialized = false;
 }
 
-// Seed exercises from hardcoded DAYS on first login
-async function seedExercises(uid){
-  try {
-    const snap = await getDocs(collection(db, "users", uid, "exercises"));
-    if(!snap.empty) return; // already seeded
-  } catch(e) { console.warn("seedExercises check:", e.message); return; }
-
-  // Deduplicate exercises by name, merge days
+// Load exercises from Firestore (seeds from hardcoded DAYS on first login)
+async function loadExercises(uid){
+  if(!user && !uid) return;
+  uid = uid || user.uid;
+  const colRef = collection(db, "users", uid, "exercises");
+  let snap;
+  try { snap = await getDocs(colRef); }
+  catch(e){ console.warn("loadExercises:", e.message); return; }
+  exercisesCatalog.clear();
+  if(!snap.empty){
+    snap.forEach(d => exercisesCatalog.set(d.id, d.data()));
+    return;
+  }
+  // First login: seed from hardcoded DAYS, populate cache from write refs (no re-read)
   const byName = new Map();
   DAYS.forEach((d, dk) => {
     d.ex.forEach((e, ei) => {
@@ -3027,28 +3076,14 @@ async function seedExercises(uid){
       }
     });
   });
-
   try {
-    const colRef = collection(db, "users", uid, "exercises");
-    const promises = [];
+    const writes = [];
     byName.forEach(ex => {
-      promises.push(addDoc(colRef, { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+      const data = { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+      writes.push(addDoc(colRef, data).then(ref => exercisesCatalog.set(ref.id, data)));
     });
-    await Promise.all(promises);
-  } catch(e) { console.error("seedExercises write:", e); }
-}
-
-// Load exercises from Firestore
-async function loadExercises(){
-  if(!user) return;
-  try {
-    const snap = await getDocs(collection(db, "users", user.uid, "exercises"));
-    exercisesCatalog.clear();
-    snap.forEach(d => exercisesCatalog.set(d.id, d.data()));
-  } catch(e) {
-    console.warn("loadExercises:", e.message);
-  }
-  rebuildUserDays();
+    await Promise.all(writes);
+  } catch(e){ console.error("seed exercises:", e); }
 }
 
 // Save exercise doc
