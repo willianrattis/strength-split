@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0E0F12">
 <title>Strength Split · Treino da Semana</title>
-<meta name="description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta name="description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 
 <!--  Open Graph -->
 <meta property="og:title" content="Strength Split · Treino da Semana">
-<meta property="og:description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta property="og:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 <meta property="og:image" content="https://willianrattis.com/strength-split/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -18,7 +18,7 @@
 <meta property="og:locale" content="pt_BR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Strength Split · Treino da Semana">
-<meta name="twitter:description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta name="twitter:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 <meta name="twitter:image" content="https://willianrattis.com/strength-split/preview.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -739,7 +739,8 @@
     border-radius:8px;padding:7px 10px;outline:none;transition:.15s;
   }
   .plan-ex-row input:focus,.plan-ex-row select:focus{border-color:var(--accent)}
-  .plan-ex-name{flex:2;min-width:0}
+  .plan-ex-name-wrap{flex:2;min-width:0}
+  .plan-ex-name{width:100%;min-width:0}
   .plan-ex-muscle{flex:0 0 100px;-webkit-appearance:none;appearance:none;cursor:pointer}
   .plan-ex-reps{flex:0 0 80px;text-align:center}
   .plan-ex-remove{
@@ -811,10 +812,11 @@
     }
     .week-nav{max-height:60px;opacity:1;overflow:hidden}
 
-    /* Shrink day-btn to compact pills */
+    /* Shrink day-btn to compact pills: exactly 5 across, rest scroll */
     .days.condensed .day-btn{
-      flex:1 1 0;width:auto;min-width:0;
+      flex:0 0 calc((100% - 32px) / 5);width:auto;min-width:0;
       padding:6px 12px;border-radius:10px;
+      scroll-snap-align:center;
     }
     .days.condensed .day-btn .focus,
     .days.condensed .day-btn .today{
@@ -827,10 +829,11 @@
     .day-btn .dot{max-height:10px}
     .days.condensed .day-btn .abbr{font-size:14px;text-align:center}
 
-    /* Condensed: no fade, no scroll, pills fill row */
+    /* Condensed: 5-day horizontal-scroll window, today centered */
     .days.condensed .days-inner{
       -webkit-mask-image:none;mask-image:none;
-      overflow-x:visible;
+      overflow-x:auto;
+      padding-right:0;
     }
 
     /* Compact mode-toggle in condensed */
@@ -882,7 +885,7 @@
     position:sticky;bottom:0;background:var(--surface);
     border-top:1px solid var(--border);
     padding-bottom:calc(12px + env(safe-area-inset-bottom));
-    margin:-32px -20px 0;padding-left:20px;padding-right:20px;padding-top:12px;
+    margin:0 -20px 0;padding-left:20px;padding-right:20px;padding-top:12px;
     z-index:2;
   }
 
@@ -937,10 +940,17 @@
     /* 3b. Safe-area header padding for notch */
     header.top{padding-top:calc(28px + env(safe-area-inset-top))}
 
-    /* 5. Day strip — no fade, right padding so last card clears edge */
+    /* 5. Day strip — no fade, no right padding so 3 cards fit exactly */
     .days-inner{
       -webkit-mask-image:none;mask-image:none;
-      scroll-padding-inline-end:16px;padding-right:16px;
+      scroll-padding-inline-end:0;padding-right:0;
+    }
+
+    /* Expanded strip: exactly 3 day-cards fill the width, none cut */
+    .days:not(.condensed) .day-btn{
+      flex:0 0 calc((100% - 16px) / 3);
+      width:auto;
+      scroll-snap-align:center;
     }
 
     /* 6. Bottom nav: show on mobile, hide top tabs */
@@ -972,7 +982,7 @@
 <div class="wrap">
   <header class="top">
     <div class="top-text">
-      <span class="kicker">Programa · 5 dias</span>
+      <span class="kicker">Programa semanal</span>
       <h1>Treino<br>da Semana</h1>
       <p class="sub">Toque numa série para marcá-la e digite a carga (kg). Tudo sincronizado em nuvem.</p>
       <div id="syncStatus" class="sync-status" style="margin-top:10px"><span class="dot"></span><span class="txt">aguardando login</span></div>
@@ -1615,7 +1625,7 @@ let exFilterMuscle = null; // null = todos
 let exFilterDay = null; // null = todos
 let exShowInactive = false;
 
-const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
+const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
 current = todayIdx;
 
 // ========= DOM =========
@@ -1759,8 +1769,10 @@ document.getElementById("settingsBtnDesktop").addEventListener("click", openSett
     const sy = window.scrollY;
     if(sy > 48 && !$days.classList.contains("condensed")){
       $days.classList.add("condensed");
+      centerActiveDay();
     } else if(sy < 16 && $days.classList.contains("condensed")){
       $days.classList.remove("condensed");
+      centerActiveDay();
     }
   }
 
@@ -2682,6 +2694,17 @@ function renderStrip(){
   });
 
   updateWeekLabel();
+  centerActiveDay();
+}
+
+function centerActiveDay(behavior){
+  if(!$strip) return;
+  const btn = $strip.querySelector('.day-btn[aria-selected="true"]');
+  if(!btn) return;
+  const cr = $strip.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  const delta = (br.left - cr.left) - (cr.width - br.width) / 2;
+  $strip.scrollTo({ left: $strip.scrollLeft + delta, behavior: behavior || "auto" });
 }
 
 function updateWeekLabel(){
@@ -2689,16 +2712,16 @@ function updateWeekLabel(){
     $weekLabel.textContent = "Semana atual";
   } else {
     const mon = getWeekMonday(weekOffset);
-    const fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
     const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     const monDay = mon.getDate();
-    const friDay = fri.getDate();
-    const friMonth = months[fri.getMonth()];
-    if(mon.getMonth() === fri.getMonth()){
-      $weekLabel.textContent = `${monDay} – ${friDay} ${friMonth}`;
+    const sunDay = sun.getDate();
+    const sunMonth = months[sun.getMonth()];
+    if(mon.getMonth() === sun.getMonth()){
+      $weekLabel.textContent = `${monDay} – ${sunDay} ${sunMonth}`;
     } else {
       const monMonth = months[mon.getMonth()];
-      $weekLabel.textContent = `${monDay} ${monMonth} – ${friDay} ${friMonth}`;
+      $weekLabel.textContent = `${monDay} ${monMonth} – ${sunDay} ${sunMonth}`;
     }
   }
   $weekNext.disabled = weekOffset >= 0;
@@ -2924,7 +2947,7 @@ function drawChart(points, unit){
 
 // ========= Exercise CRUD (Firestore) =========
 
-const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex"];
+const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
 function activeDays(){ return userDays || DAYS; }
 
@@ -2936,6 +2959,8 @@ function rebuildUserDays(){
     {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
     {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
     {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
+    {abbr:"Sáb",name:"Sábado",tag:"Livre",focus:"Livre"},
+    {abbr:"Dom",name:"Domingo",tag:"Livre",focus:"Livre"},
   ];
   base.forEach((d,i) => {
     d.ex = [];
@@ -2948,7 +2973,7 @@ function rebuildUserDays(){
   exercisesCatalog.forEach((ex, id) => {
     if(!ex.active) return;
     (ex.days || []).forEach(dk => {
-      if(dk < 0 || dk > 4) return;
+      if(dk < 0 || dk > 6) return;
       const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
       const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
       base[dk].ex.push({
@@ -3055,6 +3080,8 @@ const DAY_DEFAULTS = [
   {tag:"Peito", focus:"Peito · Ombro"},
   {tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps"},
   {tag:"Pernas", focus:"Quadríceps · Adutor"},
+  {tag:"Livre", focus:"Livre"},
+  {tag:"Livre", focus:"Livre"},
 ];
 
 async function loadDayCustomizations(){
@@ -3090,6 +3117,8 @@ function renderDayCustomSection(){
     {abbr:"Qua", name:"Quarta"},
     {abbr:"Qui", name:"Quinta"},
     {abbr:"Sex", name:"Sexta"},
+    {abbr:"Sáb", name:"Sábado"},
+    {abbr:"Dom", name:"Domingo"},
   ];
 
   let html = `<button class="days-section-toggle" id="daysSectionToggle">
@@ -3634,15 +3663,15 @@ function renderPlansSection(){
 
 function openApplyPlanModal(plan, planDocId){
   const dayTypes = plan.days || [];
-  const weekdays = ["Seg","Ter","Qua","Qui","Sex"];
-  const isABCDE = dayTypes.length === 5;
+  const weekdays = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const autoMap = dayTypes.length === 5 || dayTypes.length === 7;
 
   let html = `<h3>Aplicar plano</h3>`;
   html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${plan.name}</p>`;
   html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias n\u00e3o mapeados ser\u00e3o dias de descanso.</p>`;
 
   dayTypes.forEach((d, i) => {
-    const defaultDay = isABCDE ? i : -1;
+    const defaultDay = autoMap ? i : -1;
     html += `<div class="day-map-row">
       <span class="day-map-type">${d.type}</span>
       <span class="day-map-label">${d.label} (${d.exercises.length} ex.)</span>
@@ -3721,7 +3750,7 @@ function openApplyPlanModal(plan, planDocId){
 async function preserveCurrentAsCustomPlan(){
   if(!user || exercisesCatalog.size === 0) return;
 
-  const typeLetters = ['A','B','C','D','E'];
+  const typeLetters = ['A','B','C','D','E','F','G'];
   const days = activeDays();
   const dayTypes = [];
 
@@ -3871,7 +3900,10 @@ function openPlanEditor(planDocId){
 
       d.exercises.forEach((e, ei) => {
         html += `<div class="plan-ex-row" data-di="${di}" data-ei="${ei}">
-          <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}">
+          <div class="ac-wrap plan-ex-name-wrap">
+            <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
+            <div class="ac-list"></div>
+          </div>
           <select class="plan-ex-muscle" data-di="${di}" data-ei="${ei}">
             ${Object.entries(MUSCLE_LABEL).map(([k,v]) => `<option value="${k}" ${e.muscle===k?'selected':''}>${v}</option>`).join("")}
           </select>
@@ -3884,7 +3916,7 @@ function openPlanEditor(planDocId){
       html += `</div>`;
     });
 
-    if(plan.days.length < 5){
+    if(plan.days.length < 7){
       html += `<button class="plan-add-day-btn" id="pfAddDay">+ Adicionar dia</button>`;
     }
 
@@ -3927,7 +3959,58 @@ function openPlanEditor(planDocId){
   }
 
   function bindPlanEditorEvents(){
+    bindPlanExAutocomplete();
     document.getElementById("pfCancel").addEventListener("click", closePlanEditor);
+
+    function bindPlanExAutocomplete(){
+      $planModalInner.querySelectorAll(".plan-ex-name").forEach(inp => {
+        const wrap = inp.closest(".ac-wrap");
+        const list = wrap && wrap.querySelector(".ac-list");
+        const row = inp.closest(".plan-ex-row");
+        const mSel = row && row.querySelector(".plan-ex-muscle");
+        if(!list) return;
+        let activeIdx = -1;
+
+        function filter(q){
+          if(!q || q.length < 1){ list.classList.remove("open"); return; }
+          const nq = stripDiacritics(q);
+          const prefix = [], sub = [];
+          EXERCISE_CATALOG.forEach(c => {
+            const nc = stripDiacritics(c.name);
+            if(nc.startsWith(nq)) prefix.push(c);
+            else if(nc.includes(nq)) sub.push(c);
+          });
+          const results = prefix.concat(sub).slice(0, 8);
+          if(!results.length){ list.classList.remove("open"); return; }
+          activeIdx = -1;
+          list.innerHTML = results.map((c,i) =>
+            `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+          ).join("");
+          list.classList.add("open");
+          list.querySelectorAll(".ac-item").forEach(el => {
+            el.addEventListener("mousedown", e => { e.preventDefault(); pick(el.dataset.name, el.dataset.muscle); });
+          });
+        }
+        function pick(name, muscle){
+          inp.value = name;
+          if(mSel && muscle) mSel.value = muscle;
+          list.classList.remove("open");
+        }
+        inp.addEventListener("input", () => filter(inp.value.trim()));
+        inp.addEventListener("focus", () => { if(inp.value.trim()) filter(inp.value.trim()); });
+        inp.addEventListener("blur", () => { setTimeout(() => list.classList.remove("open"), 150); });
+        inp.addEventListener("keydown", e => {
+          const items = list.querySelectorAll(".ac-item");
+          if(!items.length || !list.classList.contains("open")) return;
+          if(e.key === "ArrowDown"){ e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); }
+          else if(e.key === "ArrowUp"){ e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); }
+          else if(e.key === "Enter" && activeIdx >= 0){ e.preventDefault(); pick(items[activeIdx].dataset.name, items[activeIdx].dataset.muscle); return; }
+          else if(e.key === "Escape"){ list.classList.remove("open"); return; }
+          else return;
+          items.forEach((it,i) => it.classList.toggle("active", i === activeIdx));
+        });
+      });
+    }
     $planModal.addEventListener("click", e => { if(e.target === $planModal) closePlanEditor(); });
 
     $planModalInner.querySelectorAll(".plan-add-ex-btn").forEach(btn => {
@@ -3955,6 +4038,9 @@ function openPlanEditor(planDocId){
         const typeLetters = 'ABCDEFGHIJ';
         plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] });
         renderPlanEditorContent();
+        requestAnimationFrame(() => {
+          $planModalInner.scrollTo({ top: $planModalInner.scrollHeight, behavior: "smooth" });
+        });
       });
     }
 
