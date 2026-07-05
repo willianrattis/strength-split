@@ -811,10 +811,11 @@
     }
     .week-nav{max-height:60px;opacity:1;overflow:hidden}
 
-    /* Shrink day-btn to compact pills */
+    /* Shrink day-btn to compact pills: exactly 5 across, rest scroll */
     .days.condensed .day-btn{
-      flex:1 1 0;width:auto;min-width:0;
+      flex:0 0 calc((100% - 32px) / 5);width:auto;min-width:0;
       padding:6px 12px;border-radius:10px;
+      scroll-snap-align:center;
     }
     .days.condensed .day-btn .focus,
     .days.condensed .day-btn .today{
@@ -827,10 +828,11 @@
     .day-btn .dot{max-height:10px}
     .days.condensed .day-btn .abbr{font-size:14px;text-align:center}
 
-    /* Condensed: no fade, no scroll, pills fill row */
+    /* Condensed: 5-day horizontal-scroll window, today centered */
     .days.condensed .days-inner{
       -webkit-mask-image:none;mask-image:none;
-      overflow-x:visible;
+      overflow-x:auto;
+      padding-right:0;
     }
 
     /* Compact mode-toggle in condensed */
@@ -1759,8 +1761,10 @@ document.getElementById("settingsBtnDesktop").addEventListener("click", openSett
     const sy = window.scrollY;
     if(sy > 48 && !$days.classList.contains("condensed")){
       $days.classList.add("condensed");
+      centerActiveDay();
     } else if(sy < 16 && $days.classList.contains("condensed")){
       $days.classList.remove("condensed");
+      centerActiveDay();
     }
   }
 
@@ -2682,6 +2686,17 @@ function renderStrip(){
   });
 
   updateWeekLabel();
+  centerActiveDay();
+}
+
+function centerActiveDay(behavior){
+  if(!$strip) return;
+  const btn = $strip.querySelector('.day-btn[aria-selected="true"]');
+  if(!btn) return;
+  const cr = $strip.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  const delta = (br.left - cr.left) - (cr.width - br.width) / 2;
+  $strip.scrollTo({ left: $strip.scrollLeft + delta, behavior: behavior || "auto" });
 }
 
 function updateWeekLabel(){
