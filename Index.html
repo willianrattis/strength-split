@@ -719,6 +719,7 @@
   .plan-day-type{
     background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
     padding:12px 14px;margin-bottom:10px;
+    scroll-margin-bottom:88px;
   }
   .plan-day-type-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .plan-day-type-letter{
@@ -739,7 +740,8 @@
     border-radius:8px;padding:7px 10px;outline:none;transition:.15s;
   }
   .plan-ex-row input:focus,.plan-ex-row select:focus{border-color:var(--accent)}
-  .plan-ex-name{flex:2;min-width:0}
+  .plan-ex-name-wrap{flex:2;min-width:0}
+  .plan-ex-name{width:100%;min-width:0}
   .plan-ex-muscle{flex:0 0 100px;-webkit-appearance:none;appearance:none;cursor:pointer}
   .plan-ex-reps{flex:0 0 80px;text-align:center}
   .plan-ex-remove{
@@ -884,7 +886,7 @@
     position:sticky;bottom:0;background:var(--surface);
     border-top:1px solid var(--border);
     padding-bottom:calc(12px + env(safe-area-inset-bottom));
-    margin:-32px -20px 0;padding-left:20px;padding-right:20px;padding-top:12px;
+    margin:0 -20px 0;padding-left:20px;padding-right:20px;padding-top:12px;
     z-index:2;
   }
 
@@ -3899,7 +3901,10 @@ function openPlanEditor(planDocId){
 
       d.exercises.forEach((e, ei) => {
         html += `<div class="plan-ex-row" data-di="${di}" data-ei="${ei}">
-          <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}">
+          <div class="ac-wrap plan-ex-name-wrap">
+            <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
+            <div class="ac-list"></div>
+          </div>
           <select class="plan-ex-muscle" data-di="${di}" data-ei="${ei}">
             ${Object.entries(MUSCLE_LABEL).map(([k,v]) => `<option value="${k}" ${e.muscle===k?'selected':''}>${v}</option>`).join("")}
           </select>
@@ -3955,7 +3960,58 @@ function openPlanEditor(planDocId){
   }
 
   function bindPlanEditorEvents(){
+    bindPlanExAutocomplete();
     document.getElementById("pfCancel").addEventListener("click", closePlanEditor);
+
+    function bindPlanExAutocomplete(){
+      $planModalInner.querySelectorAll(".plan-ex-name").forEach(inp => {
+        const wrap = inp.closest(".ac-wrap");
+        const list = wrap && wrap.querySelector(".ac-list");
+        const row = inp.closest(".plan-ex-row");
+        const mSel = row && row.querySelector(".plan-ex-muscle");
+        if(!list) return;
+        let activeIdx = -1;
+
+        function filter(q){
+          if(!q || q.length < 1){ list.classList.remove("open"); return; }
+          const nq = stripDiacritics(q);
+          const prefix = [], sub = [];
+          EXERCISE_CATALOG.forEach(c => {
+            const nc = stripDiacritics(c.name);
+            if(nc.startsWith(nq)) prefix.push(c);
+            else if(nc.includes(nq)) sub.push(c);
+          });
+          const results = prefix.concat(sub).slice(0, 8);
+          if(!results.length){ list.classList.remove("open"); return; }
+          activeIdx = -1;
+          list.innerHTML = results.map((c,i) =>
+            `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+          ).join("");
+          list.classList.add("open");
+          list.querySelectorAll(".ac-item").forEach(el => {
+            el.addEventListener("mousedown", e => { e.preventDefault(); pick(el.dataset.name, el.dataset.muscle); });
+          });
+        }
+        function pick(name, muscle){
+          inp.value = name;
+          if(mSel && muscle) mSel.value = muscle;
+          list.classList.remove("open");
+        }
+        inp.addEventListener("input", () => filter(inp.value.trim()));
+        inp.addEventListener("focus", () => { if(inp.value.trim()) filter(inp.value.trim()); });
+        inp.addEventListener("blur", () => { setTimeout(() => list.classList.remove("open"), 150); });
+        inp.addEventListener("keydown", e => {
+          const items = list.querySelectorAll(".ac-item");
+          if(!items.length || !list.classList.contains("open")) return;
+          if(e.key === "ArrowDown"){ e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); }
+          else if(e.key === "ArrowUp"){ e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); }
+          else if(e.key === "Enter" && activeIdx >= 0){ e.preventDefault(); pick(items[activeIdx].dataset.name, items[activeIdx].dataset.muscle); return; }
+          else if(e.key === "Escape"){ list.classList.remove("open"); return; }
+          else return;
+          items.forEach((it,i) => it.classList.toggle("active", i === activeIdx));
+        });
+      });
+    }
     $planModal.addEventListener("click", e => { if(e.target === $planModal) closePlanEditor(); });
 
     $planModalInner.querySelectorAll(".plan-add-ex-btn").forEach(btn => {
@@ -3983,6 +4039,11 @@ function openPlanEditor(planDocId){
         const typeLetters = 'ABCDEFGHIJ';
         plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] });
         renderPlanEditorContent();
+        requestAnimationFrame(() => {
+          const blocks = $planModalInner.querySelectorAll(".plan-day-type");
+          const last = blocks[blocks.length - 1];
+          if(last) last.scrollIntoView({ behavior: "smooth", block: "end" });
+        });
       });
     }
 
