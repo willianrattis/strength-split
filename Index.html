@@ -719,7 +719,6 @@
   .plan-day-type{
     background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
     padding:12px 14px;margin-bottom:10px;
-    scroll-margin-bottom:88px;
   }
   .plan-day-type-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .plan-day-type-letter{
@@ -4040,9 +4039,7 @@ function openPlanEditor(planDocId){
         plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] });
         renderPlanEditorContent();
         requestAnimationFrame(() => {
-          const blocks = $planModalInner.querySelectorAll(".plan-day-type");
-          const last = blocks[blocks.length - 1];
-          if(last) last.scrollIntoView({ behavior: "smooth", block: "end" });
+          $planModalInner.scrollTo({ top: $planModalInner.scrollHeight, behavior: "smooth" });
         });
       });
     }
