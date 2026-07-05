@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0E0F12">
 <title>Strength Split · Treino da Semana</title>
-<meta name="description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta name="description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 
 <!--  Open Graph -->
 <meta property="og:title" content="Strength Split · Treino da Semana">
-<meta property="og:description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta property="og:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 <meta property="og:image" content="https://willianrattis.com/strength-split/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -18,7 +18,7 @@
 <meta property="og:locale" content="pt_BR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Strength Split · Treino da Semana">
-<meta name="twitter:description" content="Split de 5 dias — Seg a Sex. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta name="twitter:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 <meta name="twitter:image" content="https://willianrattis.com/strength-split/preview.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -972,7 +972,7 @@
 <div class="wrap">
   <header class="top">
     <div class="top-text">
-      <span class="kicker">Programa · 5 dias</span>
+      <span class="kicker">Programa semanal</span>
       <h1>Treino<br>da Semana</h1>
       <p class="sub">Toque numa série para marcá-la e digite a carga (kg). Tudo sincronizado em nuvem.</p>
       <div id="syncStatus" class="sync-status" style="margin-top:10px"><span class="dot"></span><span class="txt">aguardando login</span></div>
@@ -1615,7 +1615,7 @@ let exFilterMuscle = null; // null = todos
 let exFilterDay = null; // null = todos
 let exShowInactive = false;
 
-const todayIdx = (()=>{ const g=new Date().getDay(); return (g>=1&&g<=5)?g-1:0; })();
+const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
 current = todayIdx;
 
 // ========= DOM =========
@@ -2689,16 +2689,16 @@ function updateWeekLabel(){
     $weekLabel.textContent = "Semana atual";
   } else {
     const mon = getWeekMonday(weekOffset);
-    const fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
     const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     const monDay = mon.getDate();
-    const friDay = fri.getDate();
-    const friMonth = months[fri.getMonth()];
-    if(mon.getMonth() === fri.getMonth()){
-      $weekLabel.textContent = `${monDay} – ${friDay} ${friMonth}`;
+    const sunDay = sun.getDate();
+    const sunMonth = months[sun.getMonth()];
+    if(mon.getMonth() === sun.getMonth()){
+      $weekLabel.textContent = `${monDay} – ${sunDay} ${sunMonth}`;
     } else {
       const monMonth = months[mon.getMonth()];
-      $weekLabel.textContent = `${monDay} ${monMonth} – ${friDay} ${friMonth}`;
+      $weekLabel.textContent = `${monDay} ${monMonth} – ${sunDay} ${sunMonth}`;
     }
   }
   $weekNext.disabled = weekOffset >= 0;
@@ -2924,7 +2924,7 @@ function drawChart(points, unit){
 
 // ========= Exercise CRUD (Firestore) =========
 
-const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex"];
+const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
 function activeDays(){ return userDays || DAYS; }
 
@@ -2936,6 +2936,8 @@ function rebuildUserDays(){
     {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
     {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
     {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
+    {abbr:"Sáb",name:"Sábado",tag:"Livre",focus:"Livre"},
+    {abbr:"Dom",name:"Domingo",tag:"Livre",focus:"Livre"},
   ];
   base.forEach((d,i) => {
     d.ex = [];
@@ -2948,7 +2950,7 @@ function rebuildUserDays(){
   exercisesCatalog.forEach((ex, id) => {
     if(!ex.active) return;
     (ex.days || []).forEach(dk => {
-      if(dk < 0 || dk > 4) return;
+      if(dk < 0 || dk > 6) return;
       const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
       const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
       base[dk].ex.push({
@@ -3055,6 +3057,8 @@ const DAY_DEFAULTS = [
   {tag:"Peito", focus:"Peito · Ombro"},
   {tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps"},
   {tag:"Pernas", focus:"Quadríceps · Adutor"},
+  {tag:"Livre", focus:"Livre"},
+  {tag:"Livre", focus:"Livre"},
 ];
 
 async function loadDayCustomizations(){
@@ -3090,6 +3094,8 @@ function renderDayCustomSection(){
     {abbr:"Qua", name:"Quarta"},
     {abbr:"Qui", name:"Quinta"},
     {abbr:"Sex", name:"Sexta"},
+    {abbr:"Sáb", name:"Sábado"},
+    {abbr:"Dom", name:"Domingo"},
   ];
 
   let html = `<button class="days-section-toggle" id="daysSectionToggle">
@@ -3634,15 +3640,15 @@ function renderPlansSection(){
 
 function openApplyPlanModal(plan, planDocId){
   const dayTypes = plan.days || [];
-  const weekdays = ["Seg","Ter","Qua","Qui","Sex"];
-  const isABCDE = dayTypes.length === 5;
+  const weekdays = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const autoMap = dayTypes.length === 5 || dayTypes.length === 7;
 
   let html = `<h3>Aplicar plano</h3>`;
   html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${plan.name}</p>`;
   html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias n\u00e3o mapeados ser\u00e3o dias de descanso.</p>`;
 
   dayTypes.forEach((d, i) => {
-    const defaultDay = isABCDE ? i : -1;
+    const defaultDay = autoMap ? i : -1;
     html += `<div class="day-map-row">
       <span class="day-map-type">${d.type}</span>
       <span class="day-map-label">${d.label} (${d.exercises.length} ex.)</span>
@@ -3721,7 +3727,7 @@ function openApplyPlanModal(plan, planDocId){
 async function preserveCurrentAsCustomPlan(){
   if(!user || exercisesCatalog.size === 0) return;
 
-  const typeLetters = ['A','B','C','D','E'];
+  const typeLetters = ['A','B','C','D','E','F','G'];
   const days = activeDays();
   const dayTypes = [];
 
@@ -3884,7 +3890,7 @@ function openPlanEditor(planDocId){
       html += `</div>`;
     });
 
-    if(plan.days.length < 5){
+    if(plan.days.length < 7){
       html += `<button class="plan-add-day-btn" id="pfAddDay">+ Adicionar dia</button>`;
     }
 
