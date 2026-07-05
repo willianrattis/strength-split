@@ -991,10 +991,11 @@
 
     /* 6. Bottom padding so fixed bar never covers content */
     #viewTreino footer,
-    .ex-list-footer,
+    #viewExercicios main.wrap,
     #viewEvolucao main.wrap{
       padding-bottom:calc(72px + env(safe-area-inset-bottom));
     }
+    .ex-list-footer{padding-bottom:0}
   }
 
   @media(min-width:601px){
