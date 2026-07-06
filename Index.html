@@ -499,6 +499,13 @@
   .flag-machines-available #settingsMachinesRow{display:flex}
   #machinesToggle button{padding:4px 10px;font-size:11px}
 
+  #settingsProfileRow{display:none}
+  .flag-profile-available #settingsProfileRow{display:flex}
+  #profileToggle button{padding:4px 10px;font-size:11px}
+  #settingsProfileEditRow{display:none}
+  .flag-profile #settingsProfileEditRow{display:flex}
+  #profileModalInner{max-height:85vh;overflow-y:auto}
+
   .machine-btn,.machine-tag{display:none}
   .flag-machines .machine-btn{display:flex;align-items:center;justify-content:center}
   .flag-machines .machine-tag{display:inline-block}
@@ -1160,8 +1167,22 @@
           <button type="button" data-mach="off">Desligada</button>
         </div>
       </div>
+      <div id="settingsProfileRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <span class="period-label">Perfil de treino</span>
+        <div class="mode-toggle" id="profileToggle" role="group" aria-label="Perfil">
+          <button type="button" data-prof="on">Ligada</button>
+          <button type="button" data-prof="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <span style="font-weight:600;font-size:13px">Editar perfil</span>
+      </div>
       <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
     </div>
+  </div>
+  <!-- MODAL: Perfil de treino -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal" id="profileModalInner"></div>
   </div>
   <!-- MODAL: Máquina por exercício -->
   <div class="modal-overlay" id="machineModal">
@@ -1299,9 +1320,16 @@ function applyMachinesState(){
   document.body.classList.toggle("flag-machines-available", available);
   document.body.classList.toggle("flag-machines", active);
 }
+function applyProfileState(){
+  const available = isFeatureEnabled("profile");
+  const active = available && profileEnabled;
+  document.body.classList.toggle("flag-profile-available", available);
+  document.body.classList.toggle("flag-profile", active);
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
   applyMachinesState();
+  applyProfileState();
 });
 
 // ========= Catálogo do treino =========
@@ -1476,195 +1504,195 @@ const PLAN_TEMPLATES = [
 // ========= Catálogo canônico de exercícios (autocomplete) =========
 const EXERCISE_CATALOG = [
   // — Peito —
-  {name:"Supino reto com barra",muscle:"peito"},
-  {name:"Supino reto com halter",muscle:"peito"},
-  {name:"Supino inclinado com barra",muscle:"peito"},
-  {name:"Supino inclinado com halter",muscle:"peito"},
-  {name:"Supino declinado com barra",muscle:"peito"},
-  {name:"Supino declinado com halter",muscle:"peito"},
-  {name:"Supino vertical inclinado",muscle:"peito"},
-  {name:"Supino máquina",muscle:"peito"},
-  {name:"Crucifixo reto com halter",muscle:"peito"},
-  {name:"Crucifixo inclinado com halter",muscle:"peito"},
-  {name:"Crucifixo no cabo (crossover)",muscle:"peito"},
-  {name:"Crossover alto",muscle:"peito"},
-  {name:"Crossover baixo",muscle:"peito"},
-  {name:"Peck deck",muscle:"peito"},
-  {name:"Flexão de braço",muscle:"peito"},
-  {name:"Flexão com apoio",muscle:"peito"},
-  {name:"Pullover com halter",muscle:"peito"},
-  {name:"Pullover na máquina",muscle:"peito"},
-  {name:"Chest press máquina",muscle:"peito"},
-  {name:"Mergulho no paralelas (peito)",muscle:"peito"},
+  {name:"Supino reto com barra",muscle:"peito",type:"comp"},
+  {name:"Supino reto com halter",muscle:"peito",type:"comp"},
+  {name:"Supino inclinado com barra",muscle:"peito",type:"comp"},
+  {name:"Supino inclinado com halter",muscle:"peito",type:"comp"},
+  {name:"Supino declinado com barra",muscle:"peito",type:"comp"},
+  {name:"Supino declinado com halter",muscle:"peito",type:"comp"},
+  {name:"Supino vertical inclinado",muscle:"peito",type:"comp"},
+  {name:"Supino máquina",muscle:"peito",type:"comp"},
+  {name:"Crucifixo reto com halter",muscle:"peito",type:"iso"},
+  {name:"Crucifixo inclinado com halter",muscle:"peito",type:"iso"},
+  {name:"Crucifixo no cabo (crossover)",muscle:"peito",type:"iso"},
+  {name:"Crossover alto",muscle:"peito",type:"iso"},
+  {name:"Crossover baixo",muscle:"peito",type:"iso"},
+  {name:"Peck deck",muscle:"peito",type:"iso"},
+  {name:"Flexão de braço",muscle:"peito",type:"comp"},
+  {name:"Flexão com apoio",muscle:"peito",type:"comp"},
+  {name:"Pullover com halter",muscle:"peito",type:"iso"},
+  {name:"Pullover na máquina",muscle:"peito",type:"iso"},
+  {name:"Chest press máquina",muscle:"peito",type:"comp"},
+  {name:"Mergulho no paralelas (peito)",muscle:"peito",type:"comp"},
   // — Costas —
-  {name:"Puxada frontal aberta",muscle:"costas"},
-  {name:"Puxada frontal fechada",muscle:"costas"},
-  {name:"Puxada frontal triângulo",muscle:"costas"},
-  {name:"Puxada frontal supinada",muscle:"costas"},
-  {name:"Pulley frente — pegada supinada",muscle:"costas"},
-  {name:"Pulley frente — pegada pronada",muscle:"costas"},
-  {name:"Pulley frente — triângulo",muscle:"costas"},
-  {name:"Remada curvada com barra",muscle:"costas"},
-  {name:"Remada curvada com halter",muscle:"costas"},
-  {name:"Remada unilateral com halter",muscle:"costas"},
-  {name:"Remada cavalinho",muscle:"costas"},
-  {name:"Remada Hammer (anilhas)",muscle:"costas"},
-  {name:"Remada baixa no cabo",muscle:"costas"},
-  {name:"Remada alta com barra",muscle:"costas"},
-  {name:"Remada na máquina",muscle:"costas"},
-  {name:"Remada T-bar",muscle:"costas"},
-  {name:"Barra fixa (pull-up)",muscle:"costas"},
-  {name:"Barra fixa supinada (chin-up)",muscle:"costas"},
-  {name:"Pulldown reto no cabo",muscle:"costas"},
-  {name:"Serrátil no cabo",muscle:"costas"},
-  {name:"Levantamento terra convencional",muscle:"costas"},
-  {name:"Levantamento terra romeno",muscle:"costas"},
-  {name:"Hiperextensão lombar",muscle:"costas"},
-  {name:"Good morning",muscle:"costas"},
+  {name:"Puxada frontal aberta",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal fechada",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal triângulo",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal supinada",muscle:"costas",type:"comp"},
+  {name:"Pulley frente — pegada supinada",muscle:"costas",type:"comp"},
+  {name:"Pulley frente — pegada pronada",muscle:"costas",type:"comp"},
+  {name:"Pulley frente — triângulo",muscle:"costas",type:"comp"},
+  {name:"Remada curvada com barra",muscle:"costas",type:"comp"},
+  {name:"Remada curvada com halter",muscle:"costas",type:"comp"},
+  {name:"Remada unilateral com halter",muscle:"costas",type:"comp"},
+  {name:"Remada cavalinho",muscle:"costas",type:"comp"},
+  {name:"Remada Hammer (anilhas)",muscle:"costas",type:"comp"},
+  {name:"Remada baixa no cabo",muscle:"costas",type:"comp"},
+  {name:"Remada alta com barra",muscle:"costas",type:"comp"},
+  {name:"Remada na máquina",muscle:"costas",type:"comp"},
+  {name:"Remada T-bar",muscle:"costas",type:"comp"},
+  {name:"Barra fixa (pull-up)",muscle:"costas",type:"comp"},
+  {name:"Barra fixa supinada (chin-up)",muscle:"costas",type:"comp"},
+  {name:"Pulldown reto no cabo",muscle:"costas",type:"iso"},
+  {name:"Serrátil no cabo",muscle:"costas",type:"iso"},
+  {name:"Levantamento terra convencional",muscle:"costas",type:"comp"},
+  {name:"Levantamento terra romeno",muscle:"costas",type:"comp"},
+  {name:"Hiperextensão lombar",muscle:"costas",type:"iso"},
+  {name:"Good morning",muscle:"costas",type:"comp"},
   // — Ombro —
-  {name:"Desenvolvimento com barra",muscle:"ombro"},
-  {name:"Desenvolvimento com halter",muscle:"ombro"},
-  {name:"Desenvolvimento máquina",muscle:"ombro"},
-  {name:"Desenvolvimento Arnold",muscle:"ombro"},
-  {name:"Elevação lateral com halter",muscle:"ombro"},
-  {name:"Elevação lateral com halter (sentado)",muscle:"ombro"},
-  {name:"Elevação lateral no cabo",muscle:"ombro"},
-  {name:"Elevação lateral na máquina",muscle:"ombro"},
-  {name:"Elevação frontal com halter",muscle:"ombro"},
-  {name:"Elevação frontal com barra",muscle:"ombro"},
-  {name:"Elevação frontal com anilha",muscle:"ombro"},
-  {name:"Elevação frontal no cabo",muscle:"ombro"},
-  {name:"Crucifixo invertido com halter",muscle:"ombro"},
-  {name:"Crucifixo invertido na máquina",muscle:"ombro"},
-  {name:"Crucifixo invertido no cabo",muscle:"ombro"},
-  {name:"Face pull no Cross",muscle:"ombro"},
-  {name:"Face pull com corda",muscle:"ombro"},
-  {name:"Press militar com barra",muscle:"ombro"},
-  {name:"Remada alta com halter",muscle:"ombro"},
-  {name:"Ombro máquina lateral",muscle:"ombro"},
+  {name:"Desenvolvimento com barra",muscle:"ombro",type:"comp"},
+  {name:"Desenvolvimento com halter",muscle:"ombro",type:"comp"},
+  {name:"Desenvolvimento máquina",muscle:"ombro",type:"comp"},
+  {name:"Desenvolvimento Arnold",muscle:"ombro",type:"comp"},
+  {name:"Elevação lateral com halter",muscle:"ombro",type:"iso"},
+  {name:"Elevação lateral com halter (sentado)",muscle:"ombro",type:"iso"},
+  {name:"Elevação lateral no cabo",muscle:"ombro",type:"iso"},
+  {name:"Elevação lateral na máquina",muscle:"ombro",type:"iso"},
+  {name:"Elevação frontal com halter",muscle:"ombro",type:"iso"},
+  {name:"Elevação frontal com barra",muscle:"ombro",type:"iso"},
+  {name:"Elevação frontal com anilha",muscle:"ombro",type:"iso"},
+  {name:"Elevação frontal no cabo",muscle:"ombro",type:"iso"},
+  {name:"Crucifixo invertido com halter",muscle:"ombro",type:"iso"},
+  {name:"Crucifixo invertido na máquina",muscle:"ombro",type:"iso"},
+  {name:"Crucifixo invertido no cabo",muscle:"ombro",type:"iso"},
+  {name:"Face pull no Cross",muscle:"ombro",type:"iso"},
+  {name:"Face pull com corda",muscle:"ombro",type:"iso"},
+  {name:"Press militar com barra",muscle:"ombro",type:"comp"},
+  {name:"Remada alta com halter",muscle:"ombro",type:"comp"},
+  {name:"Ombro máquina lateral",muscle:"ombro",type:"iso"},
   // — Trapézio —
-  {name:"Encolhimento com halter",muscle:"trapézio"},
-  {name:"Encolhimento com barra",muscle:"trapézio"},
-  {name:"Encolhimento na máquina Smith",muscle:"trapézio"},
-  {name:"Remada alta com barra (trapézio)",muscle:"trapézio"},
-  {name:"Encolhimento com halter inclinado",muscle:"trapézio"},
-  {name:"Face pull (trapézio)",muscle:"trapézio"},
+  {name:"Encolhimento com halter",muscle:"trapézio",type:"iso"},
+  {name:"Encolhimento com barra",muscle:"trapézio",type:"iso"},
+  {name:"Encolhimento na máquina Smith",muscle:"trapézio",type:"iso"},
+  {name:"Remada alta com barra (trapézio)",muscle:"trapézio",type:"comp"},
+  {name:"Encolhimento com halter inclinado",muscle:"trapézio",type:"iso"},
+  {name:"Face pull (trapézio)",muscle:"trapézio",type:"iso"},
   // — Bíceps —
-  {name:"Rosca direta com barra",muscle:"bíceps"},
-  {name:"Rosca direta com halter",muscle:"bíceps"},
-  {name:"Rosca alternada com halter",muscle:"bíceps"},
-  {name:"Rosca W (barra EZ)",muscle:"bíceps"},
-  {name:"Rosca Scott com barra",muscle:"bíceps"},
-  {name:"Rosca Scott com halter",muscle:"bíceps"},
-  {name:"Rosca Scott na máquina",muscle:"bíceps"},
-  {name:"Rosca concentrada",muscle:"bíceps"},
-  {name:"Rosca martelo com halter",muscle:"bíceps"},
-  {name:"Rosca martelo simultâneo",muscle:"bíceps"},
-  {name:"Rosca no cabo",muscle:"bíceps"},
-  {name:"Rosca no Cross",muscle:"bíceps"},
-  {name:"Rosca inclinada com halter",muscle:"bíceps"},
-  {name:"Rosca 21 (barra EZ)",muscle:"bíceps"},
-  {name:"Rosca spider com barra EZ",muscle:"bíceps"},
-  {name:"Martelo simultâneo com halter",muscle:"bíceps"},
-  {name:"Martelo no cabo com corda",muscle:"bíceps"},
+  {name:"Rosca direta com barra",muscle:"bíceps",type:"iso"},
+  {name:"Rosca direta com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca alternada com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca W (barra EZ)",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott com barra",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott na máquina",muscle:"bíceps",type:"iso"},
+  {name:"Rosca concentrada",muscle:"bíceps",type:"iso"},
+  {name:"Rosca martelo com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca martelo simultâneo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca no cabo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca no Cross",muscle:"bíceps",type:"iso"},
+  {name:"Rosca inclinada com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca 21 (barra EZ)",muscle:"bíceps",type:"iso"},
+  {name:"Rosca spider com barra EZ",muscle:"bíceps",type:"iso"},
+  {name:"Martelo simultâneo com halter",muscle:"bíceps",type:"iso"},
+  {name:"Martelo no cabo com corda",muscle:"bíceps",type:"iso"},
   // — Tríceps —
-  {name:"Tríceps pulley com barra",muscle:"tríceps"},
-  {name:"Tríceps corda",muscle:"tríceps"},
-  {name:"Tríceps corda no crossover",muscle:"tríceps"},
-  {name:"Tríceps francês com halter",muscle:"tríceps"},
-  {name:"Tríceps francês com barra EZ",muscle:"tríceps"},
-  {name:"Tríceps testa (barra EZ)",muscle:"tríceps"},
-  {name:"Tríceps testa com halter",muscle:"tríceps"},
-  {name:"Tríceps banco",muscle:"tríceps"},
-  {name:"Tríceps coice com halter",muscle:"tríceps"},
-  {name:"Tríceps coice no cabo",muscle:"tríceps"},
-  {name:"Tríceps mergulho no paralelas",muscle:"tríceps"},
-  {name:"Tríceps overhead com corda",muscle:"tríceps"},
-  {name:"Tríceps overhead com halter",muscle:"tríceps"},
-  {name:"Tríceps supino fechado",muscle:"tríceps"},
-  {name:"Tríceps máquina",muscle:"tríceps"},
-  {name:"Tríceps pulley inverso",muscle:"tríceps"},
+  {name:"Tríceps pulley com barra",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps corda",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps corda no crossover",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês com barra EZ",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa (barra EZ)",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps banco",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps coice com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps coice no cabo",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps mergulho no paralelas",muscle:"tríceps",type:"comp"},
+  {name:"Tríceps overhead com corda",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps overhead com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps supino fechado",muscle:"tríceps",type:"comp"},
+  {name:"Tríceps máquina",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps pulley inverso",muscle:"tríceps",type:"iso"},
   // — Antebraço —
-  {name:"Rosca punho com barra",muscle:"antebraço"},
-  {name:"Rosca punho com halter",muscle:"antebraço"},
-  {name:"Rosca punho invertida com barra",muscle:"antebraço"},
-  {name:"Rosca punho invertida com halter",muscle:"antebraço"},
-  {name:"Rosca punho (antebraço)",muscle:"antebraço"},
-  {name:"Farmer's walk",muscle:"antebraço"},
-  {name:"Wrist roller",muscle:"antebraço"},
-  {name:"Martelo braquiorradial",muscle:"antebraço"},
+  {name:"Rosca punho com barra",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho com halter",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho invertida com barra",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho invertida com halter",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho (antebraço)",muscle:"antebraço",type:"iso"},
+  {name:"Farmer's walk",muscle:"antebraço",type:"comp"},
+  {name:"Wrist roller",muscle:"antebraço",type:"iso"},
+  {name:"Martelo braquiorradial",muscle:"antebraço",type:"iso"},
   // — Perna (quadríceps / posterior / adutores) —
-  {name:"Agachamento livre com barra",muscle:"perna"},
-  {name:"Agachamento frontal",muscle:"perna"},
-  {name:"Agachamento no Smith",muscle:"perna"},
-  {name:"Agachamento sumô",muscle:"perna"},
-  {name:"Agachamento hack",muscle:"perna"},
-  {name:"Agachamento goblet",muscle:"perna"},
-  {name:"Agachamento búlgaro",muscle:"perna"},
-  {name:"Leg press 45",muscle:"perna"},
-  {name:"Leg press horizontal",muscle:"perna"},
-  {name:"Leg 45",muscle:"perna"},
-  {name:"Leg 45 unilateral",muscle:"perna"},
-  {name:"Cadeira extensora",muscle:"perna"},
-  {name:"Flexora deitado",muscle:"perna"},
-  {name:"Flexora sentado",muscle:"perna"},
-  {name:"Mesa flexora",muscle:"perna"},
-  {name:"Stiff com barra",muscle:"perna"},
-  {name:"Stiff com halter",muscle:"perna"},
-  {name:"Meio terra sumô",muscle:"perna"},
-  {name:"Avanço com halter",muscle:"perna"},
-  {name:"Avanço no Smith",muscle:"perna"},
-  {name:"Passada com halter",muscle:"perna"},
-  {name:"Búlgaro com carga ipsilateral",muscle:"perna"},
-  {name:"Búlgaro com halter",muscle:"perna"},
-  {name:"Cadeira adutora",muscle:"perna"},
-  {name:"Cadeira abdutora",muscle:"perna"},
-  {name:"Sissy squat",muscle:"perna"},
-  {name:"Hack squat invertido",muscle:"perna"},
-  {name:"Afundo no Smith",muscle:"perna"},
-  {name:"Prensa unilateral",muscle:"perna"},
+  {name:"Agachamento livre com barra",muscle:"perna",type:"comp"},
+  {name:"Agachamento frontal",muscle:"perna",type:"comp"},
+  {name:"Agachamento no Smith",muscle:"perna",type:"comp"},
+  {name:"Agachamento sumô",muscle:"perna",type:"comp"},
+  {name:"Agachamento hack",muscle:"perna",type:"comp"},
+  {name:"Agachamento goblet",muscle:"perna",type:"comp"},
+  {name:"Agachamento búlgaro",muscle:"perna",type:"comp"},
+  {name:"Leg press 45",muscle:"perna",type:"comp"},
+  {name:"Leg press horizontal",muscle:"perna",type:"comp"},
+  {name:"Leg 45",muscle:"perna",type:"comp"},
+  {name:"Leg 45 unilateral",muscle:"perna",type:"comp"},
+  {name:"Cadeira extensora",muscle:"perna",type:"iso"},
+  {name:"Flexora deitado",muscle:"perna",type:"iso"},
+  {name:"Flexora sentado",muscle:"perna",type:"iso"},
+  {name:"Mesa flexora",muscle:"perna",type:"iso"},
+  {name:"Stiff com barra",muscle:"perna",type:"comp"},
+  {name:"Stiff com halter",muscle:"perna",type:"comp"},
+  {name:"Meio terra sumô",muscle:"perna",type:"comp"},
+  {name:"Avanço com halter",muscle:"perna",type:"comp"},
+  {name:"Avanço no Smith",muscle:"perna",type:"comp"},
+  {name:"Passada com halter",muscle:"perna",type:"comp"},
+  {name:"Búlgaro com carga ipsilateral",muscle:"perna",type:"comp"},
+  {name:"Búlgaro com halter",muscle:"perna",type:"comp"},
+  {name:"Cadeira adutora",muscle:"perna",type:"iso"},
+  {name:"Cadeira abdutora",muscle:"perna",type:"iso"},
+  {name:"Sissy squat",muscle:"perna",type:"iso"},
+  {name:"Hack squat invertido",muscle:"perna",type:"comp"},
+  {name:"Afundo no Smith",muscle:"perna",type:"comp"},
+  {name:"Prensa unilateral",muscle:"perna",type:"comp"},
   // — Glúteo —
-  {name:"Hip thrust com barra",muscle:"glúteo"},
-  {name:"Hip thrust na máquina",muscle:"glúteo"},
-  {name:"Elevação pélvica no solo",muscle:"glúteo"},
-  {name:"Glúteo na máquina",muscle:"glúteo"},
-  {name:"Glúteo no cabo (kickback)",muscle:"glúteo"},
-  {name:"Coice no cabo",muscle:"glúteo"},
-  {name:"Abdução no cabo",muscle:"glúteo"},
-  {name:"Abdução com faixa elástica",muscle:"glúteo"},
-  {name:"Step-up com halter",muscle:"glúteo"},
-  {name:"Ponte glútea unilateral",muscle:"glúteo"},
-  {name:"Glúteo quatro apoios",muscle:"glúteo"},
+  {name:"Hip thrust com barra",muscle:"glúteo",type:"comp"},
+  {name:"Hip thrust na máquina",muscle:"glúteo",type:"comp"},
+  {name:"Elevação pélvica no solo",muscle:"glúteo",type:"iso"},
+  {name:"Glúteo na máquina",muscle:"glúteo",type:"iso"},
+  {name:"Glúteo no cabo (kickback)",muscle:"glúteo",type:"iso"},
+  {name:"Coice no cabo",muscle:"glúteo",type:"iso"},
+  {name:"Abdução no cabo",muscle:"glúteo",type:"iso"},
+  {name:"Abdução com faixa elástica",muscle:"glúteo",type:"iso"},
+  {name:"Step-up com halter",muscle:"glúteo",type:"comp"},
+  {name:"Ponte glútea unilateral",muscle:"glúteo",type:"iso"},
+  {name:"Glúteo quatro apoios",muscle:"glúteo",type:"iso"},
   // — Panturrilha —
-  {name:"Panturrilha sentado",muscle:"panturrilha"},
-  {name:"Panturrilha em pé na máquina",muscle:"panturrilha"},
-  {name:"Panturrilha no leg press",muscle:"panturrilha"},
-  {name:"Panturrilha no Smith",muscle:"panturrilha"},
-  {name:"Panturrilha unilateral com halter",muscle:"panturrilha"},
-  {name:"Panturrilha no hack",muscle:"panturrilha"},
-  {name:"Gêmeos em pé (donkey calf)",muscle:"panturrilha"},
-  {name:"Sóleo sentado",muscle:"panturrilha"},
+  {name:"Panturrilha sentado",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha em pé na máquina",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha no leg press",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha no Smith",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha unilateral com halter",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha no hack",muscle:"panturrilha",type:"iso"},
+  {name:"Gêmeos em pé (donkey calf)",muscle:"panturrilha",type:"iso"},
+  {name:"Sóleo sentado",muscle:"panturrilha",type:"iso"},
   // — Abdômen —
-  {name:"Abdominal crunch",muscle:"abdômen"},
-  {name:"Abdominal infra",muscle:"abdômen"},
-  {name:"Abdominal na máquina",muscle:"abdômen"},
-  {name:"Abdominal no cabo (rope crunch)",muscle:"abdômen"},
-  {name:"Abdominal bicicleta",muscle:"abdômen"},
-  {name:"Prancha frontal",muscle:"abdômen"},
-  {name:"Prancha lateral",muscle:"abdômen"},
-  {name:"Elevação de pernas suspenso",muscle:"abdômen"},
-  {name:"Elevação de pernas no banco",muscle:"abdômen"},
-  {name:"Russian twist",muscle:"abdômen"},
-  {name:"Oblíquo no cabo",muscle:"abdômen"},
-  {name:"Roda abdominal (ab wheel)",muscle:"abdômen"},
-  {name:"Leg raise na barra fixa",muscle:"abdômen"},
-  {name:"Mountain climber",muscle:"abdômen"},
-  {name:"Pallof press no cabo",muscle:"abdômen"},
-  {name:"Woodchop no cabo",muscle:"abdômen"},
-  {name:"Crunch invertido",muscle:"abdômen"},
-  {name:"Sit-up",muscle:"abdômen"},
-  {name:"Dragon flag",muscle:"abdômen"},
-  {name:"Hollow hold",muscle:"abdômen"},
+  {name:"Abdominal crunch",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal infra",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal na máquina",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal no cabo (rope crunch)",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal bicicleta",muscle:"abdômen",type:"iso"},
+  {name:"Prancha frontal",muscle:"abdômen",type:"iso"},
+  {name:"Prancha lateral",muscle:"abdômen",type:"iso"},
+  {name:"Elevação de pernas suspenso",muscle:"abdômen",type:"iso"},
+  {name:"Elevação de pernas no banco",muscle:"abdômen",type:"iso"},
+  {name:"Russian twist",muscle:"abdômen",type:"iso"},
+  {name:"Oblíquo no cabo",muscle:"abdômen",type:"iso"},
+  {name:"Roda abdominal (ab wheel)",muscle:"abdômen",type:"iso"},
+  {name:"Leg raise na barra fixa",muscle:"abdômen",type:"iso"},
+  {name:"Mountain climber",muscle:"abdômen",type:"iso"},
+  {name:"Pallof press no cabo",muscle:"abdômen",type:"iso"},
+  {name:"Woodchop no cabo",muscle:"abdômen",type:"iso"},
+  {name:"Crunch invertido",muscle:"abdômen",type:"iso"},
+  {name:"Sit-up",muscle:"abdômen",type:"iso"},
+  {name:"Dragon flag",muscle:"abdômen",type:"iso"},
+  {name:"Hollow hold",muscle:"abdômen",type:"iso"},
 ];
 
 const MACHINE_CATALOG = ["Hummer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
@@ -1691,6 +1719,9 @@ let exSearchQuery = "";
 let lastDeloadDate = null;
 let periodizationEnabled = true;
 let machinesEnabled = true;
+let profileEnabled = true;
+// sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
+let profile = { age:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
 
 // exercise list filters
@@ -1821,9 +1852,16 @@ function syncMachinesToggle(){
   $on.classList.toggle("active", machinesEnabled);
   $off.classList.toggle("active", !machinesEnabled);
 }
+function syncProfileToggle(){
+  const $on = document.querySelector('#profileToggle [data-prof="on"]');
+  const $off = document.querySelector('#profileToggle [data-prof="off"]');
+  $on.classList.toggle("active", profileEnabled);
+  $off.classList.toggle("active", !profileEnabled);
+}
 function openSettings(){
   syncPeriodToggle();
   syncMachinesToggle();
+  syncProfileToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -1848,8 +1886,138 @@ document.getElementById("machinesToggle").addEventListener("click", e => {
   applyMachinesState();
   if($viewTreino.style.display !== "none") renderDay();
 });
+document.getElementById("profileToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-prof]");
+  if(!btn) return;
+  profileEnabled = btn.dataset.prof === "on";
+  syncProfileToggle();
+  savePref();
+  applyProfileState();
+});
+document.getElementById("settingsProfileEditRow").addEventListener("click", () => {
+  closeSettings();
+  openProfileModal();
+});
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
 document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
+
+// ========= Profile modal =========
+const $profileModal = document.getElementById("profileModal");
+const $profileModalInner = document.getElementById("profileModalInner");
+$profileModal.addEventListener("click", e => { if(e.target === $profileModal) closeProfileModal(); });
+function closeProfileModal(){ $profileModal.classList.remove("open"); }
+function openProfileModal(){
+  const SEX_OPTS = [{val:"m",label:"M"},{val:"f",label:"F"},{val:null,label:"Prefiro não dizer"}];
+  const EXP_OPTS = [{val:"beg",label:"Iniciante · 0–1a"},{val:"int",label:"Intermediário · 1–3a"},{val:"adv",label:"Avançado · +3a"}];
+
+  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 6px">Perfil de treino</h3>`;
+  html += `<p style="font-size:12px;color:var(--muted);margin:0 0 18px;line-height:1.4">Opcional. Melhora a precisão das sugestões de carga. Deixe em branco o que não quiser informar.</p>`;
+
+  // Idade
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Idade</label>`;
+  html += `<input id="profAge" type="text" inputmode="numeric" placeholder="—" value="${profile.age != null ? profile.age : ""}" style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+
+  // Sexo
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
+  html += `<div id="profSex" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
+  SEX_OPTS.forEach(o => {
+    const active = profile.sex === o.val;
+    html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
+  });
+  html += `</div>`;
+
+  // Peso corporal
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Peso corporal (kg)</label>`;
+  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${profile.bodyweight != null ? profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+
+  // Experiência
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Experiência</label>`;
+  html += `<div id="profExp" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
+  EXP_OPTS.forEach(o => {
+    const active = profile.experience === o.val;
+    html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
+  });
+  html += `</div>`;
+
+  // Lesões/limitações
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Lesões / limitações</label>`;
+  html += `<p style="font-size:11px;color:var(--muted);margin:0 0 8px;line-height:1.3">O app evita sugerir aumento de carga nos grupos marcados.</p>`;
+  html += `<div id="profInjuries" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+  MUSCLE_ORDER.forEach(k => {
+    const active = !!profile.injuries[k];
+    html += `<button type="button" class="sub-chip${active?" active":""}" data-muscle="${k}" style="padding:5px 12px;font-size:11px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${MUSCLE_LABEL[k]}</button>`;
+  });
+  html += `</div>`;
+
+  $profileModalInner.innerHTML = html;
+  $profileModal.classList.add("open");
+
+  // — Bind listeners —
+  // Age
+  document.getElementById("profAge").addEventListener("input", e => {
+    const v = e.target.value.replace(/[^0-9]/g,"");
+    e.target.value = v;
+    const n = parseInt(v, 10);
+    profile.age = (n >= 10 && n <= 99) ? n : null;
+    scheduleProfileSave();
+  });
+
+  // Sex chips
+  document.getElementById("profSex").addEventListener("click", e => {
+    const btn = e.target.closest("[data-val]");
+    if(!btn) return;
+    const val = btn.dataset.val === "null" ? null : btn.dataset.val;
+    profile.sex = val;
+    btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
+      const isActive = c === btn;
+      c.classList.toggle("active", isActive);
+      c.style.borderColor = isActive ? "var(--accent)" : "var(--border)";
+      c.style.background = isActive ? "var(--accent-soft)" : "var(--surface-2)";
+      c.style.color = isActive ? "var(--accent)" : "var(--text)";
+    });
+    scheduleProfileSave();
+  });
+
+  // Weight
+  document.getElementById("profWeight").addEventListener("input", e => {
+    const v = e.target.value.replace(/[^0-9.,]/g,"").replace(",",".");
+    e.target.value = v;
+    const n = parseFloat(v);
+    profile.bodyweight = (n > 0 && isFinite(n)) ? Math.round(n * 10) / 10 : null;
+    scheduleProfileSave();
+  });
+
+  // Experience chips (tap active to deselect)
+  document.getElementById("profExp").addEventListener("click", e => {
+    const btn = e.target.closest("[data-val]");
+    if(!btn) return;
+    const val = btn.dataset.val;
+    const wasActive = btn.classList.contains("active");
+    profile.experience = wasActive ? null : val;
+    btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
+      const isActive = !wasActive && c === btn;
+      c.classList.toggle("active", isActive);
+      c.style.borderColor = isActive ? "var(--accent)" : "var(--border)";
+      c.style.background = isActive ? "var(--accent-soft)" : "var(--surface-2)";
+      c.style.color = isActive ? "var(--accent)" : "var(--text)";
+    });
+    scheduleProfileSave();
+  });
+
+  // Injury chips (multi-toggle)
+  document.getElementById("profInjuries").addEventListener("click", e => {
+    const btn = e.target.closest("[data-muscle]");
+    if(!btn) return;
+    const k = btn.dataset.muscle;
+    if(profile.injuries[k]){ delete profile.injuries[k]; } else { profile.injuries[k] = true; }
+    const active = !!profile.injuries[k];
+    btn.classList.toggle("active", active);
+    btn.style.borderColor = active ? "var(--accent)" : "var(--border)";
+    btn.style.background = active ? "var(--accent-soft)" : "var(--surface-2)";
+    btn.style.color = active ? "var(--accent)" : "var(--text)";
+    scheduleProfileSave();
+  });
+}
 
 // ========= Collapse-on-scroll sticky header =========
 {
@@ -2109,12 +2277,30 @@ async function loadPref(){
       if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
       if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
+      if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
+  // load profile doc
+  try{
+    const pRef = doc(db, "users", user.uid, "prefs", "profile");
+    const pSnap = await getDoc(pRef);
+    if(pSnap.exists()){
+      const p = pSnap.data();
+      if(typeof p.age === "number" && p.age >= 10 && p.age <= 99) profile.age = p.age; else profile.age = null;
+      if(p.sex === "m" || p.sex === "f") profile.sex = p.sex; else profile.sex = null;
+      if(typeof p.bodyweight === "number" && p.bodyweight > 0) profile.bodyweight = p.bodyweight; else profile.bodyweight = null;
+      if(p.experience === "beg" || p.experience === "int" || p.experience === "adv") profile.experience = p.experience; else profile.experience = null;
+      if(p.injuries && typeof p.injuries === "object"){
+        profile.injuries = {};
+        MUSCLE_ORDER.forEach(k => { if(p.injuries[k] === true) profile.injuries[k] = true; });
+      } else { profile.injuries = {}; }
+    }
+  }catch(e){ console.warn("loadProfile:", e.message); }
   applyModeButtons();
   applyTheme();
   applyPeriodizationState();
   applyMachinesState();
+  applyProfileState();
 }
 async function savePref(){
   if(!user) return;
@@ -2127,6 +2313,7 @@ async function savePref(){
       currentPlanKey: currentPlanKey || null,
       periodizationEnabled,
       machinesEnabled,
+      profileEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2136,6 +2323,18 @@ async function saveDeloadDate(){
     const ref = doc(db, "users", user.uid, "prefs", "app");
     await setDoc(ref, { lastDeloadDate }, { merge: true });
   }catch(e){ console.warn("saveDeloadDate:", e.message); }
+}
+let _profileSaveTimer = null;
+function scheduleProfileSave(){
+  clearTimeout(_profileSaveTimer);
+  _profileSaveTimer = setTimeout(saveProfileDoc, 500);
+}
+async function saveProfileDoc(){
+  if(!user) return;
+  try{
+    const ref = doc(db, "users", user.uid, "prefs", "profile");
+    await setDoc(ref, { ...profile, updatedAt: serverTimestamp() }, { merge: true });
+  }catch(e){ console.warn("saveProfileDoc:", e.message); }
 }
 
 const normMachine = s => s ? stripDiacritics(String(s).trim().toLowerCase()) : null;
@@ -2339,7 +2538,31 @@ function prevLoadText(name, machine, unit){
   return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${bestDate})</span></div>`;
 }
 
-function suggestLoads(name, unit, machine){
+const profileActive = () => document.body.classList.contains("flag-profile");
+
+// B1 — Equipment-aware increments (kg)
+const DUMBBELL_LADDER = [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
+function snapKg(equip, value){
+  if(equip==="barra") return Math.max(2, Math.round(value/2)*2);
+  if(equip==="halter"){
+    if(value>40) return Math.round(value/2)*2;
+    let best=DUMBBELL_LADDER[0];
+    for(const v of DUMBBELL_LADDER) if(Math.abs(v-value)<Math.abs(best-value)) best=v;
+    return best;
+  }
+  return Math.round(value/2.5)*2.5;
+}
+function nextKgUp(equip, w, mult){
+  if(equip==="halter"){
+    let v=w;
+    for(let k=0;k<mult;k++) v = v>=40 ? v+2 : (DUMBBELL_LADDER.find(x=>x>v) ?? v+2);
+    return v;
+  }
+  const step = equip==="barra" ? 2 : 2.5;
+  return snapKg(equip, w + step*mult);
+}
+
+function suggestLoads(name, unit, machine, opts){
   if(!allSessions || !allSessions.length) return null;
   const u = unit || "kg";
   const step = UNIT_STEP[u] || 2.5;
@@ -2359,21 +2582,54 @@ function suggestLoads(name, unit, machine){
     }
   }
   if(!best) return null;
+
+  // B3 — Injury gate
+  const muscle = opts && opts.muscle;
+  if(profileActive() && muscle && profile.injuries[muscle]){
+    const suggestions = best.map(s => typeof s.weight === "number" ? s.weight : null);
+    return { loads: suggestions, dir: "→", date: bestDate, limited: true };
+  }
+
+  // B2 — Experience matrix: resolve type and mult
+  const equip = equipmentOf(name);
+  const type = exTypeOf(name);
+  const exp = profileActive() && profile.experience ? profile.experience : null;
+  const mult = (exp === "beg" && type === "comp") ? 2 : 1;
+
+  // B2 — adv gate: check if ALL numeric-weight sets hit target
+  let advGateKeep = false;
+  if(exp === "adv"){
+    let allHit = true;
+    for(const s of best){
+      if(typeof s.weight !== "number") continue;
+      const target = s.reps;
+      const didReps = s.repsDone ?? (s.done ? s.reps : null);
+      if(didReps == null || didReps < target){ allHit = false; break; }
+    }
+    if(!allHit) advGateKeep = true;
+  }
+
   let anyUp = false;
   const suggestions = best.map(s => {
     const w = s.weight;
     if(typeof w !== "number") return null;
+    if(advGateKeep) return w;
     const target = s.reps;
     const didReps = s.repsDone ?? (s.done ? s.reps : null);
     let suggested;
     if(didReps != null && didReps >= target){
-      suggested = w + step;
+      if(u === "kg"){
+        suggested = nextKgUp(equip, w, mult);
+      } else {
+        suggested = w + step * mult;
+      }
       anyUp = true;
     } else {
       suggested = w;
     }
+    if(u === "kg") return suggested;
     const rounded = Math.round(suggested / step) * step;
-    return u === "placas" ? Math.round(rounded) : rounded;
+    return u === "placas" ? Math.max(1, Math.round(rounded)) : rounded;
   });
   return { loads: suggestions, dir: anyUp ? "↑" : "→", date: bestDate };
 }
@@ -2384,11 +2640,14 @@ function suggestHTML(name, unit, isSup, exIdx){
   const sets = isSup ? ex.sup : ex.main;
   if(sets && sets.some(s => typeof s.weight === "number")) return "";
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
-  const result = suggestLoads(name, unit, machine);
+  const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
+  const muscle = planEx ? (isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
+  const result = suggestLoads(name, unit, machine, {muscle});
   if(!result) return "";
   const u = unit || "kg";
   const display = result.loads.map(v => v != null ? v : "—").join(" · ");
-  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
+  const limitTag = result.limited ? `<span style="color:var(--faint)"> · limitação</span>` : "";
+  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]}${limitTag} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
 }
 
 function exerciseTopHistory(name, since=null, machine){
@@ -2454,7 +2713,8 @@ function deloadDue(){
     if(isStalled(name, cycleStart, machine)) stalled++;
   });
 
-  if(weeksSince >= DELOAD_WEEKS_MAX){
+  const weeksMax = (profileActive() && profile.age) ? (profile.age>=55 ? 3 : profile.age>=40 ? 4 : DELOAD_WEEKS_MAX) : DELOAD_WEEKS_MAX;
+  if(weeksSince >= weeksMax){
     return { due: true, reason: `${weeksSince} semanas sem descarga` };
   }
   if(tracked >= MIN_TRACKED && stalled / tracked >= STALL_RATIO){
@@ -2694,7 +2954,8 @@ function attachHandlers(){
       const name = isSup ? e.superset.name : (ex.subName || e.name);
       const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
-      const result = suggestLoads(name, unit, machine);
+      const muscle = isSup ? ((e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
+      const result = suggestLoads(name, unit, machine, {muscle});
       if(!result) return;
       const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
       result.loads.forEach((v, si) => {
@@ -4569,6 +4830,18 @@ function closePlanEditor(){
 
 // ========= Shared helpers =========
 function stripDiacritics(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+
+function equipmentOf(name){
+  const n = stripDiacritics(String(name||""));
+  if(n.includes("halter")) return "halter";
+  if(n.includes("barra") && !n.includes("barra fixa")) return "barra";
+  return "outro";
+}
+
+// Lookup map: normalized exercise name -> "comp"|"iso"
+const _exTypeMap = new Map();
+EXERCISE_CATALOG.forEach(e => { _exTypeMap.set(stripDiacritics(e.name), e.type); });
+function exTypeOf(name){ return _exTypeMap.get(stripDiacritics(String(name||""))) || "iso"; }
 
 // ========= Exercise editor modal =========
 
