@@ -319,6 +319,7 @@
   }
   .evo-stat .val{font-family:var(--display);font-weight:700;font-size:26px;color:var(--accent);line-height:1}
   .evo-stat .lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-top:6px}
+.evo-stat .sub{font-size:9px;color:var(--muted);margin-top:2px;font-weight:500;letter-spacing:.04em}
 
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
@@ -493,6 +494,15 @@
   #settingsPeriodizationRow{display:none}
   .flag-periodization-available #settingsPeriodizationRow{display:flex}
   #periodToggle button{padding:4px 10px;font-size:11px}
+
+  #settingsMachinesRow{display:none}
+  .flag-machines-available #settingsMachinesRow{display:flex}
+  #machinesToggle button{padding:4px 10px;font-size:11px}
+
+  .machine-btn,.machine-tag{display:none}
+  .flag-machines .machine-btn{display:flex;align-items:center;justify-content:center}
+  .flag-machines .machine-tag{display:inline-block}
+  .machine-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-2);color:var(--muted);margin-left:6px;border:1px solid var(--border)}
 
   /* modal */
   .modal-overlay{
@@ -1107,6 +1117,7 @@
       <div class="evo-controls">
         <label class="evo-label" for="evoSelect">Exercício</label>
         <select class="evo-select" id="evoSelect"></select>
+        <select class="evo-select evo-machine-select" id="evoMachineSelect" style="display:none;margin-top:8px"></select>
       </div>
       <div id="evoBody"></div>
     </main>
@@ -1142,8 +1153,19 @@
           <button type="button" data-period="off">Desligada</button>
         </div>
       </div>
+      <div id="settingsMachinesRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <span class="period-label">Máquinas por exercício</span>
+        <div class="mode-toggle" id="machinesToggle" role="group" aria-label="Máquinas">
+          <button type="button" data-mach="on">Ligada</button>
+          <button type="button" data-mach="off">Desligada</button>
+        </div>
+      </div>
       <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
     </div>
+  </div>
+  <!-- MODAL: Máquina por exercício -->
+  <div class="modal-overlay" id="machineModal">
+    <div class="modal" id="machineModalInner"></div>
   </div>
 
   <!-- Bottom navigation (mobile only) -->
@@ -1271,8 +1293,15 @@ function applyPeriodizationState(){
   document.body.classList.toggle("flag-periodization-available", available);
   document.body.classList.toggle("flag-periodization", active);
 }
+function applyMachinesState(){
+  const available = isFeatureEnabled("machines");
+  const active = available && machinesEnabled;
+  document.body.classList.toggle("flag-machines-available", available);
+  document.body.classList.toggle("flag-machines", active);
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
+  applyMachinesState();
 });
 
 // ========= Catálogo do treino =========
@@ -1638,6 +1667,8 @@ const EXERCISE_CATALOG = [
   {name:"Hollow hold",muscle:"abdômen"},
 ];
 
+const MACHINE_CATALOG = ["Hummer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
+
 // ========= Estado em memória =========
 let user = null;
 let current = 0;
@@ -1659,6 +1690,7 @@ let exSubTab = "list";
 let exSearchQuery = "";
 let lastDeloadDate = null;
 let periodizationEnabled = true;
+let machinesEnabled = true;
 let deloadDismissed = false;
 
 // exercise list filters
@@ -1702,6 +1734,7 @@ const $applyPlanModalInner = document.getElementById("applyPlanModalInner");
 const $dayEditModal = document.getElementById("dayEditModal");
 const $dayEditModalBody = document.getElementById("dayEditModalBody");
 const $evoSelect = document.getElementById("evoSelect");
+const $evoMachineSelect = document.getElementById("evoMachineSelect");
 const $evoBody = document.getElementById("evoBody");
 let evoChart = null;
 
@@ -1782,8 +1815,15 @@ function syncPeriodToggle(){
   $on.classList.toggle("active", periodizationEnabled);
   $off.classList.toggle("active", !periodizationEnabled);
 }
+function syncMachinesToggle(){
+  const $on = document.querySelector('#machinesToggle [data-mach="on"]');
+  const $off = document.querySelector('#machinesToggle [data-mach="off"]');
+  $on.classList.toggle("active", machinesEnabled);
+  $off.classList.toggle("active", !machinesEnabled);
+}
 function openSettings(){
   syncPeriodToggle();
+  syncMachinesToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -1797,6 +1837,15 @@ document.getElementById("periodToggle").addEventListener("click", e => {
   syncPeriodToggle();
   savePref();
   applyPeriodizationState();
+  if($viewTreino.style.display !== "none") renderDay();
+});
+document.getElementById("machinesToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-mach]");
+  if(!btn) return;
+  machinesEnabled = btn.dataset.mach === "on";
+  syncMachinesToggle();
+  savePref();
+  applyMachinesState();
   if($viewTreino.style.display !== "none") renderDay();
 });
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
@@ -2059,11 +2108,13 @@ async function loadPref(){
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
       if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
+      if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   applyModeButtons();
   applyTheme();
   applyPeriodizationState();
+  applyMachinesState();
 }
 async function savePref(){
   if(!user) return;
@@ -2075,6 +2126,7 @@ async function savePref(){
       currentPlanId: currentPlanId || null,
       currentPlanKey: currentPlanKey || null,
       periodizationEnabled,
+      machinesEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2086,21 +2138,65 @@ async function saveDeloadDate(){
   }catch(e){ console.warn("saveDeloadDate:", e.message); }
 }
 
+const normMachine = s => s ? stripDiacritics(String(s).trim().toLowerCase()) : null;
+const sameMachine = (a,b) => normMachine(a) === normMachine(b);
+function lastMachineFor(name, isSup=false){
+  if(!allSessions || !allSessions.length) return null;
+  const sorted = [...allSessions].sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  for(const sess of sorted){
+    if(!sess.exercises) continue;
+    for(const entry of sess.exercises){
+      if(isSup){
+        if(entry.supName === name && entry.supMachine) return entry.supMachine;
+      } else {
+        const eName = entry.subName || entry.name;
+        if(eName === name && entry.machine) return entry.machine;
+      }
+    }
+  }
+  return null;
+}
+// All machines the user ever tagged, ranked by frequency desc. Returns display strings, deduped via normMachine.
+function usedMachinesRanked(){
+  const count = new Map();
+  if(allSessions) for(const s of allSessions){
+    if(!s.exercises) continue;
+    for(const e of s.exercises){
+      for(const m of [e.machine, e.supMachine]){
+        const nk = normMachine(m);
+        if(!nk) continue;
+        const cur = count.get(nk);
+        if(cur) cur.n++; else count.set(nk, {display:m, n:1});
+      }
+    }
+  }
+  return [...count.values()].sort((a,b) => b.n - a.n).map(x => x.display);
+}
+const machineFilterActive = () => document.body.classList.contains("flag-machines");
+const matchVariant = (entryMachine, machine) => machine === undefined || !machineFilterActive() || sameMachine(entryMachine, machine);
+
 function emptySession(dayKey){
   const day = activeDays()[dayKey];
   if(!day.ex.length) return { date: dateForDay(dayKey, weekOffset), dayKey, dayName: day.name, exercises: [] };
+  const machinesActive = document.body.classList.contains("flag-machines");
   return {
     date: dateForDay(dayKey, weekOffset),
     dayKey,
     dayName: day.name,
-    exercises: day.ex.map(e => ({
-      name: e.name,
-      subName: null,
-      subMuscle: null,
-      supName: e.superset ? e.superset.name : null,
-      main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
-      sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
-    }))
+    exercises: day.ex.map(e => {
+      const effectiveName = e.name;
+      const supName = e.superset ? e.superset.name : null;
+      return {
+        name: e.name,
+        subName: null,
+        subMuscle: null,
+        machine: machinesActive ? lastMachineFor(effectiveName) : null,
+        supName,
+        supMachine: machinesActive && supName ? lastMachineFor(supName, true) : null,
+        main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
+        sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
+      };
+    })
   };
 }
 
@@ -2121,7 +2217,9 @@ function reconcileSession(s, dayKey){
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
+      machine: old && old.machine != null ? old.machine : null,
       supName: e.superset ? e.superset.name : null,
+      supMachine: old && old.supMachine != null ? old.supMachine : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
       sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))) : null
     };
@@ -2219,16 +2317,29 @@ function setPct(){
   return total ? Math.round(done / total * 100) : 0;
 }
 
-function prevLoadText(exIdx, isSup, unit){
-  if(!prevSession || !prevSession.exercises || !prevSession.exercises[exIdx]) return "";
-  const sets = isSup ? prevSession.exercises[exIdx].sup : prevSession.exercises[exIdx].main;
-  if(!sets || !sets.length) return "";
-  const weights = sets.map(s => s.weight).filter(w => w!=null && w!=="");
-  if(!weights.length) return "";
-  return `<div class="prev-load">Última: <b>${weights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${prevSession.date})</span></div>`;
+function prevLoadText(name, machine, unit){
+  if(!allSessions || !allSessions.length) return "";
+  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
+  let bestDate = "";
+  let bestWeights = null;
+  for(const sess of allSessions){
+    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
+    if(!sess.exercises || !sess.date) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
+      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      if(!sets || !sets.length) continue;
+      const weights = sets.map(s => s.weight).filter(w => w != null && w !== "");
+      if(!weights.length) continue;
+      if(sess.date > bestDate){ bestDate = sess.date; bestWeights = weights; }
+    }
+  }
+  if(!bestWeights) return "";
+  return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${bestDate})</span></div>`;
 }
 
-function suggestLoads(name, unit){
+function suggestLoads(name, unit, machine){
   if(!allSessions || !allSessions.length) return null;
   const u = unit || "kg";
   const step = UNIT_STEP[u] || 2.5;
@@ -2240,8 +2351,8 @@ function suggestLoads(name, unit){
     if(!sess.exercises) continue;
     for(const entry of sess.exercises){
       let sets = null;
-      if((entry.subName || entry.name) === name) sets = entry.main;
-      else if(entry.supName === name) sets = entry.sup;
+      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
+      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       if(!sets.some(s => typeof s.weight === "number")) continue;
       if(sess.date > bestDate){ bestDate = sess.date; best = sets; }
@@ -2269,16 +2380,18 @@ function suggestLoads(name, unit){
 
 function suggestHTML(name, unit, isSup, exIdx){
   if(!session || !session.exercises[exIdx]) return "";
-  const sets = isSup ? session.exercises[exIdx].sup : session.exercises[exIdx].main;
+  const ex = session.exercises[exIdx];
+  const sets = isSup ? ex.sup : ex.main;
   if(sets && sets.some(s => typeof s.weight === "number")) return "";
-  const result = suggestLoads(name, unit);
+  const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
+  const result = suggestLoads(name, unit, machine);
   if(!result) return "";
   const u = unit || "kg";
   const display = result.loads.map(v => v != null ? v : "—").join(" · ");
   return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
 }
 
-function exerciseTopHistory(name, since=null){
+function exerciseTopHistory(name, since=null, machine){
   if(!allSessions || !allSessions.length) return [];
   const map = new Map();
   for(const sess of allSessions){
@@ -2286,8 +2399,8 @@ function exerciseTopHistory(name, since=null){
     if(since && sess.date < since) continue;
     for(const entry of sess.exercises){
       let sets = null;
-      if((entry.subName || entry.name) === name) sets = entry.main;
-      else if(entry.supName === name) sets = entry.sup;
+      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
+      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
       if(!nums.length) continue;
@@ -2299,8 +2412,8 @@ function exerciseTopHistory(name, since=null){
   return Array.from(map, ([date, top]) => ({date, top})).sort((a, b) => a.date < b.date ? -1 : 1);
 }
 
-function isStalled(name, since=null){
-  const hist = exerciseTopHistory(name, since);
+function isStalled(name, since=null, machine){
+  const hist = exerciseTopHistory(name, since, machine);
   if(hist.length <= STALL_SESSIONS) return false;
   const window = hist.slice(-STALL_SESSIONS);
   const before = hist.slice(0, -STALL_SESSIONS);
@@ -2323,19 +2436,23 @@ function deloadDue(){
   const cycleStart = lastDeloadDate || earliest;
   const weeksSince = Math.floor((Date.parse(today) - Date.parse(cycleStart)) / (7 * 864e5));
 
-  const nameSet = new Set();
+  const entries = [];
+  const seen = new Set();
   const days = activeDays();
   for(const k in days){
     const d = days[k];
     if(!d.ex) continue;
     d.ex.forEach(e => {
-      nameSet.add(e.name);
-      if(e.superset) nameSet.add(e.superset.name);
+      if(!seen.has("m:" + e.name)){ seen.add("m:" + e.name); entries.push({name: e.name, isSup: false}); }
+      if(e.superset && !seen.has("s:" + e.superset.name)){ seen.add("s:" + e.superset.name); entries.push({name: e.superset.name, isSup: true}); }
     });
   }
-  const tracked = nameSet.size;
+  const tracked = entries.length;
   let stalled = 0;
-  nameSet.forEach(n => { if(isStalled(n, cycleStart)) stalled++; });
+  entries.forEach(({name, isSup}) => {
+    const machine = machineFilterActive() ? lastMachineFor(name, isSup) : undefined;
+    if(isStalled(name, cycleStart, machine)) stalled++;
+  });
 
   if(weeksSince >= DELOAD_WEEKS_MAX){
     return { due: true, reason: `${weeksSince} semanas sem descarga` };
@@ -2483,11 +2600,12 @@ function renderDay(){
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}</div>
+        <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
-        ${!isSub?prevLoadText(i,false,e.unit):""}
+        ${!isSub?prevLoadText(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit):""}
         ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
+      <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
       <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
@@ -2497,8 +2615,8 @@ function renderDay(){
     if(e.superset){
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname">${e.superset.name}<button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${prevLoadText(i,true,e.superset.unit)}
+        <div class="sname">${e.superset.name}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}<button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        ${prevLoadText(e.superset.name, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit)}
         ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit);
       html += `</div>`;
@@ -2572,9 +2690,11 @@ function attachHandlers(){
       const ei = +btn.dataset.ex;
       const isSup = btn.dataset.sup === "1";
       const e = activeDays()[current].ex[ei];
-      const name = isSup ? e.superset.name : (session.exercises[ei].subName || e.name);
+      const ex = session.exercises[ei];
+      const name = isSup ? e.superset.name : (ex.subName || e.name);
       const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
-      const result = suggestLoads(name, unit);
+      const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
+      const result = suggestLoads(name, unit, machine);
       if(!result) return;
       const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
       result.loads.forEach((v, si) => {
@@ -2586,6 +2706,10 @@ function attachHandlers(){
 
   $panel.querySelectorAll(".sub-btn").forEach(btn => {
     btn.addEventListener("click", () => openSubModal(+btn.dataset.i));
+  });
+
+  $panel.querySelectorAll(".machine-btn").forEach(btn => {
+    btn.addEventListener("click", () => openMachineModal(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
   document.getElementById("resetBtn").addEventListener("click", () => {
@@ -2602,21 +2726,21 @@ function attachHandlers(){
     const day = activeDays()[current];
     day.ex.forEach((e, ei) => {
       const ex = session.exercises[ei];
-      const applyDeload = (sets, name, unit) => {
+      const applyDeload = (sets, name, unit, machine) => {
         if(!sets) return;
         const u = unit || "kg";
         const step = UNIT_STEP[u] || 2.5;
-        const hist = exerciseTopHistory(name);
+        const hist = exerciseTopHistory(name, null, machine);
         if(!hist.length) return;
         const lastEntry = hist[hist.length - 1];
-        // find the session's per-set weights for this exercise
+        // find the session's per-set weights for this exercise variant
         let refSets = null;
         for(let k = allSessions.length - 1; k >= 0; k--){
           const sess = allSessions[k];
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
-            if((entry.subName || entry.name) === name && entry.main) refSets = entry.main;
-            else if(entry.supName === name && entry.sup) refSets = entry.sup;
+            if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine) && entry.main) refSets = entry.main;
+            else if(entry.supName === name && matchVariant(entry.supMachine, machine) && entry.sup) refSets = entry.sup;
             if(refSets) break;
           }
           if(refSets) break;
@@ -2630,8 +2754,10 @@ function attachHandlers(){
         });
       };
       const mainName = ex.subName || e.name;
-      applyDeload(ex.main, mainName, e.unit);
-      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit);
+      const mainMachine = machineFilterActive() ? ex.machine : undefined;
+      const supMachine = machineFilterActive() ? ex.supMachine : undefined;
+      applyDeload(ex.main, mainName, e.unit, mainMachine);
+      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit, supMachine);
     });
     const today = formatDate(new Date());
     lastDeloadDate = today;
@@ -2756,6 +2882,116 @@ function openSubModal(exIdx){
   });
 
   setTimeout(() => subInp.focus(), 100);
+}
+
+// ========= Machine Modal =========
+const $machineModal = document.getElementById("machineModal");
+const $machineModalInner = document.getElementById("machineModalInner");
+$machineModal.addEventListener("click", e => { if(e.target === $machineModal) closeMachineModal(); });
+
+function closeMachineModal(){ $machineModal.classList.remove("open"); }
+
+function openMachineModal(exIdx, isSup){
+  const ex = session.exercises[exIdx];
+  const day = activeDays()[current];
+  const planEx = day.ex[exIdx];
+  const effectiveName = isSup ? (planEx.superset ? planEx.superset.name : "") : (ex.subName || planEx.name);
+  const currentMachine = isSup ? ex.supMachine : ex.machine;
+
+  // Build chips: user's most-used machines GLOBAL across all sessions, ranked by frequency desc, cap 8
+  const chips = usedMachinesRanked().slice(0, 8);
+
+  let html = `<h3 style="margin:0 0 4px">Máquina (opcional)</h3>`;
+  html += `<p class="sub-desc">Identifica o equipamento usado. Histórico e sugestões ficam separados por máquina.</p>`;
+
+  if(currentMachine){
+    html += `<div class="sub-current">Atual: ${currentMachine}</div>`;
+  }
+
+  if(chips.length){
+    html += `<div class="sub-section-label">Usadas anteriormente</div>`;
+    html += `<div class="sub-chips">`;
+    chips.forEach(m => {
+      html += `<button class="sub-chip machine-chip" data-machine="${m}">${m}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="sub-section-label">Nova máquina</div>`;
+  html += `<div class="sub-input-wrap">`;
+  html += `<input class="modal-input" id="machineInput" placeholder="Ex: Gervasport, Life Fitness…" autocomplete="off" value="${currentMachine||''}">`;
+  html += `<div class="ac-list" id="machineAcList"></div>`;
+  html += `</div>`;
+
+  if(currentMachine){
+    html += `<button class="sub-revert" id="machineRemoveBtn">✕ Remover máquina</button>`;
+  }
+
+  $machineModalInner.innerHTML = html;
+  $machineModal.classList.add("open");
+
+  function applyMachine(val){
+    const v = val ? String(val).trim() : null;
+    if(isSup) ex.supMachine = v || null;
+    else ex.machine = v || null;
+    scheduleSave(); renderDay(); closeMachineModal();
+  }
+
+  // Chip clicks
+  $machineModalInner.querySelectorAll(".machine-chip").forEach(chip => {
+    chip.addEventListener("click", () => applyMachine(chip.dataset.machine));
+  });
+
+  // Remove button
+  const removeBtn = document.getElementById("machineRemoveBtn");
+  if(removeBtn){
+    removeBtn.addEventListener("click", () => applyMachine(null));
+  }
+
+  // Autocomplete: union of user machines + seed catalog, deduped via normMachine
+  const machInp = document.getElementById("machineInput");
+  const acSource = (() => {
+    const out = [], seenK = new Set();
+    const push = disp => { const k = normMachine(disp); if(k && !seenK.has(k)){ seenK.add(k); out.push(disp); } };
+    usedMachinesRanked().forEach(push);
+    MACHINE_CATALOG.forEach(push);
+    return out;
+  })();
+  const machList = document.getElementById("machineAcList");
+  let machActiveIdx = -1;
+  function machFilter(q){
+    if(!q){ machList.classList.remove("open"); return; }
+    const nq = stripDiacritics(q.toLowerCase());
+    const prefix = [], sub = [];
+    acSource.forEach(m => {
+      const nm = stripDiacritics(m.toLowerCase());
+      if(nm.startsWith(nq)) prefix.push(m); else if(nm.includes(nq)) sub.push(m);
+    });
+    const results = prefix.concat(sub).slice(0, 8);
+    if(!results.length){ machList.classList.remove("open"); return; }
+    machActiveIdx = -1;
+    machList.innerHTML = results.map((m,i) => `<div class="ac-item" data-i="${i}" data-machine="${m}">${m}</div>`).join("");
+    machList.classList.add("open");
+    machList.querySelectorAll(".ac-item").forEach(el => {
+      el.addEventListener("mousedown", ev => { ev.preventDefault(); applyMachine(el.dataset.machine); });
+    });
+  }
+  machInp.addEventListener("input", () => machFilter(machInp.value.trim()));
+  machInp.addEventListener("focus", () => machFilter(machInp.value.trim()));
+  machInp.addEventListener("blur", () => setTimeout(() => machList.classList.remove("open"), 150));
+  machInp.addEventListener("keydown", e => {
+    const items = machList.querySelectorAll(".ac-item");
+    const open = machList.classList.contains("open") && items.length;
+    if(e.key === "ArrowDown" && open){ e.preventDefault(); machActiveIdx = Math.min(machActiveIdx+1, items.length-1); }
+    else if(e.key === "ArrowUp" && open){ e.preventDefault(); machActiveIdx = Math.max(machActiveIdx-1, 0); }
+    else if(e.key === "Enter" && open && machActiveIdx >= 0){ e.preventDefault(); applyMachine(items[machActiveIdx].dataset.machine); return; }
+    else if(e.key === "Enter"){ e.preventDefault(); applyMachine(machInp.value); return; }
+    else if(e.key === "Escape"){ machList.classList.remove("open"); return; }
+    else return;
+    items.forEach((el,j) => el.classList.toggle("active", j === machActiveIdx));
+  });
+
+  setTimeout(() => machInp.focus(), 100);
 }
 
 function renderStrip(){
@@ -2887,6 +3123,7 @@ function initEvolucao(){
   evoInitialized = true;
   rebuildEvoDropdown();
   $evoSelect.addEventListener("change", renderEvolucao);
+  $evoMachineSelect.addEventListener("change", renderEvolucao);
   renderEvolucao();
 }
 
@@ -2917,55 +3154,180 @@ async function renderEvolucao(){
   }
   const sel = EXERCISES[+$evoSelect.value || 0];
   const evoUnit = sel.unit || "kg";
-  const byDate = new Map();
+  const featureActive = machineFilterActive();
+
+  // Collect matched sets bucketed by machine variant
+  // Each bucket key: normMachine(machine) ?? "__none"
+  const byVariant = new Map(); // key -> Map<date, sets[]>
   (allSessions || []).forEach(s => {
     if(!s.exercises) return;
-    let matched = [];
     s.exercises.forEach(entry => {
       const effectiveName = entry.subName || entry.name;
-      if(effectiveName === sel.name && entry.main) matched.push(...entry.main);
-      if(entry.supName === sel.name && entry.sup) matched.push(...entry.sup);
+      let sets = [];
+      let machine = null;
+      if(effectiveName === sel.name && entry.main){
+        sets.push(...entry.main);
+        machine = entry.machine || null;
+      }
+      if(entry.supName === sel.name && entry.sup){
+        sets.push(...entry.sup);
+        machine = entry.supMachine || null;
+      }
+      if(!sets.length) return;
+      const vKey = featureActive ? (normMachine(machine) ?? "__none") : "__none";
+      if(!byVariant.has(vKey)) byVariant.set(vKey, { displayName: machine ? String(machine).trim() : null, byDate: new Map() });
+      const bucket = byVariant.get(vKey);
+      // Keep the first non-null display name encountered for this normalized key
+      if(machine && !bucket.displayName) bucket.displayName = String(machine).trim();
+      const prev = bucket.byDate.get(s.date);
+      if(prev) prev.push(...sets); else bucket.byDate.set(s.date, [...sets]);
     });
-    if(!matched.length) return;
-    const prev = byDate.get(s.date);
-    if(prev) prev.push(...matched); else byDate.set(s.date, [...matched]);
   });
-  const points = [];
-  [...byDate.entries()]
-    .sort((a,b) => a[0].localeCompare(b[0]))
-    .forEach(([date, sets]) => {
-      const m = loadMetrics(sets);
-      if(m) points.push({ date, max: m.max, avg: m.avg });
-    });
 
-  if(!points.length){
-    $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
-    if(evoChart){ evoChart.destroy(); evoChart = null; }
-    return;
+  // Build machine select dropdown
+  const variantKeys = [...byVariant.keys()];
+  const showMachineSelect = featureActive && variantKeys.length > 1;
+  if(showMachineSelect){
+    const prevMachineVal = $evoMachineSelect.dataset.prevNorm || "";
+    let mhtml = `<option value="__all">Todas as máquinas</option>`;
+    variantKeys.sort((a,b) => {
+      if(a === "__none") return 1;
+      if(b === "__none") return -1;
+      return a.localeCompare(b, "pt-BR");
+    }).forEach(vk => {
+      const label = vk === "__none" ? "Geral (sem máquina)" : byVariant.get(vk).displayName;
+      mhtml += `<option value="${vk}">${label}</option>`;
+    });
+    $evoMachineSelect.innerHTML = mhtml;
+    // Restore previous selection if still valid
+    const opts = [...$evoMachineSelect.options].map(o => o.value);
+    if(prevMachineVal && opts.includes(prevMachineVal)){
+      $evoMachineSelect.value = prevMachineVal;
+    } else {
+      $evoMachineSelect.value = "__all";
+    }
+    $evoMachineSelect.dataset.prevNorm = $evoMachineSelect.value;
+    $evoMachineSelect.style.display = "";
+  } else if(featureActive && variantKeys.length === 1 && variantKeys[0] !== "__none"){
+    // Single tagged variant — show select but with only that option (no "all")
+    const vk = variantKeys[0];
+    const label = byVariant.get(vk).displayName;
+    $evoMachineSelect.innerHTML = `<option value="${vk}">${label}</option>`;
+    $evoMachineSelect.value = vk;
+    $evoMachineSelect.dataset.prevNorm = vk;
+    $evoMachineSelect.style.display = "";
+  } else {
+    $evoMachineSelect.style.display = "none";
+    $evoMachineSelect.dataset.prevNorm = "";
   }
 
-  const lastMax = points[points.length-1].max;
-  const firstMax = points[0].max;
-  const delta = lastMax - firstMax;
-  const deltaTxt = points.length < 2
-    ? "—"
-    : (delta>0?"+":"") + (Math.round(delta*10)/10) + " " + UNIT_ABBR[evoUnit];
+  const selectedVariant = showMachineSelect ? $evoMachineSelect.value : (variantKeys[0] || "__none");
+  const isAllView = selectedVariant === "__all";
 
-  $evoBody.innerHTML = `
-    <div class="evo-stats">
-      <div class="evo-stat"><div class="val">${lastMax}</div><div class="lbl">Carga máx. atual</div></div>
-      <div class="evo-stat"><div class="val">${deltaTxt}</div><div class="lbl">Variação total</div></div>
-      <div class="evo-stat"><div class="val">${points.length}</div><div class="lbl">Sessões</div></div>
-    </div>
-    <div class="evo-chart-card">
-      <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
-      <div class="evo-legend">
-        <span class="item"><span class="swatch" style="background:var(--accent)"></span>Carga máxima</span>
-        <span class="item"><span class="swatch" style="background:var(--muted)"></span>Carga média</span>
+  // -- Color palette for multi-variant view --
+  const VARIANT_COLORS = ["#FF5A1F","#3B82F6","#10B981","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#EF4444"];
+
+  if(isAllView){
+    // Multi-variant: one max line per variant
+    const allDates = new Set();
+    const variantData = []; // [{key, label, points:[{date, max}]}]
+    variantKeys.sort((a,b) => {
+      if(a === "__none") return 1;
+      if(b === "__none") return -1;
+      return a.localeCompare(b, "pt-BR");
+    }).forEach(vk => {
+      const bucket = byVariant.get(vk);
+      const pts = [];
+      [...bucket.byDate.entries()]
+        .sort((a,b) => a[0].localeCompare(b[0]))
+        .forEach(([date, sets]) => {
+          const m = loadMetrics(sets);
+          if(m){ pts.push({ date, max: m.max }); allDates.add(date); }
+        });
+      if(pts.length){
+        variantData.push({ key: vk, label: vk === "__none" ? "Geral" : bucket.displayName, points: pts });
+      }
+    });
+
+    if(!variantData.length){
+      $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
+      if(evoChart){ evoChart.destroy(); evoChart = null; }
+      return;
+    }
+
+    // Stats for __all: last trained variant's max, sessions = distinct dates
+    const totalSessions = allDates.size;
+    // Find most recently trained variant
+    let latestDate = "";
+    let latestVariant = variantData[0];
+    variantData.forEach(vd => {
+      const last = vd.points[vd.points.length - 1].date;
+      if(last > latestDate){ latestDate = last; latestVariant = vd; }
+    });
+    const latestMax = latestVariant.points[latestVariant.points.length - 1].max;
+
+    $evoBody.innerHTML = `
+      <div class="evo-stats">
+        <div class="evo-stat"><div class="val">${latestMax}</div><div class="lbl">Carga máx. atual</div><div class="sub">${latestVariant.label}</div></div>
+        <div class="evo-stat"><div class="val">—</div><div class="lbl">Variação total</div></div>
+        <div class="evo-stat"><div class="val">${totalSessions}</div><div class="lbl">Sessões</div></div>
       </div>
-    </div>`;
+      <div class="evo-chart-card">
+        <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
+        <div class="evo-legend">
+          ${variantData.map((vd, i) => `<span class="item"><span class="swatch" style="background:${VARIANT_COLORS[i % VARIANT_COLORS.length]}"></span>${vd.label}</span>`).join("")}
+        </div>
+      </div>`;
 
-  drawChart(points, evoUnit);
+    const datasets = variantData.map((vd, i) => ({
+      label: vd.label,
+      points: vd.points,
+      color: VARIANT_COLORS[i % VARIANT_COLORS.length]
+    }));
+    drawChart(datasets, evoUnit, true);
+
+  } else {
+    // Single-variant view (or feature inactive): legacy behavior
+    const bucket = byVariant.get(selectedVariant);
+    const points = [];
+    if(bucket){
+      [...bucket.byDate.entries()]
+        .sort((a,b) => a[0].localeCompare(b[0]))
+        .forEach(([date, sets]) => {
+          const m = loadMetrics(sets);
+          if(m) points.push({ date, max: m.max, avg: m.avg });
+        });
+    }
+
+    if(!points.length){
+      $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
+      if(evoChart){ evoChart.destroy(); evoChart = null; }
+      return;
+    }
+
+    const lastMax = points[points.length-1].max;
+    const firstMax = points[0].max;
+    const delta = lastMax - firstMax;
+    const deltaTxt = points.length < 2
+      ? "—"
+      : (delta>0?"+":"") + (Math.round(delta*10)/10) + " " + UNIT_ABBR[evoUnit];
+
+    $evoBody.innerHTML = `
+      <div class="evo-stats">
+        <div class="evo-stat"><div class="val">${lastMax}</div><div class="lbl">Carga máx. atual</div></div>
+        <div class="evo-stat"><div class="val">${deltaTxt}</div><div class="lbl">Variação total</div></div>
+        <div class="evo-stat"><div class="val">${points.length}</div><div class="lbl">Sessões</div></div>
+      </div>
+      <div class="evo-chart-card">
+        <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
+        <div class="evo-legend">
+          <span class="item"><span class="swatch" style="background:var(--accent)"></span>Carga máxima</span>
+          <span class="item"><span class="swatch" style="background:var(--muted)"></span>Carga média</span>
+        </div>
+      </div>`;
+
+    drawChart(points, evoUnit, false);
+  }
 }
 
 function fmtDateBR(iso){
@@ -2973,7 +3335,7 @@ function fmtDateBR(iso){
   return `${d}/${m}`;
 }
 
-function drawChart(points, unit){
+function drawChart(data, unit, multi){
   const uLabel = UNIT_ABBR[unit || "kg"];
   if(evoChart){ evoChart.destroy(); evoChart = null; }
   const ctx = document.getElementById("evoCanvas");
@@ -2983,34 +3345,61 @@ function drawChart(points, unit){
   const border = css.getPropertyValue("--border").trim() || "#2A2E37";
   const faint  = css.getPropertyValue("--faint").trim() || "#5A5F69";
 
+  let labels, datasets;
+
+  if(multi){
+    // data = [{label, points:[{date,max}], color}]
+    // Build a unified date axis from all variants
+    const dateSet = new Set();
+    data.forEach(ds => ds.points.forEach(p => dateSet.add(p.date)));
+    const allDates = [...dateSet].sort();
+    labels = allDates.map(d => fmtDateBR(d));
+
+    datasets = data.map(ds => {
+      const dateMap = new Map(ds.points.map(p => [p.date, p.max]));
+      return {
+        label: ds.label,
+        data: allDates.map(d => dateMap.has(d) ? dateMap.get(d) : null),
+        borderColor: ds.color,
+        backgroundColor: ds.color,
+        borderWidth: 2.5,
+        tension: .3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: false,
+      };
+    });
+  } else {
+    // data = [{date, max, avg}] — legacy single-variant
+    labels = data.map(p => fmtDateBR(p.date));
+    datasets = [
+      {
+        label: "Carga máxima",
+        data: data.map(p => p.max),
+        borderColor: accent,
+        backgroundColor: accent,
+        borderWidth: 2.5,
+        tension: .3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+      {
+        label: "Carga média",
+        data: data.map(p => p.avg),
+        borderColor: muted,
+        backgroundColor: muted,
+        borderWidth: 2,
+        borderDash: [5,4],
+        tension: .3,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      }
+    ];
+  }
+
   evoChart = new Chart(ctx, {
     type: "line",
-    data: {
-      labels: points.map(p => fmtDateBR(p.date)),
-      datasets: [
-        {
-          label: "Carga máxima",
-          data: points.map(p => p.max),
-          borderColor: accent,
-          backgroundColor: accent,
-          borderWidth: 2.5,
-          tension: .3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-        },
-        {
-          label: "Carga média",
-          data: points.map(p => p.avg),
-          borderColor: muted,
-          backgroundColor: muted,
-          borderWidth: 2,
-          borderDash: [5,4],
-          tension: .3,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-        }
-      ]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -3024,7 +3413,7 @@ function drawChart(points, unit){
           borderColor: border,
           borderWidth: 1,
           padding: 10,
-          callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} ${uLabel}` }
+          callbacks: { label: c => c.parsed.y != null ? `${c.dataset.label}: ${c.parsed.y} ${uLabel}` : null }
         }
       },
       scales: {
