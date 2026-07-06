@@ -1721,7 +1721,7 @@ let periodizationEnabled = true;
 let machinesEnabled = true;
 let profileEnabled = true;
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
-let profile = { age:null, sex:null, bodyweight:null, experience:null, injuries:{} };
+let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
 
 // exercise list filters
@@ -1913,9 +1913,12 @@ function openProfileModal(){
   let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 6px">Perfil de treino</h3>`;
   html += `<p style="font-size:12px;color:var(--muted);margin:0 0 18px;line-height:1.4">Opcional. Melhora a precisão das sugestões de carga. Deixe em branco o que não quiser informar.</p>`;
 
-  // Idade
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Idade</label>`;
-  html += `<input id="profAge" type="text" inputmode="numeric" placeholder="—" value="${profile.age != null ? profile.age : ""}" style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+  // Data de nascimento
+  const todayISO = new Date().toISOString().slice(0,10);
+  const ageHint = profileAge();
+  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Data de nascimento</label>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
+  html += `<span id="profAgeHint" style="font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
 
   // Sexo
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
@@ -1953,12 +1956,18 @@ function openProfileModal(){
   $profileModal.classList.add("open");
 
   // — Bind listeners —
-  // Age
-  document.getElementById("profAge").addEventListener("input", e => {
-    const v = e.target.value.replace(/[^0-9]/g,"");
-    e.target.value = v;
-    const n = parseInt(v, 10);
-    profile.age = (n >= 10 && n <= 99) ? n : null;
+  // Birth date
+  document.getElementById("profBirth").addEventListener("change", e => {
+    const v = e.target.value;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+      const yr = parseInt(v.slice(0,4),10);
+      if(yr >= 1920 && v <= new Date().toISOString().slice(0,10)){
+        profile.birthDate = v;
+      } else { profile.birthDate = null; }
+    } else { profile.birthDate = null; }
+    const hint = document.getElementById("profAgeHint");
+    const a = profileAge();
+    if(hint) hint.textContent = a != null ? "("+a+" anos)" : "";
     scheduleProfileSave();
   });
 
@@ -2286,7 +2295,7 @@ async function loadPref(){
     const pSnap = await getDoc(pRef);
     if(pSnap.exists()){
       const p = pSnap.data();
-      if(typeof p.age === "number" && p.age >= 10 && p.age <= 99) profile.age = p.age; else profile.age = null;
+      profile.birthDate = (typeof p.birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.birthDate)) ? p.birthDate : null;
       if(p.sex === "m" || p.sex === "f") profile.sex = p.sex; else profile.sex = null;
       if(typeof p.bodyweight === "number" && p.bodyweight > 0) profile.bodyweight = p.bodyweight; else profile.bodyweight = null;
       if(p.experience === "beg" || p.experience === "int" || p.experience === "adv") profile.experience = p.experience; else profile.experience = null;
@@ -2539,6 +2548,15 @@ function prevLoadText(name, machine, unit){
 }
 
 const profileActive = () => document.body.classList.contains("flag-profile");
+function profileAge(){
+  if(!profile.birthDate) return null;
+  const [y,m,d] = profile.birthDate.split("-").map(Number);
+  if(!y || !m || !d) return null;
+  const t = new Date();
+  let a = t.getFullYear() - y;
+  if((t.getMonth()+1) < m || ((t.getMonth()+1) === m && t.getDate() < d)) a--;
+  return (a >= 10 && a <= 99) ? a : null;
+}
 
 // B1 — Equipment-aware increments (kg)
 const DUMBBELL_LADDER = [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
@@ -2713,7 +2731,8 @@ function deloadDue(){
     if(isStalled(name, cycleStart, machine)) stalled++;
   });
 
-  const weeksMax = (profileActive() && profile.age) ? (profile.age>=55 ? 3 : profile.age>=40 ? 4 : DELOAD_WEEKS_MAX) : DELOAD_WEEKS_MAX;
+  const uAge = profileAge();
+  const weeksMax = (profileActive() && uAge) ? (uAge>=55 ? 3 : uAge>=40 ? 4 : DELOAD_WEEKS_MAX) : DELOAD_WEEKS_MAX;
   if(weeksSince >= weeksMax){
     return { due: true, reason: `${weeksSince} semanas sem descarga` };
   }
