@@ -175,6 +175,10 @@
   .flag-periodization .suggest{display:block}
   .compact .suggest{display:none !important}
   .suggest b{color:var(--muted);font-weight:600}
+  .set-hint{display:none;font-family:var(--body);font-size:11px;color:var(--faint);text-align:right;margin:-3px 0 1px;letter-spacing:.02em}
+  .set-hint b{color:var(--muted);font-weight:600}
+  .flag-autoreg .set-hint{display:block}
+  .compact .set-hint{display:none !important}
   .suggest-apply{
     display:inline-flex;align-items:center;background:var(--accent-soft);color:var(--accent);
     border:1px solid var(--accent);border-radius:6px;padding:4px 10px;margin-left:6px;
@@ -502,6 +506,28 @@
   #settingsProfileRow{display:none}
   .flag-profile-available #settingsProfileRow{display:flex}
   #profileToggle button{padding:4px 10px;font-size:11px}
+  #settingsAutoregRow{display:none}
+  .flag-autoreg-available #settingsAutoregRow{display:flex}
+  #autoregToggle button{padding:4px 10px;font-size:11px}
+  #settingsAutoregSensRow{display:none}
+  .flag-autoreg #settingsAutoregSensRow{display:flex}
+  #autoregSensToggle button{padding:4px 9px;font-size:10px}
+  .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
+  .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
+  #settingsModal .mode-toggle{flex-shrink:0}
+  #settingsPanels{display:grid}
+  #settingsPanels > [data-settingspanel]{grid-area:1/1;visibility:hidden;pointer-events:none}
+  #settingsPanels > [data-settingspanel].active{visibility:visible;pointer-events:auto}
+  #settingsPanels *{transition:none}
+  @media(max-width:600px){
+    #settingsPeriodizationRow, #settingsMachinesRow, #settingsProfileRow,
+    #settingsAutoregRow, #settingsAutoregSensRow{
+      flex-direction:column;
+      align-items:stretch !important;
+      justify-content:flex-start !important;
+      gap:8px !important;
+    }
+  }
   #settingsProfileEditRow{display:none}
   .flag-profile #settingsProfileEditRow{display:flex}
   #profileModalInner{max-height:85vh;overflow-y:auto}
@@ -1153,26 +1179,66 @@
     <div class="modal" id="settingsModalInner">
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
+      <div class="sub-tabs" id="settingsSubTabs" role="tablist">
+        <button class="active" data-settingstab="treino" role="tab">Treino</button>
+        <button data-settingstab="sugestoes" role="tab">Sugestões</button>
+      </div>
+      <div id="settingsPanels">
+      <div data-settingspanel="treino" class="active">
       <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Periodização</span>
+        <div class="setting-text">
+          <span class="period-label">Periodização</span>
+          <span class="setting-desc">Ativa metas de reps, registro de feitas e sugestões de carga.</span>
+        </div>
         <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
           <button type="button" data-period="on">Ligada</button>
           <button type="button" data-period="off">Desligada</button>
         </div>
       </div>
       <div id="settingsMachinesRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Máquinas por exercício</span>
+        <div class="setting-text">
+          <span class="period-label">Máquinas por exercício</span>
+          <span class="setting-desc">Separa histórico e sugestões por equipamento usado.</span>
+        </div>
         <div class="mode-toggle" id="machinesToggle" role="group" aria-label="Máquinas">
           <button type="button" data-mach="on">Ligada</button>
           <button type="button" data-mach="off">Desligada</button>
         </div>
       </div>
       <div id="settingsProfileRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Perfil de treino</span>
+        <div class="setting-text">
+          <span class="period-label">Perfil de treino</span>
+          <span class="setting-desc">Usa sua experiência e restrições para calibrar as sugestões.</span>
+        </div>
         <div class="mode-toggle" id="profileToggle" role="group" aria-label="Perfil">
           <button type="button" data-prof="on">Ligada</button>
           <button type="button" data-prof="off">Desligada</button>
         </div>
+      </div>
+      </div>
+      <div data-settingspanel="sugestoes">
+      <div id="settingsAutoregRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Sugestão automática de carga</span>
+          <span class="setting-desc">Ajusta a carga em tempo real conforme você registra as séries.</span>
+        </div>
+        <div class="mode-toggle" id="autoregToggle" role="group" aria-label="Sugestão automática de carga">
+          <button type="button" data-autoreg="on">Ligada</button>
+          <button type="button" data-autoreg="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsAutoregSensRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Sensibilidade</span>
+          <span class="setting-desc" id="autoregSensDesc"></span>
+        </div>
+        <div class="mode-toggle" id="autoregSensToggle" role="group" aria-label="Sensibilidade da sugestão">
+          <button type="button" data-sens="suave">Suave</button>
+          <button type="button" data-sens="mod">Padrão</button>
+          <button type="button" data-sens="agr">Agressivo</button>
+        </div>
+      </div>
+      </div>
       </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-weight:600;font-size:13px">Editar perfil</span>
@@ -1326,10 +1392,17 @@ function applyProfileState(){
   document.body.classList.toggle("flag-profile-available", available);
   document.body.classList.toggle("flag-profile", active);
 }
+function applyAutoregState(){
+  const available = isFeatureEnabled("autoreg");
+  const active = available && autoregEnabled;
+  document.body.classList.toggle("flag-autoreg-available", available);
+  document.body.classList.toggle("flag-autoreg", active);
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
+  applyAutoregState();
 });
 
 // ========= Catálogo do treino =========
@@ -1720,6 +1793,8 @@ let lastDeloadDate = null;
 let periodizationEnabled = true;
 let machinesEnabled = true;
 let profileEnabled = true;
+let autoregEnabled = true;
+let autoregSensitivity = "mod"; // 'suave' | 'mod' | 'agr'
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
 let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
@@ -1858,10 +1933,28 @@ function syncProfileToggle(){
   $on.classList.toggle("active", profileEnabled);
   $off.classList.toggle("active", !profileEnabled);
 }
+function syncAutoregToggle(){
+  const $on = document.querySelector('#autoregToggle [data-autoreg="on"]');
+  const $off = document.querySelector('#autoregToggle [data-autoreg="off"]');
+  $on.classList.toggle("active", autoregEnabled);
+  $off.classList.toggle("active", !autoregEnabled);
+}
+function syncAutoregSensToggle(){
+  document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
+    b.classList.toggle("active", b.dataset.sens === autoregSensitivity));
+  const desc = document.getElementById("autoregSensDesc");
+  if(desc) desc.textContent = ({
+    suave: "Só sugere mudança em desvios grandes; prioriza estabilidade.",
+    mod:   "Equilíbrio entre reagir ao desempenho e respeitar a fadiga.",
+    agr:   "Sobe a carga assim que você supera a meta, mesmo cansado.",
+  })[autoregSensitivity] || "";
+}
 function openSettings(){
   syncPeriodToggle();
   syncMachinesToggle();
   syncProfileToggle();
+  syncAutoregToggle();
+  syncAutoregSensToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -1893,6 +1986,31 @@ document.getElementById("profileToggle").addEventListener("click", e => {
   syncProfileToggle();
   savePref();
   applyProfileState();
+});
+document.getElementById("autoregToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-autoreg]");
+  if(!btn) return;
+  autoregEnabled = btn.dataset.autoreg === "on";
+  syncAutoregToggle();
+  savePref();
+  applyAutoregState();
+  if($viewTreino.style.display !== "none") renderDay();
+});
+document.getElementById("autoregSensToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-sens]");
+  if(!btn) return;
+  autoregSensitivity = btn.dataset.sens;
+  syncAutoregSensToggle();
+  savePref();
+  if($viewTreino.style.display !== "none") renderDay();
+});
+document.getElementById("settingsSubTabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-settingstab]"); if(!b) return;
+  const tab = b.dataset.settingstab;
+  document.querySelectorAll("#settingsSubTabs [data-settingstab]").forEach(x =>
+    x.classList.toggle("active", x.dataset.settingstab === tab));
+  document.querySelectorAll('#settingsModalInner [data-settingspanel]').forEach(p =>
+    p.classList.toggle("active", p.dataset.settingspanel === tab));
 });
 document.getElementById("settingsProfileEditRow").addEventListener("click", () => {
   closeSettings();
@@ -2287,6 +2405,8 @@ async function loadPref(){
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
       if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
       if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
+      if(typeof d.autoregEnabled === "boolean") autoregEnabled = d.autoregEnabled;
+      if(["suave","mod","agr"].includes(d.autoregSensitivity)) autoregSensitivity = d.autoregSensitivity;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // load profile doc
@@ -2310,6 +2430,7 @@ async function loadPref(){
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
+  applyAutoregState();
 }
 async function savePref(){
   if(!user) return;
@@ -2323,6 +2444,8 @@ async function savePref(){
       periodizationEnabled,
       machinesEnabled,
       profileEnabled,
+      autoregEnabled,
+      autoregSensitivity,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2580,6 +2703,46 @@ function nextKgUp(equip, w, mult){
   return snapKg(equip, w + step*mult);
 }
 
+// --- Auto-regulation sensitivity presets (tunable) ---
+const AUTOREG_PRESETS = {
+  suave: { tol: 2, fatigue: 0.04,  ceilUp: false },
+  mod:   { tol: 1, fatigue: 0.025, ceilUp: false },
+  agr:   { tol: 1, fatigue: 0.01,  ceilUp: true  },
+};
+function autoregCfg(){ return AUTOREG_PRESETS[autoregSensitivity] || AUTOREG_PRESETS.mod; }
+
+// Snap a load to a real equipment increment. up=true rounds UP to the next rung.
+function snapLoad(equip, u, step, value, up){
+  if(u === "kg"){
+    if(equip === "halter"){
+      if(value > 40) return up ? Math.ceil(value/2)*2 : Math.round(value/2)*2;
+      if(up) return DUMBBELL_LADDER.find(x => x >= value) ?? 40;
+      let best = DUMBBELL_LADDER[0];
+      for(const v of DUMBBELL_LADDER) if(Math.abs(v-value) < Math.abs(best-value)) best = v;
+      return best;
+    }
+    const kstep = equip === "barra" ? 2 : 2.5;
+    const r = up ? Math.ceil(value/kstep)*kstep : Math.round(value/kstep)*kstep;
+    return equip === "barra" ? Math.max(2, r) : r;
+  }
+  const r = up ? Math.ceil(value/step)*step : Math.round(value/step)*step;
+  return u === "placas" ? Math.max(1, Math.round(r)) : r;
+}
+
+function projectLoad(w, repsDone, target, equip, u, step, fatigueSteps){
+  if(typeof w !== "number") return null;
+  if(repsDone == null || typeof target !== "number") return w;
+  const cfg = autoregCfg();
+  if(Math.abs(repsDone - target) <= cfg.tol) return w;        // inside band -> hold
+  const base = w * (30 + repsDone) / (30 + target);           // pre-fatigue rep-equivalent load
+  let ideal = fatigueSteps ? base * Math.pow(1 - cfg.fatigue, fatigueSteps) : base;
+  // Guard: when rep math warrants an increase (base >= w), fatigue may only dampen it
+  // toward w — never below w, never flipping an increase into a decrease.
+  if(base >= w && ideal < w) ideal = w;
+  const up = ideal > w;
+  return snapLoad(equip, u, step, ideal, cfg.ceilUp && up);
+}
+
 function suggestLoads(name, unit, machine, opts){
   if(!allSessions || !allSessions.length) return null;
   const u = unit || "kg";
@@ -2608,48 +2771,34 @@ function suggestLoads(name, unit, machine, opts){
     return { loads: suggestions, dir: "→", date: bestDate, limited: true };
   }
 
-  // B2 — Experience matrix: resolve type and mult
   const equip = equipmentOf(name);
-  const type = exTypeOf(name);
   const exp = profileActive() && profile.experience ? profile.experience : null;
-  const mult = (exp === "beg" && type === "comp") ? 2 : 1;
 
-  // B2 — adv gate: check if ALL numeric-weight sets hit target
+  // adv gate: freeze the whole exercise if any numeric-weight set missed target
   let advGateKeep = false;
   if(exp === "adv"){
     let allHit = true;
     for(const s of best){
       if(typeof s.weight !== "number") continue;
-      const target = s.reps;
       const didReps = s.repsDone ?? (s.done ? s.reps : null);
-      if(didReps == null || didReps < target){ allHit = false; break; }
+      if(didReps == null || didReps < s.reps){ allHit = false; break; }
     }
     if(!allHit) advGateKeep = true;
   }
 
-  let anyUp = false;
+  let hasUp = false, hasDown = false;
   const suggestions = best.map(s => {
     const w = s.weight;
     if(typeof w !== "number") return null;
     if(advGateKeep) return w;
-    const target = s.reps;
     const didReps = s.repsDone ?? (s.done ? s.reps : null);
-    let suggested;
-    if(didReps != null && didReps >= target){
-      if(u === "kg"){
-        suggested = nextKgUp(equip, w, mult);
-      } else {
-        suggested = w + step * mult;
-      }
-      anyUp = true;
-    } else {
-      suggested = w;
-    }
-    if(u === "kg") return suggested;
-    const rounded = Math.round(suggested / step) * step;
-    return u === "placas" ? Math.max(1, Math.round(rounded)) : rounded;
+    const out = projectLoad(w, didReps, s.reps, equip, u, step, 0); // 0 = fresh next session, no fatigue
+    if(out != null && out > w) hasUp = true;
+    if(out != null && out < w) hasDown = true;
+    return out;
   });
-  return { loads: suggestions, dir: anyUp ? "↑" : "→", date: bestDate };
+  const dir = (hasUp && hasDown) ? "↕" : hasUp ? "↑" : hasDown ? "↓" : "→";
+  return { loads: suggestions, dir, date: bestDate };
 }
 
 function suggestHTML(name, unit, isSup, exIdx){
@@ -2742,8 +2891,11 @@ function deloadDue(){
   return { due: false };
 }
 
-function seriesHTML(sets, exIdx, isSup, unit){
+function seriesHTML(sets, exIdx, isSup, unit, name){
   const u = unit || "kg";
+  const step = UNIT_STEP[u] || 2.5;
+  const equip = name ? equipmentOf(name) : null;
+  const autoreg = document.body.classList.contains("flag-autoreg");
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
@@ -2761,6 +2913,21 @@ function seriesHTML(sets, exIdx, isSup, unit){
         <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
     </div>`;
+    // in-session hint: only for still-empty upcoming sets, derived from the most
+    // recent COMPLETED set above (weight + repsDone), fatigue-discounted by distance.
+    if(autoreg && (s.weight == null || s.weight === "")){
+      let src = null, gap = 0;
+      for(let j = si - 1; j >= 0; j--){
+        if(typeof sets[j].weight === "number" && sets[j].repsDone != null){ src = sets[j]; gap = si - j; break; }
+      }
+      if(src){
+        const v = projectLoad(src.weight, src.repsDone, s.reps, equip, u, step, gap);
+        if(v != null && v !== src.weight){
+          const arrow = v > src.weight ? "↑" : "↓";
+          html += `<div class="set-hint">sugerido <b>${v}</b> ${UNIT_ABBR[u]} ${arrow}</div>`;
+        }
+      }
+    }
   });
   html += `</div>`;
   return html;
@@ -2888,7 +3055,7 @@ function renderDay(){
       <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
-    html += seriesHTML(ex.main, i, false, e.unit);
+    html += seriesHTML(ex.main, i, false, e.unit, effectiveName);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
@@ -2897,7 +3064,7 @@ function renderDay(){
         <div class="sname">${e.superset.name}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}<button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
         ${prevLoadText(e.superset.name, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit)}
         ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit);
+      html += seriesHTML(ex.sup, i, true, e.superset.unit, e.superset.name);
       html += `</div>`;
     }
     html += `</article>`;
@@ -2928,6 +3095,7 @@ function attachHandlers(){
         inp.parentElement.classList.toggle("filled", v !== "");
         scheduleSave();
       });
+      inp.addEventListener("change", () => { renderDay(); });
     });
     row.querySelectorAll(".reps-input").forEach(inp => {
       inp.addEventListener("input", () => {
