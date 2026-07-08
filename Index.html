@@ -512,6 +512,18 @@
   #settingsAutoregSensRow{display:none}
   .flag-autoreg #settingsAutoregSensRow{display:flex}
   #autoregSensToggle button{padding:4px 9px;font-size:10px}
+  .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
+  .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
+  #settingsModal .mode-toggle{flex-shrink:0}
+  @media(max-width:600px){
+    #settingsPeriodizationRow, #settingsMachinesRow, #settingsProfileRow,
+    #settingsAutoregRow, #settingsAutoregSensRow{
+      flex-direction:column;
+      align-items:stretch !important;
+      justify-content:flex-start !important;
+      gap:8px !important;
+    }
+  }
   #settingsProfileEditRow{display:none}
   .flag-profile #settingsProfileEditRow{display:flex}
   #profileModalInner{max-height:85vh;overflow-y:auto}
@@ -1164,35 +1176,50 @@
       <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
       <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
       <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Periodização</span>
+        <div class="setting-text">
+          <span class="period-label">Periodização</span>
+          <span class="setting-desc">Ativa metas de reps, registro de feitas e sugestões de carga.</span>
+        </div>
         <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
           <button type="button" data-period="on">Ligada</button>
           <button type="button" data-period="off">Desligada</button>
         </div>
       </div>
       <div id="settingsMachinesRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Máquinas por exercício</span>
+        <div class="setting-text">
+          <span class="period-label">Máquinas por exercício</span>
+          <span class="setting-desc">Separa histórico e sugestões por equipamento usado.</span>
+        </div>
         <div class="mode-toggle" id="machinesToggle" role="group" aria-label="Máquinas">
           <button type="button" data-mach="on">Ligada</button>
           <button type="button" data-mach="off">Desligada</button>
         </div>
       </div>
       <div id="settingsProfileRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Perfil de treino</span>
+        <div class="setting-text">
+          <span class="period-label">Perfil de treino</span>
+          <span class="setting-desc">Usa sua experiência e restrições para calibrar as sugestões.</span>
+        </div>
         <div class="mode-toggle" id="profileToggle" role="group" aria-label="Perfil">
           <button type="button" data-prof="on">Ligada</button>
           <button type="button" data-prof="off">Desligada</button>
         </div>
       </div>
       <div id="settingsAutoregRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Sugestão automática de carga</span>
+        <div class="setting-text">
+          <span class="period-label">Sugestão automática de carga</span>
+          <span class="setting-desc">Ajusta a carga em tempo real conforme você registra as séries.</span>
+        </div>
         <div class="mode-toggle" id="autoregToggle" role="group" aria-label="Sugestão automática de carga">
           <button type="button" data-autoreg="on">Ligada</button>
           <button type="button" data-autoreg="off">Desligada</button>
         </div>
       </div>
       <div id="settingsAutoregSensRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
-        <span class="period-label">Sensibilidade</span>
+        <div class="setting-text">
+          <span class="period-label">Sensibilidade</span>
+          <span class="setting-desc" id="autoregSensDesc"></span>
+        </div>
         <div class="mode-toggle" id="autoregSensToggle" role="group" aria-label="Sensibilidade da sugestão">
           <button type="button" data-sens="suave">Suave</button>
           <button type="button" data-sens="mod">Padrão</button>
@@ -1901,6 +1928,12 @@ function syncAutoregToggle(){
 function syncAutoregSensToggle(){
   document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
     b.classList.toggle("active", b.dataset.sens === autoregSensitivity));
+  const desc = document.getElementById("autoregSensDesc");
+  if(desc) desc.textContent = ({
+    suave: "Só sugere mudança em desvios grandes; prioriza estabilidade.",
+    mod:   "Equilíbrio entre reagir ao desempenho e respeitar a fadiga.",
+    agr:   "Sobe a carga assim que você supera a meta, mesmo cansado.",
+  })[autoregSensitivity] || "";
 }
 function openSettings(){
   syncPeriodToggle();
