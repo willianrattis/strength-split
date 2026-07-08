@@ -175,6 +175,10 @@
   .flag-periodization .suggest{display:block}
   .compact .suggest{display:none !important}
   .suggest b{color:var(--muted);font-weight:600}
+  .set-hint{display:none;font-family:var(--body);font-size:11px;color:var(--faint);text-align:right;margin:-3px 0 1px;letter-spacing:.02em}
+  .set-hint b{color:var(--muted);font-weight:600}
+  .flag-autoreg .set-hint{display:block}
+  .compact .set-hint{display:none !important}
   .suggest-apply{
     display:inline-flex;align-items:center;background:var(--accent-soft);color:var(--accent);
     border:1px solid var(--accent);border-radius:6px;padding:4px 10px;margin-left:6px;
@@ -502,6 +506,9 @@
   #settingsProfileRow{display:none}
   .flag-profile-available #settingsProfileRow{display:flex}
   #profileToggle button{padding:4px 10px;font-size:11px}
+  #settingsAutoregRow{display:none}
+  .flag-autoreg-available #settingsAutoregRow{display:flex}
+  #autoregToggle button{padding:4px 10px;font-size:11px}
   #settingsProfileEditRow{display:none}
   .flag-profile #settingsProfileEditRow{display:flex}
   #profileModalInner{max-height:85vh;overflow-y:auto}
@@ -1174,6 +1181,13 @@
           <button type="button" data-prof="off">Desligada</button>
         </div>
       </div>
+      <div id="settingsAutoregRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <span class="period-label">Sugestão automática de carga</span>
+        <div class="mode-toggle" id="autoregToggle" role="group" aria-label="Sugestão automática de carga">
+          <button type="button" data-autoreg="on">Ligada</button>
+          <button type="button" data-autoreg="off">Desligada</button>
+        </div>
+      </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-weight:600;font-size:13px">Editar perfil</span>
       </div>
@@ -1326,10 +1340,17 @@ function applyProfileState(){
   document.body.classList.toggle("flag-profile-available", available);
   document.body.classList.toggle("flag-profile", active);
 }
+function applyAutoregState(){
+  const available = isFeatureEnabled("autoreg");
+  const active = available && autoregEnabled;
+  document.body.classList.toggle("flag-autoreg-available", available);
+  document.body.classList.toggle("flag-autoreg", active);
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
+  applyAutoregState();
 });
 
 // ========= Catálogo do treino =========
@@ -1720,6 +1741,7 @@ let lastDeloadDate = null;
 let periodizationEnabled = true;
 let machinesEnabled = true;
 let profileEnabled = true;
+let autoregEnabled = true;
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
 let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
@@ -1858,10 +1880,17 @@ function syncProfileToggle(){
   $on.classList.toggle("active", profileEnabled);
   $off.classList.toggle("active", !profileEnabled);
 }
+function syncAutoregToggle(){
+  const $on = document.querySelector('#autoregToggle [data-autoreg="on"]');
+  const $off = document.querySelector('#autoregToggle [data-autoreg="off"]');
+  $on.classList.toggle("active", autoregEnabled);
+  $off.classList.toggle("active", !autoregEnabled);
+}
 function openSettings(){
   syncPeriodToggle();
   syncMachinesToggle();
   syncProfileToggle();
+  syncAutoregToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -1893,6 +1922,15 @@ document.getElementById("profileToggle").addEventListener("click", e => {
   syncProfileToggle();
   savePref();
   applyProfileState();
+});
+document.getElementById("autoregToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-autoreg]");
+  if(!btn) return;
+  autoregEnabled = btn.dataset.autoreg === "on";
+  syncAutoregToggle();
+  savePref();
+  applyAutoregState();
+  if($viewTreino.style.display !== "none") renderDay();
 });
 document.getElementById("settingsProfileEditRow").addEventListener("click", () => {
   closeSettings();
@@ -2287,6 +2325,7 @@ async function loadPref(){
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
       if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
       if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
+      if(typeof d.autoregEnabled === "boolean") autoregEnabled = d.autoregEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // load profile doc
@@ -2310,6 +2349,7 @@ async function loadPref(){
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
+  applyAutoregState();
 }
 async function savePref(){
   if(!user) return;
@@ -2323,6 +2363,7 @@ async function savePref(){
       periodizationEnabled,
       machinesEnabled,
       profileEnabled,
+      autoregEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2580,6 +2621,24 @@ function nextKgUp(equip, w, mult){
   return snapKg(equip, w + step*mult);
 }
 
+// --- Auto-regulation tuning (tunable) ---
+const AUTOREG_TOLERANCE = 1;        // reps within ±this of target => load is well-calibrated, keep it
+const AUTOREG_FATIGUE_STEP = 0.025; // per-set fatigue discount, used by the real-time stage (0 here)
+
+// Epley rep-equivalence. From a set assumed taken to failure (repsDone at weight w),
+// project the load that would land failure at `target` reps. `fatigueSteps` optionally
+// discounts for that many extra sets of accumulated fatigue (0 = fresh). Pure calc, no DOM.
+function projectLoad(w, repsDone, target, equip, u, step, fatigueSteps){
+  if(typeof w !== "number") return null;
+  if(repsDone == null || typeof target !== "number") return w;
+  if(Math.abs(repsDone - target) <= AUTOREG_TOLERANCE) return w;   // inside band -> hold
+  let ideal = w * (30 + repsDone) / (30 + target);
+  if(fatigueSteps) ideal *= Math.pow(1 - AUTOREG_FATIGUE_STEP, fatigueSteps);
+  if(u === "kg") return snapKg(equip, ideal);
+  const rounded = Math.round(ideal / step) * step;
+  return u === "placas" ? Math.max(1, Math.round(rounded)) : rounded;
+}
+
 function suggestLoads(name, unit, machine, opts){
   if(!allSessions || !allSessions.length) return null;
   const u = unit || "kg";
@@ -2608,48 +2667,34 @@ function suggestLoads(name, unit, machine, opts){
     return { loads: suggestions, dir: "→", date: bestDate, limited: true };
   }
 
-  // B2 — Experience matrix: resolve type and mult
   const equip = equipmentOf(name);
-  const type = exTypeOf(name);
   const exp = profileActive() && profile.experience ? profile.experience : null;
-  const mult = (exp === "beg" && type === "comp") ? 2 : 1;
 
-  // B2 — adv gate: check if ALL numeric-weight sets hit target
+  // adv gate: freeze the whole exercise if any numeric-weight set missed target
   let advGateKeep = false;
   if(exp === "adv"){
     let allHit = true;
     for(const s of best){
       if(typeof s.weight !== "number") continue;
-      const target = s.reps;
       const didReps = s.repsDone ?? (s.done ? s.reps : null);
-      if(didReps == null || didReps < target){ allHit = false; break; }
+      if(didReps == null || didReps < s.reps){ allHit = false; break; }
     }
     if(!allHit) advGateKeep = true;
   }
 
-  let anyUp = false;
+  let hasUp = false, hasDown = false;
   const suggestions = best.map(s => {
     const w = s.weight;
     if(typeof w !== "number") return null;
     if(advGateKeep) return w;
-    const target = s.reps;
     const didReps = s.repsDone ?? (s.done ? s.reps : null);
-    let suggested;
-    if(didReps != null && didReps >= target){
-      if(u === "kg"){
-        suggested = nextKgUp(equip, w, mult);
-      } else {
-        suggested = w + step * mult;
-      }
-      anyUp = true;
-    } else {
-      suggested = w;
-    }
-    if(u === "kg") return suggested;
-    const rounded = Math.round(suggested / step) * step;
-    return u === "placas" ? Math.max(1, Math.round(rounded)) : rounded;
+    const out = projectLoad(w, didReps, s.reps, equip, u, step, 0); // 0 = fresh next session, no fatigue
+    if(out != null && out > w) hasUp = true;
+    if(out != null && out < w) hasDown = true;
+    return out;
   });
-  return { loads: suggestions, dir: anyUp ? "↑" : "→", date: bestDate };
+  const dir = (hasUp && hasDown) ? "↕" : hasUp ? "↑" : hasDown ? "↓" : "→";
+  return { loads: suggestions, dir, date: bestDate };
 }
 
 function suggestHTML(name, unit, isSup, exIdx){
@@ -2742,8 +2787,11 @@ function deloadDue(){
   return { due: false };
 }
 
-function seriesHTML(sets, exIdx, isSup, unit){
+function seriesHTML(sets, exIdx, isSup, unit, name){
   const u = unit || "kg";
+  const step = UNIT_STEP[u] || 2.5;
+  const equip = name ? equipmentOf(name) : null;
+  const autoreg = document.body.classList.contains("flag-autoreg");
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
@@ -2761,6 +2809,21 @@ function seriesHTML(sets, exIdx, isSup, unit){
         <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
     </div>`;
+    // in-session hint: only for still-empty upcoming sets, derived from the most
+    // recent COMPLETED set above (weight + repsDone), fatigue-discounted by distance.
+    if(autoreg && (s.weight == null || s.weight === "")){
+      let src = null, gap = 0;
+      for(let j = si - 1; j >= 0; j--){
+        if(typeof sets[j].weight === "number" && sets[j].repsDone != null){ src = sets[j]; gap = si - j; break; }
+      }
+      if(src){
+        const v = projectLoad(src.weight, src.repsDone, s.reps, equip, u, step, gap);
+        if(v != null){
+          const arrow = v > src.weight ? "↑" : v < src.weight ? "↓" : "→";
+          html += `<div class="set-hint">sugerido <b>${v}</b> ${UNIT_ABBR[u]} ${arrow}</div>`;
+        }
+      }
+    }
   });
   html += `</div>`;
   return html;
@@ -2888,7 +2951,7 @@ function renderDay(){
       <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
-    html += seriesHTML(ex.main, i, false, e.unit);
+    html += seriesHTML(ex.main, i, false, e.unit, effectiveName);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
@@ -2897,7 +2960,7 @@ function renderDay(){
         <div class="sname">${e.superset.name}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}<button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
         ${prevLoadText(e.superset.name, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit)}
         ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit);
+      html += seriesHTML(ex.sup, i, true, e.superset.unit, e.superset.name);
       html += `</div>`;
     }
     html += `</article>`;
@@ -2928,6 +2991,7 @@ function attachHandlers(){
         inp.parentElement.classList.toggle("filled", v !== "");
         scheduleSave();
       });
+      inp.addEventListener("change", () => { renderDay(); });
     });
     row.querySelectorAll(".reps-input").forEach(inp => {
       inp.addEventListener("input", () => {
