@@ -508,6 +508,9 @@
   #profileToggle button{padding:4px 10px;font-size:11px}
   #settingsAutoregRow{display:none}
   .flag-autoreg-available #settingsAutoregRow{display:flex}
+  #settingsExecOrderRow{display:none}
+  .flag-exec-order-available #settingsExecOrderRow{display:flex}
+  #execOrderToggle button{padding:4px 10px;font-size:11px}
   #autoregToggle button{padding:4px 10px;font-size:11px}
   #settingsAutoregSensRow{display:none}
   .flag-autoreg #settingsAutoregSensRow{display:flex}
@@ -521,7 +524,7 @@
   #settingsPanels *{transition:none}
   @media(max-width:600px){
     #settingsPeriodizationRow, #settingsMachinesRow, #settingsProfileRow,
-    #settingsAutoregRow, #settingsAutoregSensRow{
+    #settingsAutoregRow, #settingsAutoregSensRow, #settingsExecOrderRow{
       flex-direction:column;
       align-items:stretch !important;
       justify-content:flex-start !important;
@@ -1238,6 +1241,16 @@
           <button type="button" data-sens="agr">Agressivo</button>
         </div>
       </div>
+      <div id="settingsExecOrderRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Ordem de execução</span>
+          <span class="setting-desc">Ajusta sugestões quando você treina fora da ordem do plano.</span>
+        </div>
+        <div class="mode-toggle" id="execOrderToggle" role="group" aria-label="Ordem de execução">
+          <button type="button" data-execorder="on">Ligada</button>
+          <button type="button" data-execorder="off">Desligada</button>
+        </div>
+      </div>
       </div>
       </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
@@ -1398,11 +1411,18 @@ function applyAutoregState(){
   document.body.classList.toggle("flag-autoreg-available", available);
   document.body.classList.toggle("flag-autoreg", active);
 }
+function applyExecOrderState(){
+  const available = isFeatureEnabled("execOrder");
+  const active = available && execOrderEnabled;
+  document.body.classList.toggle("flag-exec-order-available", available);
+  document.body.classList.toggle("flag-exec-order", active);
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
   applyAutoregState();
+  applyExecOrderState();
 });
 
 // ========= Catálogo do treino =========
@@ -1795,6 +1815,7 @@ let machinesEnabled = true;
 let profileEnabled = true;
 let autoregEnabled = true;
 let autoregSensitivity = "mod"; // 'suave' | 'mod' | 'agr'
+let execOrderEnabled = true;
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
 let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
@@ -1939,6 +1960,12 @@ function syncAutoregToggle(){
   $on.classList.toggle("active", autoregEnabled);
   $off.classList.toggle("active", !autoregEnabled);
 }
+function syncExecOrderToggle(){
+  const $on = document.querySelector('#execOrderToggle [data-execorder="on"]');
+  const $off = document.querySelector('#execOrderToggle [data-execorder="off"]');
+  $on.classList.toggle("active", execOrderEnabled);
+  $off.classList.toggle("active", !execOrderEnabled);
+}
 function syncAutoregSensToggle(){
   document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
     b.classList.toggle("active", b.dataset.sens === autoregSensitivity));
@@ -1955,6 +1982,7 @@ function openSettings(){
   syncProfileToggle();
   syncAutoregToggle();
   syncAutoregSensToggle();
+  syncExecOrderToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -2002,6 +2030,15 @@ document.getElementById("autoregSensToggle").addEventListener("click", e => {
   autoregSensitivity = btn.dataset.sens;
   syncAutoregSensToggle();
   savePref();
+  if($viewTreino.style.display !== "none") renderDay();
+});
+document.getElementById("execOrderToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-execorder]");
+  if(!btn) return;
+  execOrderEnabled = btn.dataset.execorder === "on";
+  syncExecOrderToggle();
+  savePref();
+  applyExecOrderState();
   if($viewTreino.style.display !== "none") renderDay();
 });
 document.getElementById("settingsSubTabs").addEventListener("click", e => {
@@ -2407,6 +2444,7 @@ async function loadPref(){
       if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
       if(typeof d.autoregEnabled === "boolean") autoregEnabled = d.autoregEnabled;
       if(["suave","mod","agr"].includes(d.autoregSensitivity)) autoregSensitivity = d.autoregSensitivity;
+      if(typeof d.execOrderEnabled === "boolean") execOrderEnabled = d.execOrderEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // load profile doc
@@ -2431,6 +2469,7 @@ async function loadPref(){
   applyMachinesState();
   applyProfileState();
   applyAutoregState();
+  applyExecOrderState();
 }
 async function savePref(){
   if(!user) return;
@@ -2446,6 +2485,7 @@ async function savePref(){
       profileEnabled,
       autoregEnabled,
       autoregSensitivity,
+      execOrderEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2524,6 +2564,7 @@ function emptySession(dayKey){
         machine: machinesActive ? lastMachineFor(effectiveName) : null,
         supName,
         supMachine: machinesActive && supName ? lastMachineFor(supName, true) : null,
+        firstSetAt: null,
         main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
         sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
       };
@@ -2551,6 +2592,7 @@ function reconcileSession(s, dayKey){
       machine: old && old.machine != null ? old.machine : null,
       supName: e.superset ? e.superset.name : null,
       supMachine: old && old.supMachine != null ? old.supMachine : null,
+      firstSetAt: old && old.firstSetAt ? old.firstSetAt : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
       sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))) : null
     };
@@ -2653,24 +2695,69 @@ function prevLoadText(name, machine, unit){
   const currentKey = session ? (session.date + "_" + session.dayKey) : null;
   let bestDate = "";
   let bestWeights = null;
+  let bestSess = null;
+  let bestEntryIdx = -1;
   for(const sess of allSessions){
     if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
     if(!sess.exercises || !sess.date) continue;
-    for(const entry of sess.exercises){
+    for(let ei = 0; ei < sess.exercises.length; ei++){
+      const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
       else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const weights = sets.map(s => s.weight).filter(w => w != null && w !== "");
       if(!weights.length) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; bestWeights = weights; }
+      if(sess.date > bestDate){ bestDate = sess.date; bestWeights = weights; bestSess = sess; bestEntryIdx = ei; }
     }
   }
   if(!bestWeights) return "";
-  return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${bestDate})</span></div>`;
+  let marker = "";
+  if(execOrderActive() && bestSess && bestEntryIdx >= 0){
+    const sm = execShiftMap(bestSess);
+    const shift = sm.get(bestEntryIdx);
+    if(shift != null && shift !== 0){
+      const entry = bestSess.exercises[bestEntryIdx];
+      const executed = [];
+      bestSess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
+      const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
+      const execRank = byTime.findIndex(x => x.i === bestEntryIdx);
+      if(execRank >= 0) marker = ` · <span style="color:var(--faint)">${execRank + 1}º</span>`;
+    }
+  }
+  return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${shortDate(bestDate)}${marker})</span></div>`;
 }
 
 const profileActive = () => document.body.classList.contains("flag-profile");
+const execOrderActive = () => document.body.classList.contains("flag-exec-order");
+
+function execShiftMap(sess){
+  const map = new Map();
+  if(!sess || !sess.exercises) return map;
+  const executed = [];
+  sess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
+  if(!executed.length) return map;
+  const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
+  const execIndices = executed.map(e => e.i).sort((a, b) => a - b);
+  byTime.forEach((item, execRank) => {
+    const expectedRank = execIndices.indexOf(item.i);
+    const shift = Math.max(-3, Math.min(3, execRank - expectedRank));
+    map.set(item.i, shift);
+  });
+  return map;
+}
+
+function orderFactor(shift){
+  return Math.pow(1 - autoregCfg().fatigue, -shift);
+}
+
+function shortDate(iso){
+  if(!iso || iso.length < 10) return iso || "";
+  const y = iso.slice(0, 4), m = iso.slice(5, 7), d = iso.slice(8, 10);
+  const now = new Date();
+  const curY = String(now.getFullYear());
+  return y !== curY ? `${d}/${m}/${y.slice(2)}` : `${d}/${m}`;
+}
 function profileAge(){
   if(!profile.birthDate) return null;
   const [y,m,d] = profile.birthDate.split("-").map(Number);
@@ -2750,19 +2837,43 @@ function suggestLoads(name, unit, machine, opts){
   const currentKey = session ? (session.date + "_" + session.dayKey) : null;
   let best = null;
   let bestDate = "";
+  let bestShift = 0;
+  // order-aware: also track latest in-order candidate
+  let ioSets = null, ioDate = "", ioEntryIdx = -1;
+  const eoActive = execOrderActive();
   for(const sess of allSessions){
     if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
     if(!sess.exercises) continue;
-    for(const entry of sess.exercises){
+    const sm = eoActive ? execShiftMap(sess) : null;
+    for(let ei = 0; ei < sess.exercises.length; ei++){
+      const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
       else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       if(!sets.some(s => typeof s.weight === "number")) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; best = sets; }
+      if(sess.date > bestDate){
+        bestDate = sess.date; best = sets;
+        bestShift = (sm && sm.has(ei)) ? sm.get(ei) : 0;
+      }
+      if(eoActive && sm){
+        const s = sm.has(ei) ? sm.get(ei) : 0;
+        if(s === 0 && sess.date > ioDate){ ioDate = sess.date; ioSets = sets; }
+      }
     }
   }
   if(!best) return null;
+
+  // order-aware baseline selection
+  let useNormalization = false;
+  if(eoActive && ioSets && ioDate){
+    const dLatest = new Date(bestDate), dIo = new Date(ioDate);
+    const diffDays = (dLatest - dIo) / (1000 * 60 * 60 * 24);
+    if(diffDays <= 35){ best = ioSets; bestDate = ioDate; bestShift = 0; }
+    else { useNormalization = true; }
+  } else if(eoActive && bestShift !== 0){
+    useNormalization = true;
+  }
 
   // B3 — Injury gate
   const muscle = opts && opts.muscle;
@@ -2787,15 +2898,19 @@ function suggestLoads(name, unit, machine, opts){
   }
 
   let hasUp = false, hasDown = false;
+  const oFactor = useNormalization ? orderFactor(bestShift) : 1;
   const suggestions = best.map(s => {
     const w = s.weight;
     if(typeof w !== "number") return null;
     if(advGateKeep) return w;
+    const baseW = useNormalization ? w * oFactor : w;
     const didReps = s.repsDone ?? (s.done ? s.reps : null);
-    const out = projectLoad(w, didReps, s.reps, equip, u, step, 0); // 0 = fresh next session, no fatigue
-    if(out != null && out > w) hasUp = true;
-    if(out != null && out < w) hasDown = true;
-    return out;
+    const out = projectLoad(baseW, didReps, s.reps, equip, u, step, 0);
+    let final = out;
+    if(useNormalization && final != null) final = snapLoad(equip, u, step, final, false);
+    if(final != null && final > w) hasUp = true;
+    if(final != null && final < w) hasDown = true;
+    return final;
   });
   const dir = (hasUp && hasDown) ? "↕" : hasUp ? "↑" : hasDown ? "↓" : "→";
   return { loads: suggestions, dir, date: bestDate };
@@ -2820,17 +2935,24 @@ function suggestHTML(name, unit, isSup, exIdx){
 function exerciseTopHistory(name, since=null, machine){
   if(!allSessions || !allSessions.length) return [];
   const map = new Map();
+  const eoActive = execOrderActive();
   for(const sess of allSessions){
     if(!sess.exercises || !sess.date) continue;
     if(since && sess.date < since) continue;
-    for(const entry of sess.exercises){
+    const sm = eoActive ? execShiftMap(sess) : null;
+    for(let ei = 0; ei < sess.exercises.length; ei++){
+      const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
       else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
       if(!nums.length) continue;
-      const top = Math.max(...nums);
+      let top = Math.max(...nums);
+      if(eoActive && sm){
+        const shift = sm.has(ei) ? sm.get(ei) : 0;
+        if(shift !== 0) top = top * orderFactor(shift);
+      }
       const prev = map.get(sess.date);
       if(!prev || top > prev) map.set(sess.date, top);
     }
@@ -3074,6 +3196,8 @@ function renderDay(){
   attachHandlers();
 }
 
+function markExecStart(ei){ const ex = session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
+
 function attachHandlers(){
   $panel.querySelectorAll(".series-table").forEach(row => {
     const ei = +row.dataset.ex;
@@ -3083,7 +3207,9 @@ function attachHandlers(){
     row.querySelectorAll(".chip").forEach(btn => {
       btn.addEventListener("click", () => {
         const si = +btn.dataset.si;
-        target()[si].done = !target()[si].done;
+        const toggling = !target()[si].done;
+        target()[si].done = toggling;
+        if(toggling) markExecStart(ei);
         scheduleSave(); renderDay(); renderStrip();
       });
     });
@@ -3093,6 +3219,7 @@ function attachHandlers(){
         const v = inp.value.replace(",", ".").trim();
         target()[si].weight = v === "" ? null : (isNaN(parseFloat(v)) ? target()[si].weight : parseFloat(v));
         inp.parentElement.classList.toggle("filled", v !== "");
+        if(v !== "") markExecStart(ei);
         scheduleSave();
       });
       inp.addEventListener("change", () => { renderDay(); });
@@ -3102,6 +3229,7 @@ function attachHandlers(){
         const si = +inp.dataset.si;
         const v = inp.value.trim();
         target()[si].repsDone = v === "" ? null : (isNaN(parseInt(v, 10)) ? target()[si].repsDone : parseInt(v, 10));
+        if(v !== "") markExecStart(ei);
         scheduleSave();
       });
       inp.addEventListener("change", () => {
