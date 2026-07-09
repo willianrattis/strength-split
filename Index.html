@@ -511,10 +511,32 @@
   #settingsExecOrderRow{display:none}
   .flag-exec-order-available #settingsExecOrderRow{display:flex}
   #execOrderToggle button{padding:4px 10px;font-size:11px}
+
+  #settingsGamificationRow{display:none}
+  .flag-gamification-available #settingsGamificationRow{display:flex}
+  #gamificationToggle button{padding:4px 10px;font-size:11px}
   #autoregToggle button{padding:4px 10px;font-size:11px}
   #settingsAutoregSensRow{display:none}
   .flag-autoreg #settingsAutoregSensRow{display:flex}
   #autoregSensToggle button{padding:4px 9px;font-size:10px}
+  /* Gamification chip + modal */
+  .gamif-chip{display:none;align-items:center;gap:6px;cursor:pointer;padding:4px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);transition:border-color .15s}
+  .gamif-chip:hover{border-color:var(--accent)}
+  .flag-gamification .gamif-chip{display:inline-flex}
+  .gamif-chip-label{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);white-space:nowrap}
+  .gamif-chip-bar{width:48px;height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden;flex-shrink:0}
+  .gamif-chip-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+  .gamif-modal-body{text-align:center;padding:8px 0 0}
+  .gamif-level-big{font-family:var(--display);font-weight:700;font-size:56px;color:var(--accent);line-height:1}
+  .gamif-title-big{font-family:var(--display);font-weight:600;font-size:18px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);margin:4px 0 16px}
+  .gamif-xp-bar{width:100%;height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden;margin:0 0 6px}
+  .gamif-xp-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+  .gamif-xp-text{font-family:var(--body);font-size:12px;color:var(--muted);margin:0 0 16px}
+  .gamif-stats{display:flex;justify-content:center;gap:24px;margin:0 0 20px}
+  .gamif-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .gamif-stat-val{font-family:var(--display);font-weight:700;font-size:22px;color:var(--text)}
+  .gamif-stat-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600}
+
   .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
   .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
   #settingsModal .mode-toggle{flex-shrink:0}
@@ -1063,6 +1085,10 @@
       <h1>Treino<br>da Semana</h1>
       <p class="sub">Toque numa série para marcá-la e digite a carga (kg). Tudo sincronizado em nuvem.</p>
       <div id="syncStatus" class="sync-status" style="margin-top:10px"><span class="dot"></span><span class="txt">aguardando login</span></div>
+      <div class="gamif-chip" id="gamifChip" style="margin-top:8px" role="button" tabindex="0" aria-label="Ver progresso">
+        <span class="gamif-chip-label" id="gamifChipLabel"></span>
+        <div class="gamif-chip-bar"><div class="gamif-chip-fill" id="gamifChipFill"></div></div>
+      </div>
     </div>
     <div class="auth-box" id="authBox"></div>
   </header>
@@ -1218,6 +1244,16 @@
           <button type="button" data-prof="off">Desligada</button>
         </div>
       </div>
+      <div id="settingsGamificationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Gamificação</span>
+          <span class="setting-desc">Exibe nível e XP baseados na consistência dos treinos.</span>
+        </div>
+        <div class="mode-toggle" id="gamificationToggle" role="group" aria-label="Gamificação">
+          <button type="button" data-gamif="on">Ligada</button>
+          <button type="button" data-gamif="off">Desligada</button>
+        </div>
+      </div>
       </div>
       <div data-settingspanel="sugestoes">
       <div id="settingsAutoregRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
@@ -1266,6 +1302,25 @@
   <!-- MODAL: Máquina por exercício -->
   <div class="modal-overlay" id="machineModal">
     <div class="modal" id="machineModalInner"></div>
+  </div>
+  <!-- MODAL: Progresso (gamificação) -->
+  <div class="modal-overlay" id="gamifModal">
+    <div class="modal">
+      <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Progresso</h3>
+      <div class="gamif-modal-body">
+        <div class="gamif-level-big" id="gamifLevelBig"></div>
+        <div class="gamif-title-big" id="gamifTitleBig"></div>
+        <div class="gamif-xp-bar"><div class="gamif-xp-fill" id="gamifXpFill"></div></div>
+        <div class="gamif-xp-text" id="gamifXpText"></div>
+        <div class="gamif-stats">
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifTotalXp"></span><span class="gamif-stat-lbl">XP total</span></div>
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifTrained"></span><span class="gamif-stat-lbl">Dias treinados</span></div>
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifMissed"></span><span class="gamif-stat-lbl">Dias sem treino</span></div>
+        </div>
+        <!-- Placeholder for Task B: badges -->
+        <div id="gamifBadgesSection" style="display:none"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Bottom navigation (mobile only) -->
@@ -1417,12 +1472,20 @@ function applyExecOrderState(){
   document.body.classList.toggle("flag-exec-order-available", available);
   document.body.classList.toggle("flag-exec-order", active);
 }
+function applyGamificationState(){
+  const available = isFeatureEnabled("gamification");
+  const active = available && gamificationEnabled;
+  document.body.classList.toggle("flag-gamification-available", available);
+  document.body.classList.toggle("flag-gamification", active);
+  if(active) renderGamifChip();
+}
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
   applyAutoregState();
   applyExecOrderState();
+  applyGamificationState();
 });
 
 // ========= Catálogo do treino =========
@@ -1816,6 +1879,8 @@ let profileEnabled = true;
 let autoregEnabled = true;
 let autoregSensitivity = "mod"; // 'suave' | 'mod' | 'agr'
 let execOrderEnabled = true;
+let gamificationEnabled = true;
+let gamification = null; // cached result of computeGamification
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
 let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
 let deloadDismissed = false;
@@ -1966,6 +2031,12 @@ function syncExecOrderToggle(){
   $on.classList.toggle("active", execOrderEnabled);
   $off.classList.toggle("active", !execOrderEnabled);
 }
+function syncGamificationToggle(){
+  const $on = document.querySelector('#gamificationToggle [data-gamif="on"]');
+  const $off = document.querySelector('#gamificationToggle [data-gamif="off"]');
+  $on.classList.toggle("active", gamificationEnabled);
+  $off.classList.toggle("active", !gamificationEnabled);
+}
 function syncAutoregSensToggle(){
   document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
     b.classList.toggle("active", b.dataset.sens === autoregSensitivity));
@@ -1983,6 +2054,7 @@ function openSettings(){
   syncAutoregToggle();
   syncAutoregSensToggle();
   syncExecOrderToggle();
+  syncGamificationToggle();
   $settingsModal.classList.add("open");
 }
 function closeSettings(){ $settingsModal.classList.remove("open"); }
@@ -2040,6 +2112,14 @@ document.getElementById("execOrderToggle").addEventListener("click", e => {
   savePref();
   applyExecOrderState();
   if($viewTreino.style.display !== "none") renderDay();
+});
+document.getElementById("gamificationToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-gamif]");
+  if(!btn) return;
+  gamificationEnabled = btn.dataset.gamif === "on";
+  syncGamificationToggle();
+  savePref();
+  applyGamificationState();
 });
 document.getElementById("settingsSubTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-settingstab]"); if(!b) return;
@@ -2339,6 +2419,7 @@ onAuthStateChanged(auth, async u => {
   user = u;
   allSessions = null;
   allSessionsPromise = null;
+  gamification = null;
   if(u){
     $authBox.innerHTML = `
       <span class="who">Olá, <b>${(u.displayName||u.email||"").split(" ")[0]}</b></span>
@@ -2445,6 +2526,7 @@ async function loadPref(){
       if(typeof d.autoregEnabled === "boolean") autoregEnabled = d.autoregEnabled;
       if(["suave","mod","agr"].includes(d.autoregSensitivity)) autoregSensitivity = d.autoregSensitivity;
       if(typeof d.execOrderEnabled === "boolean") execOrderEnabled = d.execOrderEnabled;
+      if(typeof d.gamificationEnabled === "boolean") gamificationEnabled = d.gamificationEnabled;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // load profile doc
@@ -2470,6 +2552,7 @@ async function loadPref(){
   applyProfileState();
   applyAutoregState();
   applyExecOrderState();
+  applyGamificationState();
 }
 async function savePref(){
   if(!user) return;
@@ -2486,6 +2569,7 @@ async function savePref(){
       autoregEnabled,
       autoregSensitivity,
       execOrderEnabled,
+      gamificationEnabled,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2612,7 +2696,10 @@ async function loadAllSessions(){
     }catch(e){
       console.warn("loadAllSessions:", e.message);
       allSessions = [];
-    } finally { allSessionsPromise = null; }
+    } finally {
+      allSessionsPromise = null;
+      refreshGamification();
+    }
   })();
   return allSessionsPromise;
 }
@@ -2665,12 +2752,113 @@ async function saveNow(){
       const idx = allSessions.findIndex(s => s.date === session.date && s.dayKey === session.dayKey);
       if(idx >= 0) allSessions[idx] = { ...session };
       else allSessions.push({ ...session });
+      refreshGamification();
     }
   }catch(e){
     setSync("offline","erro ao salvar");
     console.error(e);
   }
 }
+
+// ========= Gamificação (XP + Levels) =========
+const GAMIF_TITLES = [
+  [1,"Novato"],[6,"Iniciante"],[11,"Praticante"],[16,"Dedicado"],
+  [21,"Consistente"],[26,"Avançado"],[31,"Veterano"],[36,"Mestre"],
+  [41,"Lenda"],[46,"Elite"]
+];
+function gamifTitle(level){
+  let t = "Novato";
+  for(const [min, name] of GAMIF_TITLES){ if(level >= min) t = name; }
+  return t;
+}
+function gamifXpForLevel(n){ return Math.round(100 * Math.pow(n, 1.5)); }
+
+function computeGamification(sessions){
+  if(!sessions || !sessions.length) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0 };
+  // Build date→{done,total} map (O(N) over sessions)
+  const dateMap = {};
+  let earliest = null;
+  for(const s of sessions){
+    if(!s.date || !s.exercises) continue;
+    if(!earliest || s.date < earliest) earliest = s.date;
+    if(!dateMap[s.date]) dateMap[s.date] = { done:0, total:0 };
+    const entry = dateMap[s.date];
+    for(const ex of s.exercises){
+      if(ex.main){ for(const set of ex.main){ entry.total++; if(set.done) entry.done++; } }
+      if(ex.sup){ for(const set of ex.sup){ entry.total++; if(set.done) entry.done++; } }
+    }
+  }
+  if(!earliest) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0 };
+  // Walk date range from earliest to today
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cur = new Date(earliest + "T00:00:00"); cur.setHours(0,0,0,0);
+  let totalXP = 0, trainedDays = 0, missedDays = 0;
+  while(cur <= today){
+    const key = cur.getFullYear() + "-" + String(cur.getMonth()+1).padStart(2,"0") + "-" + String(cur.getDate()).padStart(2,"0");
+    const entry = dateMap[key];
+    if(entry && entry.total > 0){
+      const ratio = entry.done / entry.total;
+      if(ratio > 0){
+        totalXP += Math.round(100 * Math.min(ratio, 1)) + (ratio >= 1 ? 25 : 0);
+        trainedDays++;
+      } else {
+        totalXP = Math.max(0, totalXP - 20);
+        missedDays++;
+      }
+    } else {
+      totalXP = Math.max(0, totalXP - 20);
+      missedDays++;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  // Determine level (cap 50)
+  let level = 1;
+  for(let n = 2; n <= 50; n++){
+    if(totalXP >= gamifXpForLevel(n)) level = n;
+    else break;
+  }
+  const xpIntoLevel = totalXP - gamifXpForLevel(level);
+  const xpForNextLevel = level < 50 ? gamifXpForLevel(level + 1) - gamifXpForLevel(level) : 0;
+  return { totalXP, level, title:gamifTitle(level), xpIntoLevel, xpForNextLevel, trainedDays, missedDays };
+}
+
+function refreshGamification(){
+  gamification = computeGamification(allSessions);
+  renderGamifChip();
+}
+
+function renderGamifChip(){
+  if(!gamification) return;
+  const $label = document.getElementById("gamifChipLabel");
+  const $fill = document.getElementById("gamifChipFill");
+  if(!$label || !$fill) return;
+  $label.textContent = `Nv ${gamification.level} · ${gamification.title}`;
+  const pct = gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(gamification.xpIntoLevel / gamification.xpForNextLevel * 100)) : 100;
+  $fill.style.width = pct + "%";
+}
+
+function renderGamifModal(){
+  if(!gamification) return;
+  const g = gamification;
+  document.getElementById("gamifLevelBig").textContent = g.level;
+  document.getElementById("gamifTitleBig").textContent = g.title;
+  const pct = g.xpForNextLevel > 0 ? Math.min(100, Math.round(g.xpIntoLevel / g.xpForNextLevel * 100)) : 100;
+  document.getElementById("gamifXpFill").style.width = pct + "%";
+  document.getElementById("gamifXpText").textContent = g.level < 50
+    ? `${g.xpIntoLevel} / ${g.xpForNextLevel} XP para o próximo nível`
+    : `Nível máximo alcançado!`;
+  document.getElementById("gamifTotalXp").textContent = g.totalXP.toLocaleString("pt-BR");
+  document.getElementById("gamifTrained").textContent = g.trainedDays;
+  document.getElementById("gamifMissed").textContent = g.missedDays;
+}
+
+// Chip click → open modal
+const $gamifModal = document.getElementById("gamifModal");
+document.getElementById("gamifChip").addEventListener("click", () => {
+  renderGamifModal();
+  $gamifModal.classList.add("open");
+});
+$gamifModal.addEventListener("click", e => { if(e.target === $gamifModal) $gamifModal.classList.remove("open"); });
 
 // ========= Render =========
 function exDone(ex){
