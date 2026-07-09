@@ -536,6 +536,19 @@
   .gamif-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
   .gamif-stat-val{font-family:var(--display);font-weight:700;font-size:22px;color:var(--text)}
   .gamif-stat-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .gamif-badges-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:0 0 10px}
+  .gamif-badges-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:380px){.gamif-badges-grid{grid-template-columns:repeat(2,1fr)}}
+  .gamif-badge{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);text-align:center}
+  .gamif-badge .gamif-badge-icon{color:var(--accent)}
+  .gamif-badge.locked{opacity:.45;filter:grayscale(1)}
+  .gamif-badge.locked .gamif-badge-icon{color:var(--faint)}
+  .gamif-badge-icon svg{width:28px;height:28px}
+  .gamif-badge-name{font-family:var(--display);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:var(--text)}
+  .gamif-badge-date{font-family:var(--body);font-size:10px;color:var(--muted)}
+  .gamif-badge-desc{font-family:var(--body);font-size:10px;color:var(--faint);line-height:1.3}
+  .gamif-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));background:var(--surface);border:1px solid var(--accent);color:var(--text);font-family:var(--body);font-size:13px;font-weight:600;padding:8px 18px;border-radius:20px;z-index:200;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+  .gamif-toast.show{opacity:1}
 
   .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
   .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
@@ -2760,11 +2773,19 @@ async function saveNow(){
   }
 }
 
-// ========= Gamificação (XP + Levels) =========
+// ========= Gamificação (XP + Levels + Badges) =========
 const GAMIF_TITLES = [
   [1,"Novato"],[6,"Iniciante"],[11,"Praticante"],[16,"Dedicado"],
   [21,"Consistente"],[26,"Avançado"],[31,"Veterano"],[36,"Mestre"],
   [41,"Lenda"],[46,"Elite"]
+];
+const BADGES = [
+  { id:"consistencia", name:"Consistência", desc:"Treinou 7 dias seguidos",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>' },
+  { id:"levantador", name:"Levantador", desc:"1.000 kg de volume em um dia",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>' },
+  { id:"madrugador", name:"Madrugador", desc:"Treinou antes das 6h",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="5"/></svg>' }
 ];
 function gamifTitle(level){
   let t = "Novato";
@@ -2774,25 +2795,51 @@ function gamifTitle(level){
 function gamifXpForLevel(n){ return Math.round(100 * Math.pow(n, 1.5)); }
 
 function computeGamification(sessions){
-  if(!sessions || !sessions.length) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0 };
-  // Build date→{done,total} map (O(N) over sessions)
+  const emptyBadges = BADGES.map(b => ({ id:b.id, earned:false, earnedDate:null }));
+  if(!sessions || !sessions.length) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
+  // Build date→{done,total,volume,earliestHour} map (O(N) over sessions)
   const dateMap = {};
   let earliest = null;
   for(const s of sessions){
     if(!s.date || !s.exercises) continue;
     if(!earliest || s.date < earliest) earliest = s.date;
-    if(!dateMap[s.date]) dateMap[s.date] = { done:0, total:0 };
+    if(!dateMap[s.date]) dateMap[s.date] = { done:0, total:0, volume:0, earliestHour:24 };
     const entry = dateMap[s.date];
     for(const ex of s.exercises){
-      if(ex.main){ for(const set of ex.main){ entry.total++; if(set.done) entry.done++; } }
-      if(ex.sup){ for(const set of ex.sup){ entry.total++; if(set.done) entry.done++; } }
+      // firstSetAt → earliestHour
+      if(ex.firstSetAt){
+        const d = new Date(ex.firstSetAt);
+        if(!isNaN(d.getTime())){ const h = d.getHours(); if(h < entry.earliestHour) entry.earliestHour = h; }
+      }
+      const countSets = (sets) => {
+        if(!sets) return;
+        for(const set of sets){
+          entry.total++;
+          if(set.done){
+            entry.done++;
+            if(set.weight != null && set.weight !== ""){
+              const w = Number(set.weight);
+              if(!isNaN(w)){
+                const r = set.repsDone != null ? set.repsDone : set.reps;
+                if(typeof r === "number" && r > 0) entry.volume += w * r;
+              }
+            }
+          }
+        }
+      };
+      countSets(ex.main);
+      countSets(ex.sup);
     }
   }
-  if(!earliest) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0 };
+  if(!earliest) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
   // Walk date range from earliest to today
   const today = new Date(); today.setHours(0,0,0,0);
   const cur = new Date(earliest + "T00:00:00"); cur.setHours(0,0,0,0);
   let totalXP = 0, trainedDays = 0, missedDays = 0;
+  let streak = 0;
+  let badgeConsistencia = { earned:false, earnedDate:null };
+  let badgeLevantador = { earned:false, earnedDate:null };
+  let badgeMadrugador = { earned:false, earnedDate:null };
   while(cur <= today){
     const key = cur.getFullYear() + "-" + String(cur.getMonth()+1).padStart(2,"0") + "-" + String(cur.getDate()).padStart(2,"0");
     const entry = dateMap[key];
@@ -2801,13 +2848,19 @@ function computeGamification(sessions){
       if(ratio > 0){
         totalXP += Math.round(100 * Math.min(ratio, 1)) + (ratio >= 1 ? 25 : 0);
         trainedDays++;
+        streak++;
+        if(!badgeConsistencia.earned && streak >= 7){ badgeConsistencia = { earned:true, earnedDate:key }; }
+        if(!badgeLevantador.earned && entry.volume >= 1000){ badgeLevantador = { earned:true, earnedDate:key }; }
+        if(!badgeMadrugador.earned && entry.earliestHour < 6){ badgeMadrugador = { earned:true, earnedDate:key }; }
       } else {
         totalXP = Math.max(0, totalXP - 20);
         missedDays++;
+        streak = 0;
       }
     } else {
       totalXP = Math.max(0, totalXP - 20);
       missedDays++;
+      streak = 0;
     }
     cur.setDate(cur.getDate() + 1);
   }
@@ -2819,12 +2872,47 @@ function computeGamification(sessions){
   }
   const xpIntoLevel = totalXP - gamifXpForLevel(level);
   const xpForNextLevel = level < 50 ? gamifXpForLevel(level + 1) - gamifXpForLevel(level) : 0;
-  return { totalXP, level, title:gamifTitle(level), xpIntoLevel, xpForNextLevel, trainedDays, missedDays };
+  const badges = [
+    { id:"consistencia", ...badgeConsistencia },
+    { id:"levantador", ...badgeLevantador },
+    { id:"madrugador", ...badgeMadrugador }
+  ];
+  return { totalXP, level, title:gamifTitle(level), xpIntoLevel, xpForNextLevel, trainedDays, missedDays, badges };
+}
+
+let _gamifToastTimer = null;
+function showGamifToast(name){
+  if(!document.body.classList.contains("flag-gamification")) return;
+  let $t = document.getElementById("gamifToast");
+  if(!$t){
+    $t = document.createElement("div");
+    $t.id = "gamifToast";
+    $t.className = "gamif-toast";
+    document.body.appendChild($t);
+  }
+  $t.textContent = `\u{1F3C6} Conquista: ${name}`;
+  $t.classList.remove("show");
+  void $t.offsetWidth; // reflow
+  $t.classList.add("show");
+  clearTimeout(_gamifToastTimer);
+  _gamifToastTimer = setTimeout(() => $t.classList.remove("show"), 3500);
 }
 
 function refreshGamification(){
+  const prevEarned = gamification && gamification.badges
+    ? new Set(gamification.badges.filter(b => b.earned).map(b => b.id))
+    : null;
   gamification = computeGamification(allSessions);
   renderGamifChip();
+  // Detect newly earned badges (only if we had a previous snapshot, i.e. not initial load)
+  if(prevEarned && gamification.badges){
+    for(const b of gamification.badges){
+      if(b.earned && !prevEarned.has(b.id)){
+        const def = BADGES.find(d => d.id === b.id);
+        if(def) showGamifToast(def.name);
+      }
+    }
+  }
 }
 
 function renderGamifChip(){
@@ -2850,6 +2938,28 @@ function renderGamifModal(){
   document.getElementById("gamifTotalXp").textContent = g.totalXP.toLocaleString("pt-BR");
   document.getElementById("gamifTrained").textContent = g.trainedDays;
   document.getElementById("gamifMissed").textContent = g.missedDays;
+  // Badges
+  const $sec = document.getElementById("gamifBadgesSection");
+  if(!g.badges){ $sec.style.display = "none"; return; }
+  let html = '<div class="gamif-badges-label">Conquistas</div><div class="gamif-badges-grid">';
+  for(const b of g.badges){
+    const def = BADGES.find(d => d.id === b.id);
+    if(!def) continue;
+    const locked = !b.earned;
+    let dateStr = "";
+    if(b.earnedDate){
+      const [y,m,d] = b.earnedDate.split("-");
+      dateStr = `em ${d}/${m}/${y}`;
+    }
+    html += `<div class="gamif-badge${locked ? " locked" : ""}">
+      <div class="gamif-badge-icon">${def.icon}</div>
+      <div class="gamif-badge-name">${def.name}</div>
+      ${locked ? `<div class="gamif-badge-desc">${def.desc}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
+    </div>`;
+  }
+  html += '</div>';
+  $sec.innerHTML = html;
+  $sec.style.display = "";
 }
 
 // Chip click → open modal
