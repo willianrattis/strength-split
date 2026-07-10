@@ -1898,7 +1898,8 @@ let profileEnabled = true;
 let autoregEnabled = true;
 let autoregSensitivity = "mod"; // 'suave' | 'mod' | 'agr'
 let execOrderEnabled = true;
-let gamificationEnabled = true;
+let gamificationEnabled = false;
+let gamifStartDate = null; // YYYY-MM-DD; start of the counting window (set on first enable)
 let gamification = null; // cached result of computeGamification
 // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
 let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
@@ -2136,8 +2137,10 @@ document.getElementById("gamificationToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-gamif]");
   if(!btn) return;
   gamificationEnabled = btn.dataset.gamif === "on";
+  if(gamificationEnabled && !gamifStartDate) gamifStartDate = todayStr();
   syncGamificationToggle();
   savePref();
+  refreshGamification();
   applyGamificationState();
 });
 document.getElementById("settingsSubTabs").addEventListener("click", e => {
@@ -2439,6 +2442,8 @@ onAuthStateChanged(auth, async u => {
   allSessions = null;
   allSessionsPromise = null;
   gamification = null;
+  gamificationEnabled = false;
+  gamifStartDate = null;
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
     $gateWrap.style.display = "none";
@@ -2543,8 +2548,11 @@ async function loadPref(){
       if(["suave","mod","agr"].includes(d.autoregSensitivity)) autoregSensitivity = d.autoregSensitivity;
       if(typeof d.execOrderEnabled === "boolean") execOrderEnabled = d.execOrderEnabled;
       if(typeof d.gamificationEnabled === "boolean") gamificationEnabled = d.gamificationEnabled;
+      if(typeof d.gamifStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.gamifStartDate)) gamifStartDate = d.gamifStartDate;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
+  // Migrate: gamification already ON but no start date → anchor to today (fresh window)
+  if(gamificationEnabled && !gamifStartDate){ gamifStartDate = todayStr(); savePref(); }
   // load profile doc
   try{
     const pRef = doc(db, "users", user.uid, "prefs", "profile");
@@ -2586,6 +2594,7 @@ async function savePref(){
       autoregSensitivity,
       execOrderEnabled,
       gamificationEnabled,
+      gamifStartDate: gamifStartDate || null,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
@@ -2797,7 +2806,7 @@ function gamifTitle(level){
 }
 function gamifXpForLevel(n){ return Math.round(100 * Math.pow(n, 1.5)); }
 
-function computeGamification(sessions){
+function computeGamification(sessions, startDate){
   const emptyBadges = BADGES.map(b => ({ id:b.id, earned:false, earnedDate:null }));
   if(!sessions || !sessions.length) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
   // Build date→{done,total,volume,earliestHour} map (O(N) over sessions)
@@ -2837,7 +2846,8 @@ function computeGamification(sessions){
   if(!earliest) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
   // Walk date range from earliest to today
   const today = new Date(); today.setHours(0,0,0,0);
-  const cur = new Date(earliest + "T00:00:00"); cur.setHours(0,0,0,0);
+  const validStart = (typeof startDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) ? startDate : earliest;
+  const cur = new Date(validStart + "T00:00:00"); cur.setHours(0,0,0,0);
   let totalXP = 0, trainedDays = 0, missedDays = 0;
   let streak = 0;
   let badgeConsistencia = { earned:false, earnedDate:null };
@@ -2905,7 +2915,7 @@ function refreshGamification(){
   const prevEarned = gamification && gamification.badges
     ? new Set(gamification.badges.filter(b => b.earned).map(b => b.id))
     : null;
-  gamification = computeGamification(allSessions);
+  gamification = computeGamification(allSessions, gamifStartDate);
   renderGamifChip();
   // Detect newly earned badges (only if we had a previous snapshot, i.e. not initial load)
   if(prevEarned && gamification.badges){
