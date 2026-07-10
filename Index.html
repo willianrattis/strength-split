@@ -38,6 +38,7 @@
     --faint:#5A5F69;
     --accent:#FF5A1F;
     --accent-soft:rgba(255,90,31,.14);
+    --accent-ghost:rgba(255,90,31,.09);
     --display:'Oswald',system-ui,sans-serif;
     --body:'Inter',system-ui,sans-serif;
   }
@@ -52,6 +53,7 @@
     --faint:#9AA1AD;
     --accent:#E8480E;
     --accent-soft:rgba(232,72,14,.12);
+    --accent-ghost:rgba(232,72,14,.09);
     --display:'Oswald',system-ui,sans-serif;
     --body:'Inter',system-ui,sans-serif;
   }
@@ -333,7 +335,11 @@
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
-  .series-grid.set-done-row{background:var(--accent-soft);border-radius:10px}
+  .series-grid.set-done-row{background:var(--accent-ghost);border-radius:10px}
+  .series-grid.set-done-row .reps-input,
+  .series-grid.set-done-row .load-cell{background:transparent;border-color:transparent}
+  .series-grid.set-done-row .reps-input:focus,
+  .series-grid.set-done-row .load-cell:focus-within{border-color:var(--accent)}
   .series-head span{
     font-size:10px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--faint);font-weight:600;
