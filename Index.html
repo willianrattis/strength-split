@@ -333,14 +333,16 @@
   /* séries: uma linha por série — Série | Reps | Carga */
   .series-table{padding:2px 16px 14px 60px;display:flex;flex-direction:column;gap:7px}
   .series-grid{display:grid;grid-template-columns:50px 1fr 100px;gap:10px;align-items:center}
-  .flag-periodization .series-grid{grid-template-columns:50px 1fr 60px 100px}
+  .series-grid.set-done-row{background:var(--accent-soft);border-radius:10px}
   .series-head span{
     font-size:10px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--faint);font-weight:600;
   }
-  .series-head .h-reps,.series-head .h-done,.series-head .h-load{text-align:center}
-  .reps-input,.series-head .h-done{display:none}
-  .flag-periodization .reps-input,.flag-periodization .series-head .h-done{display:block}
+  .series-head .h-reps,.series-head .h-load{text-align:center}
+  .reps-input{display:none}
+  .flag-periodization .reps-input{display:block}
+  .flag-periodization .chip{display:none}
+  .flag-periodization .compact .chip{display:inline-block}
   .reps-input{
     font-family:var(--display);font-weight:500;font-size:16px;
     text-align:center;background:var(--surface-2);border:1px solid var(--border);
@@ -350,7 +352,10 @@
   }
   .reps-input:focus{border-color:var(--accent)}
   .reps-input::placeholder{color:var(--faint);font-weight:400}
-  .set-idx{font-family:var(--display);font-size:14px;color:var(--muted)}
+  .set-idx{font-family:var(--display);font-size:14px;color:var(--muted);
+   background:none;border:none;padding:0;width:100%;min-height:44px;
+   text-align:left;cursor:pointer;font-variant-numeric:tabular-nums}
+  .set-idx.done{color:var(--accent);font-weight:600;font-size:16px}
 
   .chip{
     font-family:var(--display);font-weight:500;font-size:15px;
@@ -360,15 +365,14 @@
     transition:.15s,transform .1s;width:100%;
   }
   .chip:active{transform:scale(.96)}
-  .chip.set-done{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .compact .chip.set-done{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
   .chip .tick{display:none}
   .chip.set-done .tick{display:inline;margin-right:4px;font-size:12px}
 
   .load-cell{
     display:flex;align-items:center;border:1px solid var(--border);
-    border-radius:8px;background:var(--surface-2);overflow:hidden;transition:.15s;
+    border-radius:8px;background:var(--surface-2);overflow:hidden;transition:.15s;min-height:44px;
   }
-  .load-cell.filled{border-color:var(--accent)}
   .load-cell:focus-within{border-color:var(--accent)}
   .weight-input{
     font-family:var(--display);font-weight:500;font-size:14px;
@@ -428,7 +432,6 @@
     .superset{margin-left:46px}
     .series-table{padding-left:46px}
     .series-grid{grid-template-columns:38px 1fr 84px;gap:8px}
-    .flag-periodization .series-grid{grid-template-columns:38px 1fr 50px 84px}
     .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
@@ -3725,13 +3728,13 @@ function seriesHTML(sets, exIdx, isSup, unit, name){
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
-    <span>Série</span><span class="h-reps">Reps</span><span class="h-done">Feitas</span><span class="h-load">Carga</span>
+    <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
   </div>`;
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
     const filled = (s.weight != null && s.weight !== "") ? " filled" : "";
-    html += `<div class="series-grid">
-      <span class="set-idx">${si+1}ª</span>
+    html += `<div class="series-grid${s.done ? " set-done-row" : ""}">
+      <button class="set-idx${s.done ? " done" : ""}" data-si="${si}" aria-pressed="${!!s.done}" aria-label="Série ${si+1}${s.done ? " — concluída" : ""}">${s.done ? "✓" : (si+1)+"ª"}</button>
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
       <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
       <div class="load-cell${filled}">
@@ -3910,6 +3913,22 @@ function attachHandlers(){
         const toggling = !target()[si].done;
         target()[si].done = toggling;
         if(toggling) markExecStart(ei);
+        scheduleSave(); renderDay(); renderStrip();
+      });
+    });
+    row.querySelectorAll(".set-idx").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const si = +btn.dataset.si;
+        const set = target()[si];
+        const period = document.body.classList.contains("flag-periodization");
+        const turningOn = !set.done;
+        set.done = turningOn;
+        if (turningOn) {
+          if (period && (set.repsDone == null || set.repsDone === "")) set.repsDone = set.reps;
+          markExecStart(ei);
+        } else if (period && set.repsDone === set.reps) {
+          set.repsDone = null;
+        }
         scheduleSave(); renderDay(); renderStrip();
       });
     });
