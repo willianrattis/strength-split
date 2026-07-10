@@ -74,10 +74,15 @@
   h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,9vw,52px);line-height:.95;letter-spacing:.01em;text-transform:uppercase;margin:6px 0 8px;}
   .sub{color:var(--muted);font-size:14px;max-width:48ch}
 
-  /* auth */
-  .auth-box{flex:0 0 auto;display:flex;align-items:center;gap:10px;font-size:13px}
-  .auth-box .who{color:var(--muted)}
-  .auth-box .who b{color:var(--text);font-weight:600}
+  /* status row */
+  .top-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
+  .identity{display:inline-flex;align-items:center;gap:6px;min-width:0}
+  .identity-name{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+  .identity-sep{display:none;color:var(--faint)}
+  .flag-gamification .identity-sep{display:inline}
+  header.top .share-top{flex:0 0 auto}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
   .auth-btn{
     font-family:var(--body);font-size:13px;font-weight:600;
     background:var(--surface);border:1px solid var(--border);color:var(--text);
@@ -139,7 +144,7 @@
   .day-btn.is-today .today{display:block}
 
   /* painel */
-  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
   .panel-head h2{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:24px;letter-spacing:.02em}
   .panel-head .focus-tag{color:var(--muted);font-size:13px;font-weight:500}
   .progress{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--muted)}
@@ -1067,8 +1072,6 @@
     /* 6. Bottom nav: show on mobile, hide top tabs */
     .bottom-nav{display:block}
     .main-tabs{display:none !important}
-    /* Hide header logout on mobile (settings sheet has it) */
-    .auth-box .auth-btn{display:none}
 
     /* 6. Bottom padding so fixed bar never covers content */
     #viewTreino footer,
@@ -1096,14 +1099,23 @@
     <div class="top-text">
       <span class="kicker">Programa semanal</span>
       <h1>Treino<br>da Semana</h1>
-      <p class="sub">Toque numa série para marcá-la e digite a carga (kg). Tudo sincronizado em nuvem.</p>
-      <div id="syncStatus" class="sync-status" style="margin-top:10px"><span class="dot"></span><span class="txt">aguardando login</span></div>
-      <div class="gamif-chip" id="gamifChip" style="margin-top:8px" role="button" tabindex="0" aria-label="Ver progresso">
-        <span class="gamif-chip-label" id="gamifChipLabel"></span>
-        <div class="gamif-chip-bar"><div class="gamif-chip-fill" id="gamifChipFill"></div></div>
+      <div class="top-status">
+        <div class="identity">
+          <span class="identity-name" id="authBox"></span>
+          <span class="identity-sep">·</span>
+          <div class="gamif-chip" id="gamifChip" role="button" tabindex="0" aria-label="Ver progresso">
+            <span class="gamif-chip-label" id="gamifChipLabel"></span>
+            <div class="gamif-chip-bar"><div class="gamif-chip-fill" id="gamifChipFill"></div></div>
+          </div>
+        </div>
+        <div id="syncStatus" class="sync-status"><span class="dot"></span><span class="txt">aguardando login</span></div>
       </div>
     </div>
-    <div class="auth-box" id="authBox"></div>
+    <div id="sharePdfWrap" class="share-top" data-flag="sharePdf" style="display:none">
+      <button class="icon-btn" id="btnSharePdf" type="button" aria-label="Compartilhar treino como PDF" title="Compartilhar treino como PDF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+    </div>
   </header>
 </div>
 
@@ -1146,12 +1158,6 @@
       </div>
     </nav>
     <main class="wrap">
-      <div id="sharePdfWrap" class="share-pdf-wrap" style="display:none" data-flag="sharePdf">
-        <button class="auth-btn" id="btnSharePdf" type="button" title="Compartilhar treino como PDF" style="margin-right:auto;padding:8px 14px;min-height:40px">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          Compartilhar
-        </button>
-      </div>
       <section id="panel" role="tabpanel" aria-live="polite"></section>
       <footer>
         <div class="notes">
@@ -2434,10 +2440,7 @@ onAuthStateChanged(auth, async u => {
   allSessionsPromise = null;
   gamification = null;
   if(u){
-    $authBox.innerHTML = `
-      <span class="who">Olá, <b>${(u.displayName||u.email||"").split(" ")[0]}</b></span>
-      <button class="auth-btn" id="logoutBtn">Sair</button>`;
-    document.getElementById("logoutBtn").addEventListener("click", ()=>signOut(auth));
+    $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
     $strip.innerHTML = skeletonStrip();
@@ -2450,7 +2453,7 @@ onAuthStateChanged(auth, async u => {
       renderInitError();
     }
   } else {
-    $authBox.innerHTML = "";
+    $authBox.textContent = "";
     $gateWrap.style.display = "";
     $appContent.style.display = "none";
     setSync("", "aguardando login");
@@ -3416,7 +3419,6 @@ function renderDay(){
     document.getElementById("dayProgressFill").style.width = "0%";
     document.getElementById("dayProgressPct").textContent = "0%";
     $panel.innerHTML = `
-      <div class="panel-head"><div><h2>${day.name}</h2></div></div>
       <div class="rest-placeholder">
         <span class="big">Descanso</span>
         Nenhum exerc\u00edcio programado para hoje. Aproveite para recuperar!
@@ -3432,10 +3434,7 @@ function renderDay(){
 
   let html = `
     <div class="panel-head">
-      <div>
-        <h2>${day.name}</h2>
-        <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
-      </div>
+      <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
         <button class="reset" id="resetBtn">Limpar</button>
