@@ -181,12 +181,7 @@
   .evo-link:active{opacity:.65}
   .evo-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
-  .prev-load b{color:var(--muted);font-weight:600}
-  .suggest{display:none;font-family:var(--body);font-size:11px;color:var(--faint);margin-top:4px;letter-spacing:.02em}
-  .flag-periodization .suggest{display:block}
-  .compact .suggest{display:none !important}
-  .suggest b{color:var(--muted);font-weight:600}
+  .superset .prev-meta{margin-top:6px}
   .set-hint{display:none;font-family:var(--body);font-size:11px;color:var(--faint);text-align:right;margin:-3px 0 1px;letter-spacing:.02em}
   .set-hint b{color:var(--muted);font-weight:600}
   .flag-autoreg .set-hint{display:block}
@@ -198,6 +193,58 @@
     min-height:28px;letter-spacing:.02em;
   }
   .suggest-apply:active{opacity:.7}
+
+  /* ---- previous load + suggestion (shared meta) ---- */
+  .prev-block{padding:2px 16px 12px 60px}
+  .superset .prev-block{padding:0 0 11px}
+  .prev-meta{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin:0 0 7px;font-family:var(--body);font-size:11.5px;color:var(--faint);letter-spacing:.02em;
+  }
+  .prev-meta .pm-date{flex:1 1 auto;min-width:0}
+  .prev-meta .pm-date b{color:var(--muted);font-weight:600}
+  .prev-meta .suggest-apply{margin-left:0}
+  .compact .prev-meta .suggest-apply{display:none}
+
+  /* ---- variant 1: reference panel ---- */
+  .prev-panel{
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px 11px;
+  }
+  .pp-row{display:grid;grid-template-columns:72px repeat(var(--pp-cols,4),1fr);column-gap:6px;align-items:center}
+  .pp-lbl{font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--faint)}
+  .pp-unit{text-transform:uppercase}
+  .pp-head{padding-bottom:5px;border-bottom:1px solid var(--border)}
+  .pp-val{
+    text-align:center;font-family:var(--display);font-weight:500;font-size:14px;
+    color:var(--text);font-variant-numeric:tabular-nums;
+  }
+  .pp-head .pp-val{font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--faint)}
+  .pp-prev{margin-top:6px}
+  .pp-sug{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
+  .pp-sug .pp-val{color:var(--faint)}
+  .pp-sug .pp-val.chg{color:var(--accent);font-weight:600}
+  .pp-note{font-family:var(--body);font-size:10px;color:var(--faint);margin-top:6px;text-align:right}
+  .compact .pp-sug,.compact .pp-note{display:none}
+
+  /* ---- variant 2: previous column inside the set table ---- */
+  .series-head .h-prev{display:none;text-align:center}
+  .prev-cell{
+    display:none;text-align:center;font-family:var(--body);font-size:12px;
+    color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;
+  }
+  .prev-cell .pc-empty{color:var(--faint)}
+  body.layout-prev-column .prev-panel{display:none}
+  body.layout-prev-column .prev-cell{display:block}
+  body.layout-prev-column .series-head .h-prev{display:block}
+  body.layout-prev-column .series-grid{grid-template-columns:50px 68px 1fr 100px}
+  /* compact dissolves the rows — force the panel and drop the column there */
+  .compact .prev-cell{display:none !important}
+  .compact .series-head .h-prev{display:none !important}
+  body.layout-prev-column .compact .prev-panel{display:block}
+
+  /* suggestion echoed as the empty weight placeholder, in both variants */
+  .load-cell.sug-ph .weight-input::placeholder{color:var(--accent);font-weight:500}
 
   /* deload card */
   .deload-card{
@@ -427,7 +474,6 @@
   .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15;margin-bottom:8px;display:flex;align-items:center;gap:8px}
   .superset .sname .sname-text{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .superset .sname .unit-toggle{flex:0 0 auto;margin:0;margin-left:auto}
-  .superset .prev-load{margin-bottom:8px;margin-top:0}
   .superset .series-table{padding-left:0;padding-right:0}
 
   /* notas */
@@ -446,6 +492,10 @@
     .series-table{padding-left:46px}
     .series-table:not([data-sup]) .set-done-row{margin-left:-30px;padding-left:30px}
     .series-grid{grid-template-columns:38px 1fr 84px;gap:8px}
+    body.layout-prev-column .series-grid{grid-template-columns:38px 58px 1fr 78px;gap:7px}
+    .pp-row{grid-template-columns:62px repeat(var(--pp-cols,4),1fr);column-gap:4px}
+    .prev-block{padding-left:46px}
+    .pp-val{font-size:15px}
     .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
@@ -520,6 +570,7 @@
   #settingsPeriodizationRow{display:none}
   .flag-periodization-available #settingsPeriodizationRow{display:flex}
   #periodToggle button{padding:4px 10px;font-size:11px}
+  #prevLayoutToggle button{padding:4px 10px;font-size:11px}
 
   #settingsMachinesRow{display:none}
   .flag-machines-available #settingsMachinesRow{display:flex}
@@ -1291,6 +1342,16 @@
       </div>
       <div id="settingsPanels">
       <div data-settingspanel="treino" class="active">
+      <div id="settingsPrevLayoutRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Histórico na tela de treino</span>
+          <span class="setting-desc">Como a carga anterior e a sugestão aparecem em cada exercício.</span>
+        </div>
+        <div class="mode-toggle" id="prevLayoutToggle" role="group" aria-label="Layout do histórico">
+          <button type="button" data-prevlayout="column">Coluna</button>
+          <button type="button" data-prevlayout="panel">Painel</button>
+        </div>
+      </div>
       <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
         <div class="setting-text">
           <span class="period-label">Periodização</span>
@@ -2181,6 +2242,7 @@ let currentPlanKey = null;  // predefined template key
 let exSubTab = "list";
 let exSearchQuery = "";
 let lastDeloadDate = null;
+let prevLayout = "column"; // 'column' | 'panel' — how previous load + suggestion are shown
 let periodizationEnabled = true;
 let machinesEnabled = true;
 let profileEnabled = true;
@@ -2311,6 +2373,15 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
+function applyPrevLayoutState(){
+  document.body.classList.toggle("layout-prev-column", prevLayout === "column");
+}
+function syncPrevLayoutToggle(){
+  document.querySelectorAll('#prevLayoutToggle [data-prevlayout]').forEach(b =>
+    b.classList.toggle("active", b.dataset.prevlayout === prevLayout));
+}
+applyPrevLayoutState(); // default before any prefs load
+
 function syncPeriodToggle(){
   const $on = document.querySelector('#periodToggle [data-period="on"]');
   const $off = document.querySelector('#periodToggle [data-period="off"]');
@@ -2358,6 +2429,7 @@ function syncAutoregSensToggle(){
   })[autoregSensitivity] || "";
 }
 function openSettings(){
+  syncPrevLayoutToggle();
   syncPeriodToggle();
   syncMachinesToggle();
   syncProfileToggle();
@@ -2371,6 +2443,16 @@ function closeSettings(){ $settingsModal.classList.remove("open"); }
 $bnConfig.addEventListener("click", openSettings);
 $settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
 $settingsThemeToggle.addEventListener("click", toggleTheme);
+document.getElementById("prevLayoutToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-prevlayout]");
+  if(!btn) return;
+  prevLayout = btn.dataset.prevlayout === "panel" ? "panel" : "column";
+  syncPrevLayoutToggle();
+  savePref();
+  applyPrevLayoutState();
+  // renderDay is required, not optional: seriesHTML branches on the layout in JS.
+  if($viewTreino.style.display !== "none") renderDay();
+});
 document.getElementById("periodToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-period]");
   if(!btn) return;
@@ -2831,6 +2913,7 @@ async function loadPref(){
       if(d.currentPlanId) currentPlanId = d.currentPlanId;
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
       if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
+      if(d.prevLayout === "panel" || d.prevLayout === "column") prevLayout = d.prevLayout;
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
       if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
       if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
@@ -2861,6 +2944,7 @@ async function loadPref(){
   }catch(e){ console.warn("loadProfile:", e.message); }
   applyModeButtons();
   applyTheme();
+  applyPrevLayoutState();
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
@@ -2877,6 +2961,7 @@ async function savePref(){
       currentPlanName: currentPlanName || null,
       currentPlanId: currentPlanId || null,
       currentPlanKey: currentPlanKey || null,
+      prevLayout,
       periodizationEnabled,
       machinesEnabled,
       profileEnabled,
@@ -3643,11 +3728,15 @@ function setPct(){
   return total ? Math.round(done / total * 100) : 0;
 }
 
-function prevLoadText(name, machine, unit){
-  if(!allSessions || !allSessions.length) return "";
+// Pure data. Finds the most recent session (excluding the one being edited) where this
+// exercise + machine variant was logged with at least one weight.
+// perSet is INDEX-ALIGNED with the logged set rows: empty sets are preserved as null so
+// callers can map values 1:1 onto the current set rows. Returns null when there's no history.
+function prevLoadData(name, machine){
+  if(!allSessions || !allSessions.length) return null;
   const currentKey = session ? (session.date + "_" + session.dayKey) : null;
   let bestDate = "";
-  let bestWeights = null;
+  let bestSets = null;
   let bestSess = null;
   let bestEntryIdx = -1;
   for(const sess of allSessions){
@@ -3659,26 +3748,81 @@ function prevLoadText(name, machine, unit){
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
       else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
-      const weights = sets.map(s => s.weight).filter(w => w != null && w !== "");
-      if(!weights.length) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; bestWeights = weights; bestSess = sess; bestEntryIdx = ei; }
+      if(!sets.some(s => s && s.weight != null && s.weight !== "")) continue;
+      if(sess.date > bestDate){ bestDate = sess.date; bestSets = sets; bestSess = sess; bestEntryIdx = ei; }
     }
   }
-  if(!bestWeights) return "";
-  let marker = "";
+  if(!bestSets) return null;
+
+  const perSet = bestSets.map(s => ({
+    weight:   (s && s.weight   != null && s.weight !== "") ? s.weight   : null,
+    reps:     (s && s.reps     != null) ? s.reps     : null,
+    repsDone: (s && s.repsDone != null) ? s.repsDone : null
+  }));
+
+  // 1-based execution rank of that entry in its session, only when it ran out of plan order.
+  let execRank = null;
   if(execOrderActive() && bestSess && bestEntryIdx >= 0){
     const sm = execShiftMap(bestSess);
     const shift = sm.get(bestEntryIdx);
     if(shift != null && shift !== 0){
-      const entry = bestSess.exercises[bestEntryIdx];
       const executed = [];
       bestSess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
       const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
-      const execRank = byTime.findIndex(x => x.i === bestEntryIdx);
-      if(execRank >= 0) marker = ` · <span style="color:var(--faint)">${execRank + 1}º</span>`;
+      const r = byTime.findIndex(x => x.i === bestEntryIdx);
+      if(r >= 0) execRank = r + 1;
     }
   }
-  return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${shortDate(bestDate)}${marker})</span></div>`;
+
+  return { perSet, date: bestDate, execRank };
+}
+
+// Legacy single-line renderer. Output is intentionally unchanged; stage B replaces it.
+// Shared meta row + variant-1 panel. `prev` / `sug` are precomputed by renderDay so the
+// history scan and the suggestion engine each run once per exercise.
+function prevBlockHTML(prev, sug, unit, exIdx, isSup){
+  if(!prev && !sug) return "";
+  const u = unit || "kg";
+  const ua = UNIT_ABBR[u];
+  const n = Math.max(prev ? prev.perSet.length : 0, sug ? sug.loads.length : 0);
+  if(!n) return "";
+
+  const rank = (prev && prev.execRank != null) ? ` · ${prev.execRank}º` : "";
+  const dateTxt = prev
+    ? `Último treino <b>${shortDate(prev.date)}</b>${rank}`
+    : `Sem histórico`;
+  const applyBtn = sug
+    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar sugestão ${sug.dir}</button>`
+    : "";
+
+  let html = `<div class="prev-block">`;
+  html += `<div class="prev-meta"><span class="pm-date">${dateTxt}</span>${applyBtn}</div>`;
+  html += `<div class="prev-panel" style="--pp-cols:${n}">`;
+  html += `<div class="pp-row pp-head"><span class="pp-lbl pp-unit">${ua}</span>`;
+  for(let i = 0; i < n; i++) html += `<span class="pp-val">${i+1}ª</span>`;
+  html += `</div>`;
+
+  if(prev){
+    html += `<div class="pp-row pp-prev"><span class="pp-lbl">ÚLTIMA</span>`;
+    for(let i = 0; i < n; i++){
+      const w = prev.perSet[i] ? prev.perSet[i].weight : null;
+      html += `<span class="pp-val">${w != null ? w : "—"}</span>`;
+    }
+    html += `</div>`;
+  }
+  if(sug){
+    html += `<div class="pp-row pp-sug"><span class="pp-lbl">SUGESTÃO</span>`;
+    for(let i = 0; i < n; i++){
+      const v = sug.loads[i];
+      const w = prev && prev.perSet[i] ? prev.perSet[i].weight : null;
+      const chg = (v != null && w != null && v !== w) ? " chg" : "";
+      html += `<span class="pp-val${chg}">${v != null ? v : "—"}</span>`;
+    }
+    html += `</div>`;
+    if(sug.limited) html += `<div class="pp-note">limitação</div>`;
+  }
+  html += `</div></div>`;
+  return html;
 }
 
 const profileActive = () => document.body.classList.contains("flag-profile");
@@ -3869,20 +4013,18 @@ function suggestLoads(name, unit, machine, opts){
   return { loads: suggestions, dir, date: bestDate };
 }
 
-function suggestHTML(name, unit, isSup, exIdx){
-  if(!session || !session.exercises[exIdx]) return "";
+// Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
+// now lives here so the panel row, the apply button and the input placeholders agree.
+function suggestData(name, unit, isSup, exIdx){
+  if(!document.body.classList.contains("flag-periodization")) return null;
+  if(!session || !session.exercises[exIdx]) return null;
   const ex = session.exercises[exIdx];
   const sets = isSup ? ex.sup : ex.main;
-  if(sets && sets.some(s => typeof s.weight === "number")) return "";
+  if(sets && sets.some(s => typeof s.weight === "number")) return null;
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
   const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
   const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
-  const result = suggestLoads(name, unit, machine, {muscle});
-  if(!result) return "";
-  const u = unit || "kg";
-  const display = result.loads.map(v => v != null ? v : "—").join(" · ");
-  const limitTag = result.limited ? `<span style="color:var(--faint)"> · limitação</span>` : "";
-  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]}${limitTag} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
+  return suggestLoads(name, unit, machine, {muscle}) || null;
 }
 
 function exerciseTopHistory(name, since=null, machine){
@@ -3966,25 +4108,35 @@ function deloadDue(){
   return { due: false };
 }
 
-function seriesHTML(sets, exIdx, isSup, unit, name){
+function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
   const u = unit || "kg";
   const step = UNIT_STEP[u] || 2.5;
   const equip = name ? equipmentOf(name) : null;
   const autoreg = document.body.classList.contains("flag-autoreg");
+  // In panel layout the SUGESTÃO row already carries these values; echoing them as
+  // placeholders reads like pre-filled data. Column layout has no such row, so it keeps them.
+  const colLayout = document.body.classList.contains("layout-prev-column");
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
-    <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
+    <span>Série</span><span class="h-prev">Anterior</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
   </div>`;
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
     const filled = (s.weight != null && s.weight !== "") ? " filled" : "";
+    const pw = (prev && prev.perSet[si]) ? prev.perSet[si].weight : null;
+    const prevCell = `<span class="prev-cell">${pw != null ? pw : '<span class="pc-empty">—</span>'}</span>`;
+    const sugV = sug ? sug.loads[si] : null;
+    const showSugPh = colLayout && sugV != null && (s.weight == null || s.weight === "");
+    const wPlaceholder = showSugPh ? sugV : "—";
+    const sugPh = showSugPh ? " sug-ph" : "";
     html += `<div class="series-grid${s.done ? " set-done-row" : ""}">
       <button class="set-idx${s.done ? " done" : ""}" data-si="${si}" aria-pressed="${!!s.done}" aria-label="Série ${si+1}${s.done ? " — concluída" : ""}">${s.done ? "✓" : (si+1)+"ª"}</button>
+      ${prevCell}
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
       <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
-      <div class="load-cell${filled}">
-        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
+      <div class="load-cell${filled}${sugPh}">
+        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="${wPlaceholder}" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
         <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
     </div>`;
@@ -4114,30 +4266,32 @@ function renderDay(){
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
     const isSub = !!ex.subName;
     const effectiveName = ex.subName || e.name;
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined);
+    const sugMain = suggestData(effectiveName, e.unit, false, i);
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
         <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${effectiveName}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
-        ${!isSub?prevLoadText(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit):""}
-        ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
       <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
       <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
-    html += seriesHTML(ex.main, i, false, e.unit, effectiveName);
+    html += prevBlockHTML(prevMain, sugMain, e.unit, i, false);
+    html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
       const isSupSub = !!ex.supSubName;
       const supEffName = ex.supSubName || e.superset.name;
+      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined);
+      const sugSup = suggestData(supEffName, e.superset.unit, true, i);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${supEffName}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${!isSupSub?prevLoadText(supEffName, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit):""}
-        ${suggestHTML(supEffName, e.superset.unit, true, i)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName);
+        ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
+      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
     }
     html += `</article>`;
