@@ -217,8 +217,14 @@
   .pp-head{padding-bottom:5px;border-bottom:1px solid var(--border)}
   .pp-val{
     text-align:center;font-family:var(--display);font-weight:500;font-size:14px;
-    color:var(--text);font-variant-numeric:tabular-nums;
+    color:var(--text);font-variant-numeric:tabular-nums;line-height:1.1;
   }
+  .pv-w{display:block}
+  .pv-reps{
+    display:block;font-family:var(--body);font-weight:500;font-size:11px;
+    color:var(--faint);letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  }
+  .pv-reps.over{color:var(--accent);font-weight:600}
   .pp-head .pp-val{font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--faint)}
   .pp-prev{margin-top:6px}
   .pp-sug{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
@@ -231,8 +237,9 @@
   .series-head .h-prev{display:none;text-align:center}
   .prev-cell{
     display:none;text-align:center;font-family:var(--body);font-size:12px;
-    color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;
+    color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;line-height:1.1;
   }
+  .prev-cell .pv-w{font-family:var(--display);font-weight:500;font-size:13px}
   .prev-cell .pc-empty{color:var(--faint)}
   body.layout-prev-column .prev-panel{display:none}
   body.layout-prev-column .prev-cell{display:block}
@@ -496,6 +503,7 @@
     .pp-row{grid-template-columns:62px repeat(var(--pp-cols,4),1fr);column-gap:4px}
     .prev-block{padding-left:46px}
     .pp-val{font-size:15px}
+    .series-head .h-prev{font-size:9px;letter-spacing:.04em}
     .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
@@ -3780,6 +3788,14 @@ function prevLoadData(name, machine){
 // Legacy single-line renderer. Output is intentionally unchanged; stage B replaces it.
 // Shared meta row + variant-1 panel. `prev` / `sug` are precomputed by renderDay so the
 // history scan and the suggestion engine each run once per exercise.
+// "×N" for the reps actually completed on that set last time. Accented when the user beat that
+// session's target — the cue that the load is ready to go up. Empty when no repsDone was recorded.
+function prevRepsHTML(ps){
+  if(!ps || ps.repsDone == null) return "";
+  const over = (ps.reps != null && ps.repsDone > ps.reps) ? " over" : "";
+  return `<span class="pv-reps${over}">×${ps.repsDone}</span>`;
+}
+
 function prevBlockHTML(prev, sug, unit, exIdx, isSup){
   if(!prev && !sug) return "";
   const u = unit || "kg";
@@ -3805,8 +3821,11 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
   if(prev){
     html += `<div class="pp-row pp-prev"><span class="pp-lbl">ÚLTIMA</span>`;
     for(let i = 0; i < n; i++){
-      const w = prev.perSet[i] ? prev.perSet[i].weight : null;
-      html += `<span class="pp-val">${w != null ? w : "—"}</span>`;
+      const ps = prev.perSet[i] || null;
+      const w = ps ? ps.weight : null;
+      html += w != null
+        ? `<span class="pp-val"><span class="pv-w">${w}</span>${prevRepsHTML(ps)}</span>`
+        : `<span class="pp-val">—</span>`;
     }
     html += `</div>`;
   }
@@ -4124,8 +4143,11 @@ function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
     const filled = (s.weight != null && s.weight !== "") ? " filled" : "";
-    const pw = (prev && prev.perSet[si]) ? prev.perSet[si].weight : null;
-    const prevCell = `<span class="prev-cell">${pw != null ? pw : '<span class="pc-empty">—</span>'}</span>`;
+    const ps = (prev && prev.perSet[si]) ? prev.perSet[si] : null;
+    const pw = ps ? ps.weight : null;
+    const prevCell = `<span class="prev-cell">${pw != null
+      ? `<span class="pv-w">${pw}</span>${prevRepsHTML(ps)}`
+      : '<span class="pc-empty">—</span>'}</span>`;
     const sugV = sug ? sug.loads[si] : null;
     const showSugPh = colLayout && sugV != null && (s.weight == null || s.weight === "");
     const wPlaceholder = showSugPh ? sugV : "—";
