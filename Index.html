@@ -420,6 +420,7 @@
   .superset{margin:0 16px 15px 60px;border-left:2px solid var(--accent);padding:12px 0 2px 14px}
   .superset .tag{font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:6px}
   .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .superset .sname .sname-text{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .superset .sname .unit-toggle{flex:0 0 auto;margin:0;margin-left:auto}
   .superset .prev-load{margin-bottom:8px;margin-top:0}
   .superset .series-table{padding-left:0;padding-right:0}
@@ -2684,7 +2685,7 @@ function lastMachineFor(name, isSup=false){
     if(!sess.exercises) continue;
     for(const entry of sess.exercises){
       if(isSup){
-        if(entry.supName === name && entry.supMachine) return entry.supMachine;
+        if((entry.supSubName || entry.supName) === name && entry.supMachine) return entry.supMachine;
       } else {
         const eName = entry.subName || entry.name;
         if(eName === name && entry.machine) return entry.machine;
@@ -2729,6 +2730,8 @@ function emptySession(dayKey){
         subMuscle: null,
         machine: machinesActive ? lastMachineFor(effectiveName) : null,
         supName,
+        supSubName: null,
+        supSubMuscle: null,
         supMachine: machinesActive && supName ? lastMachineFor(supName, true) : null,
         firstSetAt: null,
         main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
@@ -2757,6 +2760,8 @@ function reconcileSession(s, dayKey){
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
       machine: old && old.machine != null ? old.machine : null,
       supName: e.superset ? e.superset.name : null,
+      supSubName: e.superset && old && old.supSubName ? old.supSubName : null,
+      supSubMuscle: e.superset && old && old.supSubMuscle ? old.supSubMuscle : null,
       supMachine: old && old.supMachine != null ? old.supMachine : null,
       firstSetAt: old && old.firstSetAt ? old.firstSetAt : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
@@ -3079,9 +3084,10 @@ function computeWrapped(sessions, year){
       const mainName = ex.subName || ex.name;
       const mainMuscle = ex.subMuscle || resolveMuscle(mainName);
       processEntry(mainName, mainMuscle, ex.main, s.date);
-      if(ex.sup && ex.supName){
-        const supMuscle = resolveMuscle(ex.supName);
-        processEntry(ex.supName, supMuscle, ex.sup, s.date);
+      if(ex.sup && (ex.supSubName || ex.supName)){
+        const supEffName = ex.supSubName || ex.supName;
+        const supMuscle = ex.supSubMuscle || resolveMuscle(supEffName);
+        processEntry(supEffName, supMuscle, ex.sup, s.date);
       }
     }
     if(sessionHasDone){ sessionsCount++; trainedDates.add(s.date); }
@@ -3419,7 +3425,7 @@ function prevLoadText(name, machine, unit){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const weights = sets.map(s => s.weight).filter(w => w != null && w !== "");
       if(!weights.length) continue;
@@ -3564,7 +3570,7 @@ function suggestLoads(name, unit, machine, opts){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       if(!sets.some(s => typeof s.weight === "number")) continue;
       if(sess.date > bestDate){
@@ -3638,7 +3644,7 @@ function suggestHTML(name, unit, isSup, exIdx){
   if(sets && sets.some(s => typeof s.weight === "number")) return "";
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
   const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
-  const muscle = planEx ? (isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
+  const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
   const result = suggestLoads(name, unit, machine, {muscle});
   if(!result) return "";
   const u = unit || "kg";
@@ -3659,7 +3665,7 @@ function exerciseTopHistory(name, since=null, machine){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
       if(!nums.length) continue;
@@ -3885,19 +3891,21 @@ function renderDay(){
         ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
       <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
-      <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
+      <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
     html += seriesHTML(ex.main, i, false, e.unit, effectiveName);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
+      const isSupSub = !!ex.supSubName;
+      const supEffName = ex.supSubName || e.superset.name;
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname">${e.superset.name}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}<button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${prevLoadText(e.superset.name, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit)}
-        ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit, e.superset.name);
+        <div class="sname"><span class="sname-text">${supEffName}${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        ${!isSupSub?prevLoadText(supEffName, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit):""}
+        ${suggestHTML(supEffName, e.superset.unit, true, i)}`;
+      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName);
       html += `</div>`;
     }
     html += `</article>`;
@@ -3993,10 +4001,10 @@ function attachHandlers(){
       const isSup = btn.dataset.sup === "1";
       const e = activeDays()[current].ex[ei];
       const ex = session.exercises[ei];
-      const name = isSup ? e.superset.name : (ex.subName || e.name);
+      const name = isSup ? (ex.supSubName || e.superset.name) : (ex.subName || e.name);
       const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
-      const muscle = isSup ? ((e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
+      const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
       if(!result) return;
       const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
@@ -4008,7 +4016,7 @@ function attachHandlers(){
   });
 
   $panel.querySelectorAll(".sub-btn").forEach(btn => {
-    btn.addEventListener("click", () => openSubModal(+btn.dataset.i));
+    btn.addEventListener("click", () => openSubModal(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
   $panel.querySelectorAll(".machine-btn").forEach(btn => {
@@ -4043,7 +4051,7 @@ function attachHandlers(){
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
             if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine) && entry.main) refSets = entry.main;
-            else if(entry.supName === name && matchVariant(entry.supMachine, machine) && entry.sup) refSets = entry.sup;
+            else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine) && entry.sup) refSets = entry.sup;
             if(refSets) break;
           }
           if(refSets) break;
@@ -4060,7 +4068,7 @@ function attachHandlers(){
       const mainMachine = machineFilterActive() ? ex.machine : undefined;
       const supMachine = machineFilterActive() ? ex.supMachine : undefined;
       applyDeload(ex.main, mainName, e.unit, mainMachine);
-      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit, supMachine);
+      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, e.superset.unit, supMachine);
     });
     const today = formatDate(new Date());
     lastDeloadDate = today;
@@ -4076,24 +4084,26 @@ $subModal.addEventListener("click", e => { if(e.target === $subModal) closeSubMo
 
 function closeSubModal(){ $subModal.classList.remove("open"); }
 
-function openSubModal(exIdx){
+function openSubModal(exIdx, isSup=false){
   const day = activeDays()[current];
   const planEx = day.ex[exIdx];
   const ex = session.exercises[exIdx];
-  const originalName = planEx.name;
-  const originalMuscle = planEx.muscle;
-  const isSub = !!ex.subName;
+  if(isSup && !planEx.superset) return;
+  const originalName = isSup ? planEx.superset.name : planEx.name;
+  const originalMuscle = isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : planEx.muscle;
+  const curSub = isSup ? ex.supSubName : ex.subName;
+  const isSub = !!curSub;
 
   // Build suggestions: same muscle, exclude original name, cap 8
   const suggestions = EXERCISE_CATALOG
     .filter(c => c.muscle === originalMuscle && c.name !== originalName)
     .slice(0, 8);
 
-  let html = `<h3 style="margin:0 0 4px">Trocar exercício (só hoje)</h3>`;
+  let html = `<h3 style="margin:0 0 4px">Trocar ${isSup ? "supersérie" : "exercício"} (só hoje)</h3>`;
   html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${originalName}</b>.</p>`;
 
   if(isSub){
-    html += `<div class="sub-current">Atual: ${ex.subName}</div>`;
+    html += `<div class="sub-current">Atual: ${curSub}</div>`;
     html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
   }
 
@@ -4116,8 +4126,13 @@ function openSubModal(exIdx){
   $subModal.classList.add("open");
 
   function applySub(name, muscle){
-    ex.subName = name;
-    ex.subMuscle = muscle || originalMuscle;
+    if(isSup){
+      ex.supSubName = name;
+      ex.supSubMuscle = muscle || originalMuscle;
+    } else {
+      ex.subName = name;
+      ex.subMuscle = muscle || originalMuscle;
+    }
     scheduleSave(); renderDay(); closeSubModal();
   }
 
@@ -4125,8 +4140,8 @@ function openSubModal(exIdx){
   const revertBtn = document.getElementById("subRevertBtn");
   if(revertBtn){
     revertBtn.addEventListener("click", () => {
-      ex.subName = null;
-      ex.subMuscle = null;
+      if(isSup){ ex.supSubName = null; ex.supSubMuscle = null; }
+      else { ex.subName = null; ex.subMuscle = null; }
       scheduleSave(); renderDay(); closeSubModal();
     });
   }
@@ -4394,6 +4409,9 @@ function buildExerciseList(){
         if(entry.subName && !seen.has(entry.subName)){
           seen.set(entry.subName, {name:entry.subName, muscle:entry.subMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:false});
         }
+        if(entry.supSubName && !seen.has(entry.supSubName)){
+          seen.set(entry.supSubName, {name:entry.supSubName, muscle:entry.supSubMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:true});
+        }
       });
     });
   }
@@ -4472,7 +4490,7 @@ async function renderEvolucao(){
         sets.push(...entry.main);
         machine = entry.machine || null;
       }
-      if(entry.supName === sel.name && entry.sup){
+      if((entry.supSubName || entry.supName) === sel.name && entry.sup){
         sets.push(...entry.sup);
         machine = entry.supMachine || null;
       }
