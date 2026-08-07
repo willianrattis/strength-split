@@ -175,6 +175,11 @@
   .ex.done .num .n{display:none}
   .body{flex:1 1 auto;min-width:0}
   .name{font-family:var(--display);font-weight:500;font-size:18px;line-height:1.15;letter-spacing:.01em}
+  .evo-link{display:inline-flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .evo-link svg{width:14px;height:14px;flex:0 0 auto;color:var(--faint);transition:color .15s}
+  .evo-link:hover svg{color:var(--accent)}
+  .evo-link:active{opacity:.65}
+  .evo-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
   .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
   .prev-load b{color:var(--muted);font-weight:600}
@@ -2238,6 +2243,7 @@ const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
+const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
 function effectiveTheme(){
   return theme || (prefersDark.matches ? "dark" : "light");
@@ -4111,7 +4117,7 @@ function renderDay(){
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${effectiveName}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
         ${!isSub?prevLoadText(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit):""}
         ${suggestHTML(effectiveName, e.unit, false, i)}
@@ -4128,7 +4134,7 @@ function renderDay(){
       const supEffName = ex.supSubName || e.superset.name;
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname"><span class="sname-text">${supEffName}${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${supEffName}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
         ${!isSupSub?prevLoadText(supEffName, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit):""}
         ${suggestHTML(supEffName, e.superset.unit, true, i)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName);
@@ -4238,6 +4244,23 @@ function attachHandlers(){
         if(v != null && sets[si]) sets[si].weight = v;
       });
       scheduleSave(); renderDay(); renderStrip();
+    });
+  });
+
+  $panel.querySelectorAll(".evo-link").forEach(el => {
+    const go = () => {
+      const i = +el.dataset.evoI;
+      const isSup = el.dataset.evoSup === "1";
+      const ex = session.exercises[i];
+      const e = activeDays()[current]?.ex[i];
+      if(!ex || !e) return;
+      const name = isSup ? (ex.supSubName || e.superset?.name) : (ex.subName || e.name);
+      const machine = isSup ? ex.supMachine : ex.machine;
+      if(name) openEvolucaoFor(name, machine);
+    };
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", ev => {
+      if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); go(); }
     });
   });
 
@@ -4665,6 +4688,20 @@ function rebuildEvoDropdown(){
 }
 
 let evoInitialized = false;
+let evoPendingName = null;
+let evoPendingMachine = null;
+
+// Entry point used by the Treino view to deep-link into a specific exercise chart.
+function openEvolucaoFor(name, machine){
+  evoPendingName = name || null;
+  evoPendingMachine = (machineFilterActive() && machine) ? normMachine(machine) : null;
+  const wasInit = evoInitialized;
+  showTab("evolucao");
+  window.scrollTo({top:0, behavior:"auto"});
+  // showTab -> initEvolucao only renders on first init; force a re-render otherwise.
+  if(wasInit) renderEvolucao();
+}
+
 function initEvolucao(){
   if(evoInitialized) return;
   evoInitialized = true;
@@ -4694,8 +4731,15 @@ async function renderEvolucao(){
   const prevName = EXERCISES[+prevSelected]?.name;
   EXERCISES = buildExerciseList();
   rebuildEvoDropdown();
-  // Try to restore previous selection by name
-  if(prevName){
+  // A pending deep-link wins over restoring the previous selection.
+  if(evoPendingName){
+    const pIdx = EXERCISES.findIndex(x => x.name === evoPendingName);
+    if(pIdx >= 0) $evoSelect.value = pIdx;
+    // Machine select is built further down and restores from dataset.prevNorm.
+    if(evoPendingMachine) $evoMachineSelect.dataset.prevNorm = evoPendingMachine;
+    evoPendingName = null;
+    evoPendingMachine = null;
+  } else if(prevName){
     const newIdx = EXERCISES.findIndex(x => x.name === prevName);
     if(newIdx >= 0) $evoSelect.value = newIdx;
   }
