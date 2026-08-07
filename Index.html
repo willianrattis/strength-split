@@ -175,13 +175,13 @@
   .ex.done .num .n{display:none}
   .body{flex:1 1 auto;min-width:0}
   .name{font-family:var(--display);font-weight:500;font-size:18px;line-height:1.15;letter-spacing:.01em}
+  .evo-link{display:inline-flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .evo-link svg{width:14px;height:14px;flex:0 0 auto;color:var(--faint);transition:color .15s}
+  .evo-link:hover svg{color:var(--accent)}
+  .evo-link:active{opacity:.65}
+  .evo-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .prev-load{font-family:var(--body);font-size:11px;color:var(--faint);margin-top:6px;letter-spacing:.02em}
-  .prev-load b{color:var(--muted);font-weight:600}
-  .suggest{display:none;font-family:var(--body);font-size:11px;color:var(--faint);margin-top:4px;letter-spacing:.02em}
-  .flag-periodization .suggest{display:block}
-  .compact .suggest{display:none !important}
-  .suggest b{color:var(--muted);font-weight:600}
+  .superset .prev-meta{margin-top:6px}
   .set-hint{display:none;font-family:var(--body);font-size:11px;color:var(--faint);text-align:right;margin:-3px 0 1px;letter-spacing:.02em}
   .set-hint b{color:var(--muted);font-weight:600}
   .flag-autoreg .set-hint{display:block}
@@ -193,6 +193,65 @@
     min-height:28px;letter-spacing:.02em;
   }
   .suggest-apply:active{opacity:.7}
+
+  /* ---- previous load + suggestion (shared meta) ---- */
+  .prev-block{padding:2px 16px 12px 60px}
+  .superset .prev-block{padding:0 0 11px}
+  .prev-meta{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin:0 0 7px;font-family:var(--body);font-size:11.5px;color:var(--faint);letter-spacing:.02em;
+  }
+  .prev-meta .pm-date{flex:1 1 auto;min-width:0}
+  .prev-meta .pm-date b{color:var(--muted);font-weight:600}
+  .prev-meta .suggest-apply{margin-left:0}
+  .compact .prev-meta .suggest-apply{display:none}
+
+  /* ---- variant 1: reference panel ---- */
+  .prev-panel{
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px 11px;
+  }
+  .pp-row{display:grid;grid-template-columns:72px repeat(var(--pp-cols,4),1fr);column-gap:6px;align-items:center}
+  .pp-lbl{font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--faint)}
+  .pp-unit{text-transform:uppercase}
+  .pp-head{padding-bottom:5px;border-bottom:1px solid var(--border)}
+  .pp-val{
+    text-align:center;font-family:var(--display);font-weight:500;font-size:14px;
+    color:var(--text);font-variant-numeric:tabular-nums;line-height:1.1;
+  }
+  .pv-w{display:block}
+  .pv-reps{
+    display:block;font-family:var(--body);font-weight:500;font-size:11px;
+    color:var(--faint);letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  }
+  .pv-reps.over{color:var(--accent);font-weight:600}
+  .pp-head .pp-val{font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--faint)}
+  .pp-prev{margin-top:6px}
+  .pp-sug{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
+  .pp-sug .pp-val{color:var(--faint)}
+  .pp-sug .pp-val.chg{color:var(--accent);font-weight:600}
+  .pp-note{font-family:var(--body);font-size:10px;color:var(--faint);margin-top:6px;text-align:right}
+  .compact .pp-sug,.compact .pp-note{display:none}
+
+  /* ---- variant 2: previous column inside the set table ---- */
+  .series-head .h-prev{display:none;text-align:center}
+  .prev-cell{
+    display:none;text-align:center;font-family:var(--body);font-size:12px;
+    color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;line-height:1.1;
+  }
+  .prev-cell .pv-w{font-family:var(--display);font-weight:500;font-size:13px}
+  .prev-cell .pc-empty{color:var(--faint)}
+  body.layout-prev-column .prev-panel{display:none}
+  body.layout-prev-column .prev-cell{display:block}
+  body.layout-prev-column .series-head .h-prev{display:block}
+  body.layout-prev-column .series-grid{grid-template-columns:50px 68px 1fr 100px}
+  /* compact dissolves the rows — force the panel and drop the column there */
+  .compact .prev-cell{display:none !important}
+  .compact .series-head .h-prev{display:none !important}
+  body.layout-prev-column .compact .prev-panel{display:block}
+
+  /* suggestion echoed as the empty weight placeholder, in both variants */
+  .load-cell.sug-ph .weight-input::placeholder{color:var(--accent);font-weight:500}
 
   /* deload card */
   .deload-card{
@@ -420,8 +479,8 @@
   .superset{margin:0 16px 15px 60px;border-left:2px solid var(--accent);padding:12px 0 2px 14px}
   .superset .tag{font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:6px}
   .superset .sname{font-family:var(--display);font-weight:500;font-size:16px;line-height:1.15;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .superset .sname .sname-text{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .superset .sname .unit-toggle{flex:0 0 auto;margin:0;margin-left:auto}
-  .superset .prev-load{margin-bottom:8px;margin-top:0}
   .superset .series-table{padding-left:0;padding-right:0}
 
   /* notas */
@@ -440,6 +499,11 @@
     .series-table{padding-left:46px}
     .series-table:not([data-sup]) .set-done-row{margin-left:-30px;padding-left:30px}
     .series-grid{grid-template-columns:38px 1fr 84px;gap:8px}
+    body.layout-prev-column .series-grid{grid-template-columns:38px 58px 1fr 78px;gap:7px}
+    .pp-row{grid-template-columns:62px repeat(var(--pp-cols,4),1fr);column-gap:4px}
+    .prev-block{padding-left:46px}
+    .pp-val{font-size:15px}
+    .series-head .h-prev{font-size:9px;letter-spacing:.04em}
     .reps-input{font-size:16px;padding:6px 2px}
     .badges{padding-left:46px}
     .chip{font-size:14px}
@@ -514,6 +578,7 @@
   #settingsPeriodizationRow{display:none}
   .flag-periodization-available #settingsPeriodizationRow{display:flex}
   #periodToggle button{padding:4px 10px;font-size:11px}
+  #prevLayoutToggle button{padding:4px 10px;font-size:11px}
 
   #settingsMachinesRow{display:none}
   .flag-machines-available #settingsMachinesRow{display:flex}
@@ -1045,6 +1110,9 @@
   /* 4. Modal max-height dvh fallback */
   .modal{max-height:90vh;max-height:90dvh}
 
+  /* 4b. Tall sheet standard — search-driven modals */
+  .modal.modal-tall{min-height:88vh;min-height:88dvh}
+
   /* 4. Modal sticky footer */
   .modal-footer{
     position:sticky;bottom:0;background:var(--surface);
@@ -1269,7 +1337,7 @@
   <div class="modal-overlay" id="dayEditModal"><div class="modal" id="dayEditModalBody"></div></div>
   <!-- MODAL: Trocar exercício (só hoje) -->
   <div class="modal-overlay" id="subModal">
-    <div class="modal" id="subModalInner"></div>
+    <div class="modal modal-tall" id="subModalInner"></div>
   </div>
   <!-- MODAL: Configurações (mobile) -->
   <div class="modal-overlay" id="settingsModal">
@@ -1282,6 +1350,16 @@
       </div>
       <div id="settingsPanels">
       <div data-settingspanel="treino" class="active">
+      <div id="settingsPrevLayoutRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Histórico na tela de treino</span>
+          <span class="setting-desc">Como a carga anterior e a sugestão aparecem em cada exercício.</span>
+        </div>
+        <div class="mode-toggle" id="prevLayoutToggle" role="group" aria-label="Layout do histórico">
+          <button type="button" data-prevlayout="column">Coluna</button>
+          <button type="button" data-prevlayout="panel">Painel</button>
+        </div>
+      </div>
       <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
         <div class="setting-text">
           <span class="period-label">Periodização</span>
@@ -1369,7 +1447,7 @@
   </div>
   <!-- MODAL: Máquina por exercício -->
   <div class="modal-overlay" id="machineModal">
-    <div class="modal" id="machineModalInner"></div>
+    <div class="modal modal-tall" id="machineModalInner"></div>
   </div>
   <!-- MODAL: Progresso (gamificação) -->
   <div class="modal-overlay" id="gamifModal">
@@ -1756,6 +1834,35 @@ const EXERCISE_CATALOG = [
   {name:"Pullover na máquina",muscle:"peito",type:"iso"},
   {name:"Chest press máquina",muscle:"peito",type:"comp"},
   {name:"Mergulho no paralelas (peito)",muscle:"peito",type:"comp"},
+  {name:"Supino inclinado com halteres",muscle:"peito",type:"comp"},
+  {name:"Supino inclinado halteres",muscle:"peito",type:"comp"},
+  {name:"Supino reto barra",muscle:"peito",type:"comp"},
+  {name:"Crucifixo máquina",muscle:"peito",type:"iso"},
+  {name:"Crossover polia alta",muscle:"peito",type:"iso"},
+  {name:"Crucifixo reto (máquina)",muscle:"peito",type:"iso"},
+  {name:"Supino reto no Smith",muscle:"peito",type:"comp"},
+  {name:"Supino inclinado no Smith",muscle:"peito",type:"comp"},
+  {name:"Supino declinado na máquina",muscle:"peito",type:"comp"},
+  {name:"Supino reto pegada fechada",muscle:"peito",type:"comp"},
+  {name:"Crucifixo declinado com halter",muscle:"peito",type:"iso"},
+  {name:"Flexão declinada (pés elevados)",muscle:"peito",type:"comp"},
+  {name:"Flexão diamante",muscle:"peito",type:"comp"},
+  {name:"Supino unilateral com halter",muscle:"peito",type:"comp"},
+  {name:"Crucifixo unilateral no cabo",muscle:"peito",type:"iso"},
+  {name:"Pullover na polia alta",muscle:"peito",type:"iso"},
+  {name:"Supino inclinado na máquina",muscle:"peito",type:"comp"},
+  {name:"Supino reto com kettlebell",muscle:"peito",type:"comp"},
+  {name:"Chest press unilateral na máquina",muscle:"peito",type:"comp"},
+  {name:"Crucifixo na máquina unilateral",muscle:"peito",type:"iso"},
+  {name:"Flexão com halteres (peito)",muscle:"peito",type:"comp"},
+  {name:"Supino declinado no Smith",muscle:"peito",type:"comp"},
+  {name:"Crucifixo declinado no cabo",muscle:"peito",type:"iso"},
+  {name:"Supino máquina unilateral",muscle:"peito",type:"comp"},
+  {name:"Peck deck unilateral",muscle:"peito",type:"iso"},
+  {name:"Mergulho entre bancos (peito)",muscle:"peito",type:"comp"},
+  {name:"Flexão hindu",muscle:"peito",type:"comp"},
+  {name:"Crossover baixo unilateral",muscle:"peito",type:"iso"},
+  {name:"Supino reto unilateral no Smith",muscle:"peito",type:"comp"},
   // — Costas —
   {name:"Puxada frontal aberta",muscle:"costas",type:"comp"},
   {name:"Puxada frontal fechada",muscle:"costas",type:"comp"},
@@ -1781,6 +1888,37 @@ const EXERCISE_CATALOG = [
   {name:"Levantamento terra romeno",muscle:"costas",type:"comp"},
   {name:"Hiperextensão lombar",muscle:"costas",type:"iso"},
   {name:"Good morning",muscle:"costas",type:"comp"},
+  {name:"Barra fixa (ou puxada alta)",muscle:"costas",type:"comp"},
+  {name:"Remada sentada (triângulo)",muscle:"costas",type:"comp"},
+  {name:"Remada curvada barra",muscle:"costas",type:"comp"},
+  {name:"Barra fixa supinada",muscle:"costas",type:"comp"},
+  {name:"Remada cavalinho (barra T)",muscle:"costas",type:"comp"},
+  {name:"Puxada aberta (pulley frente)",muscle:"costas",type:"comp"},
+  {name:"Remada baixa (cordão)",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal pegada neutra",muscle:"costas",type:"comp"},
+  {name:"Remada unilateral no cabo",muscle:"costas",type:"comp"},
+  {name:"Levantamento terra sumô",muscle:"costas",type:"comp"},
+  {name:"Puxada unilateral no pulley",muscle:"costas",type:"comp"},
+  {name:"Barra fixa neutra",muscle:"costas",type:"comp"},
+  {name:"Remada cavalinho pegada supinada",muscle:"costas",type:"comp"},
+  {name:"Hiperextensão no banco 45°",muscle:"costas",type:"iso"},
+  {name:"Remada curvada pegada supinada",muscle:"costas",type:"comp"},
+  {name:"Remada Pendlay com barra",muscle:"costas",type:"comp"},
+  {name:"Remada Yates com barra",muscle:"costas",type:"comp"},
+  {name:"Levantamento terra trap bar",muscle:"costas",type:"comp"},
+  {name:"Remada cavalinho unilateral",muscle:"costas",type:"comp"},
+  {name:"Remada no crossover unilateral",muscle:"costas",type:"comp"},
+  {name:"Barra fixa com peso",muscle:"costas",type:"comp"},
+  {name:"Remada curvada pegada pronada",muscle:"costas",type:"comp"},
+  {name:"Levantamento terra déficit",muscle:"costas",type:"comp"},
+  {name:"Remada máquina unilateral",muscle:"costas",type:"comp"},
+  {name:"Hiperextensão com peso (anilha)",muscle:"costas",type:"iso"},
+  {name:"Remada T-bar unilateral",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal com barra reta",muscle:"costas",type:"comp"},
+  {name:"Good morning com halter",muscle:"costas",type:"comp"},
+  {name:"Barra fixa assistida na máquina",muscle:"costas",type:"comp"},
+  {name:"Puxada frontal unilateral na máquina",muscle:"costas",type:"comp"},
+  {name:"Barra fixa com elástico (assistida)",muscle:"costas",type:"comp"},
   // — Ombro —
   {name:"Desenvolvimento com barra",muscle:"ombro",type:"comp"},
   {name:"Desenvolvimento com halter",muscle:"ombro",type:"comp"},
@@ -1802,6 +1940,36 @@ const EXERCISE_CATALOG = [
   {name:"Press militar com barra",muscle:"ombro",type:"comp"},
   {name:"Remada alta com halter",muscle:"ombro",type:"comp"},
   {name:"Ombro máquina lateral",muscle:"ombro",type:"iso"},
+  {name:"Desenvolvimento com halteres",muscle:"ombro",type:"comp"},
+  {name:"Elevação lateral",muscle:"ombro",type:"iso"},
+  {name:"Desenvolvimento militar halteres",muscle:"ombro",type:"comp"},
+  {name:"Face pull (corda)",muscle:"ombro",type:"iso"},
+  {name:"Desenvolvimento militar barra",muscle:"ombro",type:"comp"},
+  {name:"Elevação lateral na polia",muscle:"ombro",type:"iso"},
+  {name:"Face pull",muscle:"ombro",type:"iso"},
+  {name:"Crucifixo invertido",muscle:"ombro",type:"iso"},
+  {name:"Encolhimento",muscle:"ombro",type:"iso"},
+  {name:"Elevação lateral unilateral no cabo",muscle:"ombro",type:"iso"},
+  {name:"Elevação lateral inclinada (lean-away)",muscle:"ombro",type:"iso"},
+  {name:"Press militar no Smith",muscle:"ombro",type:"comp"},
+  {name:"Crucifixo invertido no banco 45°",muscle:"ombro",type:"iso"},
+  {name:"Remada alta no cabo",muscle:"ombro",type:"comp"},
+  {name:"Manguito rotador com elástico",muscle:"ombro",type:"iso"},
+  {name:"Rotação externa no cabo",muscle:"ombro",type:"iso"},
+  {name:"Desenvolvimento com kettlebell",muscle:"ombro",type:"comp"},
+  {name:"Desenvolvimento unilateral com halter",muscle:"ombro",type:"comp"},
+  {name:"Elevação lateral com elástico",muscle:"ombro",type:"iso"},
+  {name:"Press militar com kettlebell",muscle:"ombro",type:"comp"},
+  {name:"Remada alta com kettlebell",muscle:"ombro",type:"comp"},
+  {name:"Desenvolvimento sentado com barra",muscle:"ombro",type:"comp"},
+  {name:"Elevação lateral deitado",muscle:"ombro",type:"iso"},
+  {name:"Face pull unilateral no cabo",muscle:"ombro",type:"iso"},
+  {name:"Crucifixo invertido unilateral no cabo",muscle:"ombro",type:"iso"},
+  {name:"Remada alta na máquina",muscle:"ombro",type:"comp"},
+  {name:"Elevação frontal com kettlebell",muscle:"ombro",type:"iso"},
+  {name:"Desenvolvimento na máquina unilateral",muscle:"ombro",type:"comp"},
+  {name:"Rotação interna no cabo",muscle:"ombro",type:"iso"},
+  {name:"Elevação frontal na máquina",muscle:"ombro",type:"iso"},
   // — Trapézio —
   {name:"Encolhimento com halter",muscle:"trapézio",type:"iso"},
   {name:"Encolhimento com barra",muscle:"trapézio",type:"iso"},
@@ -1809,6 +1977,13 @@ const EXERCISE_CATALOG = [
   {name:"Remada alta com barra (trapézio)",muscle:"trapézio",type:"comp"},
   {name:"Encolhimento com halter inclinado",muscle:"trapézio",type:"iso"},
   {name:"Face pull (trapézio)",muscle:"trapézio",type:"iso"},
+  {name:"Encolhimento no cabo",muscle:"trapézio",type:"iso"},
+  {name:"Encolhimento com barra atrás do corpo",muscle:"trapézio",type:"iso"},
+  {name:"Encolhimento unilateral com halter",muscle:"trapézio",type:"iso"},
+  {name:"Remada alta com halteres (trapézio)",muscle:"trapézio",type:"comp"},
+  {name:"Encolhimento com kettlebell",muscle:"trapézio",type:"iso"},
+  {name:"Remada alta no Smith (trapézio)",muscle:"trapézio",type:"comp"},
+  {name:"Encolhimento unilateral no cabo",muscle:"trapézio",type:"iso"},
   // — Bíceps —
   {name:"Rosca direta com barra",muscle:"bíceps",type:"iso"},
   {name:"Rosca direta com halter",muscle:"bíceps",type:"iso"},
@@ -1827,6 +2002,27 @@ const EXERCISE_CATALOG = [
   {name:"Rosca spider com barra EZ",muscle:"bíceps",type:"iso"},
   {name:"Martelo simultâneo com halter",muscle:"bíceps",type:"iso"},
   {name:"Martelo no cabo com corda",muscle:"bíceps",type:"iso"},
+  {name:"Rosca W",muscle:"bíceps",type:"iso"},
+  {name:"Rosca direta barra W",muscle:"bíceps",type:"iso"},
+  {name:"Rosca martelo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca direta",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott unilateral com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca inclinada unilateral com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca com elástico",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Zottman",muscle:"bíceps",type:"iso"},
+  {name:"Rosca drag com barra",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott no cabo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca martelo no banco inclinado",muscle:"bíceps",type:"iso"},
+  {name:"Rosca no Cross unilateral",muscle:"bíceps",type:"iso"},
+  {name:"Rosca Scott unilateral no cabo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca martelo unilateral no cabo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca 21 com halter",muscle:"bíceps",type:"iso"},
+  {name:"Rosca direta na máquina",muscle:"bíceps",type:"iso"},
+  {name:"Rosca concentrada no cabo",muscle:"bíceps",type:"iso"},
+  {name:"Rosca com kettlebell",muscle:"bíceps",type:"iso"},
+  {name:"Rosca inversa com barra",muscle:"bíceps",type:"iso"},
+  {name:"Rosca inversa com barra EZ",muscle:"bíceps",type:"iso"},
+  {name:"Rosca bayesiana no cabo",muscle:"bíceps",type:"iso"},
   // — Tríceps —
   {name:"Tríceps pulley com barra",muscle:"tríceps",type:"iso"},
   {name:"Tríceps corda",muscle:"tríceps",type:"iso"},
@@ -1844,6 +2040,28 @@ const EXERCISE_CATALOG = [
   {name:"Tríceps supino fechado",muscle:"tríceps",type:"comp"},
   {name:"Tríceps máquina",muscle:"tríceps",type:"iso"},
   {name:"Tríceps pulley inverso",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês (testa)",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês unilateral",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês no cabo com corda",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês na máquina",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês unilateral com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa na máquina",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa unilateral com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês sentado com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps supino fechado no Smith",muscle:"tríceps",type:"comp"},
+  {name:"Tríceps mergulho no banco",muscle:"tríceps",type:"comp"},
+  {name:"Tríceps corda unilateral",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês deitado com halter",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps pulley unilateral",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps testa no banco declinado",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês com kettlebell",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps coice na máquina",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês no crossover unilateral",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps pulley unilateral com corda",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps mergulho assistido na máquina",muscle:"tríceps",type:"comp"},
+  {name:"Tríceps pulley com barra V",muscle:"tríceps",type:"iso"},
+  {name:"Tríceps francês unilateral na máquina",muscle:"tríceps",type:"iso"},
   // — Antebraço —
   {name:"Rosca punho com barra",muscle:"antebraço",type:"iso"},
   {name:"Rosca punho com halter",muscle:"antebraço",type:"iso"},
@@ -1853,6 +2071,14 @@ const EXERCISE_CATALOG = [
   {name:"Farmer's walk",muscle:"antebraço",type:"comp"},
   {name:"Wrist roller",muscle:"antebraço",type:"iso"},
   {name:"Martelo braquiorradial",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho no cabo",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho invertida no cabo",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho unilateral com halter",muscle:"antebraço",type:"iso"},
+  {name:"Extensor de punho com elástico",muscle:"antebraço",type:"iso"},
+  {name:"Rosca punho com kettlebell",muscle:"antebraço",type:"iso"},
+  {name:"Farmer's walk unilateral",muscle:"antebraço",type:"comp"},
+  {name:"Rosca punho na máquina",muscle:"antebraço",type:"iso"},
+  {name:"Pinça com anilha",muscle:"antebraço",type:"iso"},
   // — Perna (quadríceps / posterior / adutores) —
   {name:"Agachamento livre com barra",muscle:"perna",type:"comp"},
   {name:"Agachamento frontal",muscle:"perna",type:"comp"},
@@ -1883,6 +2109,48 @@ const EXERCISE_CATALOG = [
   {name:"Hack squat invertido",muscle:"perna",type:"comp"},
   {name:"Afundo no Smith",muscle:"perna",type:"comp"},
   {name:"Prensa unilateral",muscle:"perna",type:"comp"},
+  {name:"Agachamento livre",muscle:"perna",type:"comp"},
+  {name:"Leg press 45°",muscle:"perna",type:"comp"},
+  {name:"Cadeira flexora",muscle:"perna",type:"iso"},
+  {name:"Panturrilha em pé (máquina)",muscle:"perna",type:"iso"},
+  {name:"Agachamento barra livre",muscle:"perna",type:"comp"},
+  {name:"Stiff (terra romeno)",muscle:"perna",type:"comp"},
+  {name:"Afundo com halteres",muscle:"perna",type:"comp"},
+  {name:"Panturrilha em pé",muscle:"perna",type:"iso"},
+  {name:"Glúteo na polia (coice)",muscle:"perna",type:"iso"},
+  {name:"Stiff",muscle:"perna",type:"comp"},
+  {name:"Agachamento pistol (unilateral)",muscle:"perna",type:"comp"},
+  {name:"Leg press horizontal unilateral",muscle:"perna",type:"comp"},
+  {name:"Cadeira extensora unilateral",muscle:"perna",type:"iso"},
+  {name:"Flexora unilateral sentado",muscle:"perna",type:"iso"},
+  {name:"Flexora em pé",muscle:"perna",type:"iso"},
+  {name:"Stiff com kettlebell",muscle:"perna",type:"comp"},
+  {name:"Levantamento terra romeno unilateral com halter",muscle:"perna",type:"comp"},
+  {name:"Avanço reverso com halter",muscle:"perna",type:"comp"},
+  {name:"Avanço caminhando com halter",muscle:"perna",type:"comp"},
+  {name:"Passada no Smith",muscle:"perna",type:"comp"},
+  {name:"Passada com barra",muscle:"perna",type:"comp"},
+  {name:"Búlgaro no Smith",muscle:"perna",type:"comp"},
+  {name:"Adutora no cabo",muscle:"perna",type:"iso"},
+  {name:"Abdutora no cabo",muscle:"perna",type:"iso"},
+  {name:"Agachamento Zercher",muscle:"perna",type:"comp"},
+  {name:"Agachamento sumô no Smith",muscle:"perna",type:"comp"},
+  {name:"Leg press 45 unilateral",muscle:"perna",type:"comp"},
+  {name:"Cadeira adutora unilateral",muscle:"perna",type:"iso"},
+  {name:"Stiff no Smith",muscle:"perna",type:"comp"},
+  {name:"Agachamento hack unilateral",muscle:"perna",type:"comp"},
+  {name:"Leg press vertical",muscle:"perna",type:"comp"},
+  {name:"Afundo com barra",muscle:"perna",type:"comp"},
+  {name:"Passada com kettlebell",muscle:"perna",type:"comp"},
+  {name:"Leg press 45 com pés altos",muscle:"perna",type:"comp"},
+  {name:"Flexora deitado unilateral",muscle:"perna",type:"iso"},
+  {name:"Agachamento sumô com halter",muscle:"perna",type:"comp"},
+  {name:"Agachamento Smith unilateral",muscle:"perna",type:"comp"},
+  {name:"Agachamento frontal com kettlebell",muscle:"perna",type:"comp"},
+  {name:"Stiff unilateral no cabo",muscle:"perna",type:"comp"},
+  {name:"Leg press vertical unilateral",muscle:"perna",type:"comp"},
+  {name:"Levantamento terra romeno unilateral no cabo",muscle:"perna",type:"comp"},
+  {name:"Passada lateral com halter",muscle:"perna",type:"comp"},
   // — Glúteo —
   {name:"Hip thrust com barra",muscle:"glúteo",type:"comp"},
   {name:"Hip thrust na máquina",muscle:"glúteo",type:"comp"},
@@ -1895,6 +2163,20 @@ const EXERCISE_CATALOG = [
   {name:"Step-up com halter",muscle:"glúteo",type:"comp"},
   {name:"Ponte glútea unilateral",muscle:"glúteo",type:"iso"},
   {name:"Glúteo quatro apoios",muscle:"glúteo",type:"iso"},
+  {name:"Hip thrust unilateral",muscle:"glúteo",type:"iso"},
+  {name:"Elevação pélvica no banco",muscle:"glúteo",type:"iso"},
+  {name:"Hip thrust no Smith",muscle:"glúteo",type:"comp"},
+  {name:"Coice na máquina",muscle:"glúteo",type:"iso"},
+  {name:"Abdução na máquina",muscle:"glúteo",type:"iso"},
+  {name:"Step-up no banco (peso corporal)",muscle:"glúteo",type:"comp"},
+  {name:"Glúteo quatro apoios no cabo",muscle:"glúteo",type:"iso"},
+  {name:"Hip thrust com kettlebell",muscle:"glúteo",type:"comp"},
+  {name:"Ponte glútea com barra",muscle:"glúteo",type:"iso"},
+  {name:"Elevação pélvica unilateral no banco",muscle:"glúteo",type:"iso"},
+  {name:"Abdução deitado (peso corporal)",muscle:"glúteo",type:"iso"},
+  {name:"Ponte glútea com halter",muscle:"glúteo",type:"iso"},
+  {name:"Step-up lateral com halter",muscle:"glúteo",type:"comp"},
+  {name:"Abdução com halter (deitado)",muscle:"glúteo",type:"iso"},
   // — Panturrilha —
   {name:"Panturrilha sentado",muscle:"panturrilha",type:"iso"},
   {name:"Panturrilha em pé na máquina",muscle:"panturrilha",type:"iso"},
@@ -1904,6 +2186,12 @@ const EXERCISE_CATALOG = [
   {name:"Panturrilha no hack",muscle:"panturrilha",type:"iso"},
   {name:"Gêmeos em pé (donkey calf)",muscle:"panturrilha",type:"iso"},
   {name:"Sóleo sentado",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha no cabo",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha unilateral no step (peso corporal)",muscle:"panturrilha",type:"iso"},
+  {name:"Sóleo no leg press",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha com kettlebell em pé",muscle:"panturrilha",type:"iso"},
+  {name:"Sóleo no Smith",muscle:"panturrilha",type:"iso"},
+  {name:"Panturrilha unilateral no leg press",muscle:"panturrilha",type:"iso"},
   // — Abdômen —
   {name:"Abdominal crunch",muscle:"abdômen",type:"iso"},
   {name:"Abdominal infra",muscle:"abdômen",type:"iso"},
@@ -1925,9 +2213,22 @@ const EXERCISE_CATALOG = [
   {name:"Sit-up",muscle:"abdômen",type:"iso"},
   {name:"Dragon flag",muscle:"abdômen",type:"iso"},
   {name:"Hollow hold",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal supra no banco declinado",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal com carga (anilha)",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal canivete (V-up)",muscle:"abdômen",type:"iso"},
+  {name:"Elevação de pernas deitado no solo",muscle:"abdômen",type:"iso"},
+  {name:"Flexão lateral de tronco (side bend) com halter",muscle:"abdômen",type:"iso"},
+  {name:"Rotação de tronco na máquina",muscle:"abdômen",type:"iso"},
+  {name:"Prancha frontal com carga",muscle:"abdômen",type:"iso"},
+  {name:"Abdominal oblíquo no banco (side crunch)",muscle:"abdômen",type:"iso"},
+  {name:"Elevação de joelhos no banco romano",muscle:"abdômen",type:"iso"},
+  {name:"Rotação de tronco com halter",muscle:"abdômen",type:"iso"},
+  {name:"Elevação de pernas no cabo",muscle:"abdômen",type:"iso"},
+  {name:"Sit-up com anilha",muscle:"abdômen",type:"iso"},
+  {name:"Prancha lateral com carga",muscle:"abdômen",type:"iso"},
 ];
 
-const MACHINE_CATALOG = ["Hummer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
+const MACHINE_CATALOG = ["Hammer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
 
 // ========= Estado em memória =========
 let user = null;
@@ -1949,6 +2250,7 @@ let currentPlanKey = null;  // predefined template key
 let exSubTab = "list";
 let exSearchQuery = "";
 let lastDeloadDate = null;
+let prevLayout = "column"; // 'column' | 'panel' — how previous load + suggestion are shown
 let periodizationEnabled = true;
 let machinesEnabled = true;
 let profileEnabled = true;
@@ -2011,6 +2313,7 @@ const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
+const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
 function effectiveTheme(){
   return theme || (prefersDark.matches ? "dark" : "light");
@@ -2078,6 +2381,15 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
+function applyPrevLayoutState(){
+  document.body.classList.toggle("layout-prev-column", prevLayout === "column");
+}
+function syncPrevLayoutToggle(){
+  document.querySelectorAll('#prevLayoutToggle [data-prevlayout]').forEach(b =>
+    b.classList.toggle("active", b.dataset.prevlayout === prevLayout));
+}
+applyPrevLayoutState(); // default before any prefs load
+
 function syncPeriodToggle(){
   const $on = document.querySelector('#periodToggle [data-period="on"]');
   const $off = document.querySelector('#periodToggle [data-period="off"]');
@@ -2125,6 +2437,7 @@ function syncAutoregSensToggle(){
   })[autoregSensitivity] || "";
 }
 function openSettings(){
+  syncPrevLayoutToggle();
   syncPeriodToggle();
   syncMachinesToggle();
   syncProfileToggle();
@@ -2138,6 +2451,16 @@ function closeSettings(){ $settingsModal.classList.remove("open"); }
 $bnConfig.addEventListener("click", openSettings);
 $settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
 $settingsThemeToggle.addEventListener("click", toggleTheme);
+document.getElementById("prevLayoutToggle").addEventListener("click", e => {
+  const btn = e.target.closest("[data-prevlayout]");
+  if(!btn) return;
+  prevLayout = btn.dataset.prevlayout === "panel" ? "panel" : "column";
+  syncPrevLayoutToggle();
+  savePref();
+  applyPrevLayoutState();
+  // renderDay is required, not optional: seriesHTML branches on the layout in JS.
+  if($viewTreino.style.display !== "none") renderDay();
+});
 document.getElementById("periodToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-period]");
   if(!btn) return;
@@ -2598,6 +2921,7 @@ async function loadPref(){
       if(d.currentPlanId) currentPlanId = d.currentPlanId;
       if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
       if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
+      if(d.prevLayout === "panel" || d.prevLayout === "column") prevLayout = d.prevLayout;
       if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
       if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
       if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
@@ -2628,6 +2952,7 @@ async function loadPref(){
   }catch(e){ console.warn("loadProfile:", e.message); }
   applyModeButtons();
   applyTheme();
+  applyPrevLayoutState();
   applyPeriodizationState();
   applyMachinesState();
   applyProfileState();
@@ -2644,6 +2969,7 @@ async function savePref(){
       currentPlanName: currentPlanName || null,
       currentPlanId: currentPlanId || null,
       currentPlanKey: currentPlanKey || null,
+      prevLayout,
       periodizationEnabled,
       machinesEnabled,
       profileEnabled,
@@ -2684,7 +3010,7 @@ function lastMachineFor(name, isSup=false){
     if(!sess.exercises) continue;
     for(const entry of sess.exercises){
       if(isSup){
-        if(entry.supName === name && entry.supMachine) return entry.supMachine;
+        if((entry.supSubName || entry.supName) === name && entry.supMachine) return entry.supMachine;
       } else {
         const eName = entry.subName || entry.name;
         if(eName === name && entry.machine) return entry.machine;
@@ -2729,6 +3055,8 @@ function emptySession(dayKey){
         subMuscle: null,
         machine: machinesActive ? lastMachineFor(effectiveName) : null,
         supName,
+        supSubName: null,
+        supSubMuscle: null,
         supMachine: machinesActive && supName ? lastMachineFor(supName, true) : null,
         firstSetAt: null,
         main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
@@ -2757,6 +3085,8 @@ function reconcileSession(s, dayKey){
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
       machine: old && old.machine != null ? old.machine : null,
       supName: e.superset ? e.superset.name : null,
+      supSubName: e.superset && old && old.supSubName ? old.supSubName : null,
+      supSubMuscle: e.superset && old && old.supSubMuscle ? old.supSubMuscle : null,
       supMachine: old && old.supMachine != null ? old.supMachine : null,
       firstSetAt: old && old.firstSetAt ? old.firstSetAt : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
@@ -3079,9 +3409,10 @@ function computeWrapped(sessions, year){
       const mainName = ex.subName || ex.name;
       const mainMuscle = ex.subMuscle || resolveMuscle(mainName);
       processEntry(mainName, mainMuscle, ex.main, s.date);
-      if(ex.sup && ex.supName){
-        const supMuscle = resolveMuscle(ex.supName);
-        processEntry(ex.supName, supMuscle, ex.sup, s.date);
+      if(ex.sup && (ex.supSubName || ex.supName)){
+        const supEffName = ex.supSubName || ex.supName;
+        const supMuscle = ex.supSubMuscle || resolveMuscle(supEffName);
+        processEntry(supEffName, supMuscle, ex.sup, s.date);
       }
     }
     if(sessionHasDone){ sessionsCount++; trainedDates.add(s.date); }
@@ -3405,11 +3736,15 @@ function setPct(){
   return total ? Math.round(done / total * 100) : 0;
 }
 
-function prevLoadText(name, machine, unit){
-  if(!allSessions || !allSessions.length) return "";
+// Pure data. Finds the most recent session (excluding the one being edited) where this
+// exercise + machine variant was logged with at least one weight.
+// perSet is INDEX-ALIGNED with the logged set rows: empty sets are preserved as null so
+// callers can map values 1:1 onto the current set rows. Returns null when there's no history.
+function prevLoadData(name, machine){
+  if(!allSessions || !allSessions.length) return null;
   const currentKey = session ? (session.date + "_" + session.dayKey) : null;
   let bestDate = "";
-  let bestWeights = null;
+  let bestSets = null;
   let bestSess = null;
   let bestEntryIdx = -1;
   for(const sess of allSessions){
@@ -3419,28 +3754,94 @@ function prevLoadText(name, machine, unit){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
-      const weights = sets.map(s => s.weight).filter(w => w != null && w !== "");
-      if(!weights.length) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; bestWeights = weights; bestSess = sess; bestEntryIdx = ei; }
+      if(!sets.some(s => s && s.weight != null && s.weight !== "")) continue;
+      if(sess.date > bestDate){ bestDate = sess.date; bestSets = sets; bestSess = sess; bestEntryIdx = ei; }
     }
   }
-  if(!bestWeights) return "";
-  let marker = "";
+  if(!bestSets) return null;
+
+  const perSet = bestSets.map(s => ({
+    weight:   (s && s.weight   != null && s.weight !== "") ? s.weight   : null,
+    reps:     (s && s.reps     != null) ? s.reps     : null,
+    repsDone: (s && s.repsDone != null) ? s.repsDone : null
+  }));
+
+  // 1-based execution rank of that entry in its session, only when it ran out of plan order.
+  let execRank = null;
   if(execOrderActive() && bestSess && bestEntryIdx >= 0){
     const sm = execShiftMap(bestSess);
     const shift = sm.get(bestEntryIdx);
     if(shift != null && shift !== 0){
-      const entry = bestSess.exercises[bestEntryIdx];
       const executed = [];
       bestSess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
       const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
-      const execRank = byTime.findIndex(x => x.i === bestEntryIdx);
-      if(execRank >= 0) marker = ` · <span style="color:var(--faint)">${execRank + 1}º</span>`;
+      const r = byTime.findIndex(x => x.i === bestEntryIdx);
+      if(r >= 0) execRank = r + 1;
     }
   }
-  return `<div class="prev-load">Última: <b>${bestWeights.join(" · ")}</b> ${UNIT_ABBR[unit||"kg"]} <span style="color:var(--faint)">(${shortDate(bestDate)}${marker})</span></div>`;
+
+  return { perSet, date: bestDate, execRank };
+}
+
+// Legacy single-line renderer. Output is intentionally unchanged; stage B replaces it.
+// Shared meta row + variant-1 panel. `prev` / `sug` are precomputed by renderDay so the
+// history scan and the suggestion engine each run once per exercise.
+// "×N" for the reps actually completed on that set last time. Accented when the user beat that
+// session's target — the cue that the load is ready to go up. Empty when no repsDone was recorded.
+function prevRepsHTML(ps){
+  if(!ps || ps.repsDone == null) return "";
+  const over = (ps.reps != null && ps.repsDone > ps.reps) ? " over" : "";
+  return `<span class="pv-reps${over}">×${ps.repsDone}</span>`;
+}
+
+function prevBlockHTML(prev, sug, unit, exIdx, isSup){
+  if(!prev && !sug) return "";
+  const u = unit || "kg";
+  const ua = UNIT_ABBR[u];
+  const n = Math.max(prev ? prev.perSet.length : 0, sug ? sug.loads.length : 0);
+  if(!n) return "";
+
+  const rank = (prev && prev.execRank != null) ? ` · ${prev.execRank}º` : "";
+  const dateTxt = prev
+    ? `Último treino <b>${shortDate(prev.date)}</b>${rank}`
+    : `Sem histórico`;
+  const applyBtn = sug
+    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar sugestão ${sug.dir}</button>`
+    : "";
+
+  let html = `<div class="prev-block">`;
+  html += `<div class="prev-meta"><span class="pm-date">${dateTxt}</span>${applyBtn}</div>`;
+  html += `<div class="prev-panel" style="--pp-cols:${n}">`;
+  html += `<div class="pp-row pp-head"><span class="pp-lbl pp-unit">${ua}</span>`;
+  for(let i = 0; i < n; i++) html += `<span class="pp-val">${i+1}ª</span>`;
+  html += `</div>`;
+
+  if(prev){
+    html += `<div class="pp-row pp-prev"><span class="pp-lbl">ÚLTIMA</span>`;
+    for(let i = 0; i < n; i++){
+      const ps = prev.perSet[i] || null;
+      const w = ps ? ps.weight : null;
+      html += w != null
+        ? `<span class="pp-val"><span class="pv-w">${w}</span>${prevRepsHTML(ps)}</span>`
+        : `<span class="pp-val">—</span>`;
+    }
+    html += `</div>`;
+  }
+  if(sug){
+    html += `<div class="pp-row pp-sug"><span class="pp-lbl">SUGESTÃO</span>`;
+    for(let i = 0; i < n; i++){
+      const v = sug.loads[i];
+      const w = prev && prev.perSet[i] ? prev.perSet[i].weight : null;
+      const chg = (v != null && w != null && v !== w) ? " chg" : "";
+      html += `<span class="pp-val${chg}">${v != null ? v : "—"}</span>`;
+    }
+    html += `</div>`;
+    if(sug.limited) html += `<div class="pp-note">limitação</div>`;
+  }
+  html += `</div></div>`;
+  return html;
 }
 
 const profileActive = () => document.body.classList.contains("flag-profile");
@@ -3564,7 +3965,7 @@ function suggestLoads(name, unit, machine, opts){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       if(!sets.some(s => typeof s.weight === "number")) continue;
       if(sess.date > bestDate){
@@ -3631,20 +4032,18 @@ function suggestLoads(name, unit, machine, opts){
   return { loads: suggestions, dir, date: bestDate };
 }
 
-function suggestHTML(name, unit, isSup, exIdx){
-  if(!session || !session.exercises[exIdx]) return "";
+// Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
+// now lives here so the panel row, the apply button and the input placeholders agree.
+function suggestData(name, unit, isSup, exIdx){
+  if(!document.body.classList.contains("flag-periodization")) return null;
+  if(!session || !session.exercises[exIdx]) return null;
   const ex = session.exercises[exIdx];
   const sets = isSup ? ex.sup : ex.main;
-  if(sets && sets.some(s => typeof s.weight === "number")) return "";
+  if(sets && sets.some(s => typeof s.weight === "number")) return null;
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
   const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
-  const muscle = planEx ? (isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
-  const result = suggestLoads(name, unit, machine, {muscle});
-  if(!result) return "";
-  const u = unit || "kg";
-  const display = result.loads.map(v => v != null ? v : "—").join(" · ");
-  const limitTag = result.limited ? `<span style="color:var(--faint)"> · limitação</span>` : "";
-  return `<div class="suggest">Sugestão ${result.dir}: <b>${display}</b> ${UNIT_ABBR[u]}${limitTag} <button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar</button></div>`;
+  const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
+  return suggestLoads(name, unit, machine, {muscle}) || null;
 }
 
 function exerciseTopHistory(name, since=null, machine){
@@ -3659,7 +4058,7 @@ function exerciseTopHistory(name, since=null, machine){
       const entry = sess.exercises[ei];
       let sets = null;
       if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if(entry.supName === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
       if(!sets || !sets.length) continue;
       const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
       if(!nums.length) continue;
@@ -3728,25 +4127,38 @@ function deloadDue(){
   return { due: false };
 }
 
-function seriesHTML(sets, exIdx, isSup, unit, name){
+function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
   const u = unit || "kg";
   const step = UNIT_STEP[u] || 2.5;
   const equip = name ? equipmentOf(name) : null;
   const autoreg = document.body.classList.contains("flag-autoreg");
+  // In panel layout the SUGESTÃO row already carries these values; echoing them as
+  // placeholders reads like pre-filled data. Column layout has no such row, so it keeps them.
+  const colLayout = document.body.classList.contains("layout-prev-column");
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
-    <span>Série</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
+    <span>Série</span><span class="h-prev">Anterior</span><span class="h-reps">Reps</span><span class="h-load">Carga</span>
   </div>`;
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
     const filled = (s.weight != null && s.weight !== "") ? " filled" : "";
+    const ps = (prev && prev.perSet[si]) ? prev.perSet[si] : null;
+    const pw = ps ? ps.weight : null;
+    const prevCell = `<span class="prev-cell">${pw != null
+      ? `<span class="pv-w">${pw}</span>${prevRepsHTML(ps)}`
+      : '<span class="pc-empty">—</span>'}</span>`;
+    const sugV = sug ? sug.loads[si] : null;
+    const showSugPh = colLayout && sugV != null && (s.weight == null || s.weight === "");
+    const wPlaceholder = showSugPh ? sugV : "—";
+    const sugPh = showSugPh ? " sug-ph" : "";
     html += `<div class="series-grid${s.done ? " set-done-row" : ""}">
       <button class="set-idx${s.done ? " done" : ""}" data-si="${si}" aria-pressed="${!!s.done}" aria-label="Série ${si+1}${s.done ? " — concluída" : ""}">${s.done ? "✓" : (si+1)+"ª"}</button>
+      ${prevCell}
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
       <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
-      <div class="load-cell${filled}">
-        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="—" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
+      <div class="load-cell${filled}${sugPh}">
+        <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="${wPlaceholder}" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
         <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
     </div>`;
@@ -3876,28 +4288,32 @@ function renderDay(){
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
     const isSub = !!ex.subName;
     const effectiveName = ex.subName || e.name;
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined);
+    const sugMain = suggestData(effectiveName, e.unit, false, i);
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name">${effectiveName}${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${effectiveName}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
         ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
-        ${!isSub?prevLoadText(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit):""}
-        ${suggestHTML(effectiveName, e.unit, false, i)}
       </div>
       <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
-      <button class="ex-icon-btn sub-btn" data-i="${i}" title="Trocar exercício (só hoje)">⇄</button>
+      <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
       <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
     </div>`;
-    html += seriesHTML(ex.main, i, false, e.unit, effectiveName);
+    html += prevBlockHTML(prevMain, sugMain, e.unit, i, false);
+    html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
+      const isSupSub = !!ex.supSubName;
+      const supEffName = ex.supSubName || e.superset.name;
+      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined);
+      const sugSup = suggestData(supEffName, e.superset.unit, true, i);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname">${e.superset.name}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}<button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
-        ${prevLoadText(e.superset.name, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit)}
-        ${suggestHTML(e.superset.name, e.superset.unit, true, i)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit, e.superset.name);
+        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${supEffName}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
+      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
     }
     html += `</article>`;
@@ -3993,10 +4409,10 @@ function attachHandlers(){
       const isSup = btn.dataset.sup === "1";
       const e = activeDays()[current].ex[ei];
       const ex = session.exercises[ei];
-      const name = isSup ? e.superset.name : (ex.subName || e.name);
+      const name = isSup ? (ex.supSubName || e.superset.name) : (ex.subName || e.name);
       const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
-      const muscle = isSup ? ((e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
+      const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
       if(!result) return;
       const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
@@ -4007,8 +4423,25 @@ function attachHandlers(){
     });
   });
 
+  $panel.querySelectorAll(".evo-link").forEach(el => {
+    const go = () => {
+      const i = +el.dataset.evoI;
+      const isSup = el.dataset.evoSup === "1";
+      const ex = session.exercises[i];
+      const e = activeDays()[current]?.ex[i];
+      if(!ex || !e) return;
+      const name = isSup ? (ex.supSubName || e.superset?.name) : (ex.subName || e.name);
+      const machine = isSup ? ex.supMachine : ex.machine;
+      if(name) openEvolucaoFor(name, machine);
+    };
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", ev => {
+      if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); go(); }
+    });
+  });
+
   $panel.querySelectorAll(".sub-btn").forEach(btn => {
-    btn.addEventListener("click", () => openSubModal(+btn.dataset.i));
+    btn.addEventListener("click", () => openSubModal(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
   $panel.querySelectorAll(".machine-btn").forEach(btn => {
@@ -4043,7 +4476,7 @@ function attachHandlers(){
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
             if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine) && entry.main) refSets = entry.main;
-            else if(entry.supName === name && matchVariant(entry.supMachine, machine) && entry.sup) refSets = entry.sup;
+            else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine) && entry.sup) refSets = entry.sup;
             if(refSets) break;
           }
           if(refSets) break;
@@ -4060,7 +4493,7 @@ function attachHandlers(){
       const mainMachine = machineFilterActive() ? ex.machine : undefined;
       const supMachine = machineFilterActive() ? ex.supMachine : undefined;
       applyDeload(ex.main, mainName, e.unit, mainMachine);
-      if(e.superset && ex.sup) applyDeload(ex.sup, e.superset.name, e.superset.unit, supMachine);
+      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, e.superset.unit, supMachine);
     });
     const today = formatDate(new Date());
     lastDeloadDate = today;
@@ -4076,26 +4509,34 @@ $subModal.addEventListener("click", e => { if(e.target === $subModal) closeSubMo
 
 function closeSubModal(){ $subModal.classList.remove("open"); }
 
-function openSubModal(exIdx){
+function openSubModal(exIdx, isSup=false){
   const day = activeDays()[current];
   const planEx = day.ex[exIdx];
   const ex = session.exercises[exIdx];
-  const originalName = planEx.name;
-  const originalMuscle = planEx.muscle;
-  const isSub = !!ex.subName;
+  if(isSup && !planEx.superset) return;
+  const originalName = isSup ? planEx.superset.name : planEx.name;
+  const originalMuscle = isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : planEx.muscle;
+  const curSub = isSup ? ex.supSubName : ex.subName;
+  const isSub = !!curSub;
 
   // Build suggestions: same muscle, exclude original name, cap 8
   const suggestions = EXERCISE_CATALOG
     .filter(c => c.muscle === originalMuscle && c.name !== originalName)
     .slice(0, 8);
 
-  let html = `<h3 style="margin:0 0 4px">Trocar exercício (só hoje)</h3>`;
+  let html = `<h3 style="margin:0 0 4px">Trocar ${isSup ? "supersérie" : "exercício"} (só hoje)</h3>`;
   html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${originalName}</b>.</p>`;
 
   if(isSub){
-    html += `<div class="sub-current">Atual: ${ex.subName}</div>`;
+    html += `<div class="sub-current">Atual: ${curSub}</div>`;
     html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
   }
+
+  html += `<div class="sub-section-label">Buscar exercício</div>`;
+  html += `<div class="sub-input-wrap">`;
+  html += `<input class="modal-input" id="subSearchInput" placeholder="Digite o nome do exercício" autocomplete="off">`;
+  html += `<div class="ac-list" id="subAcList"></div>`;
+  html += `</div>`;
 
   if(suggestions.length){
     html += `<div class="sub-section-label">Sugestões (${MUSCLE_LABEL[originalMuscle]||originalMuscle})</div>`;
@@ -4106,18 +4547,17 @@ function openSubModal(exIdx){
     html += `</div>`;
   }
 
-  html += `<div class="sub-section-label">Buscar exercício</div>`;
-  html += `<div class="sub-input-wrap">`;
-  html += `<input class="modal-input" id="subSearchInput" placeholder="Digite o nome do exercício" autocomplete="off">`;
-  html += `<div class="ac-list" id="subAcList"></div>`;
-  html += `</div>`;
-
   $subModalInner.innerHTML = html;
   $subModal.classList.add("open");
 
   function applySub(name, muscle){
-    ex.subName = name;
-    ex.subMuscle = muscle || originalMuscle;
+    if(isSup){
+      ex.supSubName = name;
+      ex.supSubMuscle = muscle || originalMuscle;
+    } else {
+      ex.subName = name;
+      ex.subMuscle = muscle || originalMuscle;
+    }
     scheduleSave(); renderDay(); closeSubModal();
   }
 
@@ -4125,8 +4565,8 @@ function openSubModal(exIdx){
   const revertBtn = document.getElementById("subRevertBtn");
   if(revertBtn){
     revertBtn.addEventListener("click", () => {
-      ex.subName = null;
-      ex.subMuscle = null;
+      if(isSup){ ex.supSubName = null; ex.supSubMuscle = null; }
+      else { ex.subName = null; ex.subMuscle = null; }
       scheduleSave(); renderDay(); closeSubModal();
     });
   }
@@ -4394,6 +4834,9 @@ function buildExerciseList(){
         if(entry.subName && !seen.has(entry.subName)){
           seen.set(entry.subName, {name:entry.subName, muscle:entry.subMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:false});
         }
+        if(entry.supSubName && !seen.has(entry.supSubName)){
+          seen.set(entry.supSubName, {name:entry.supSubName, muscle:entry.supSubMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:true});
+        }
       });
     });
   }
@@ -4421,6 +4864,20 @@ function rebuildEvoDropdown(){
 }
 
 let evoInitialized = false;
+let evoPendingName = null;
+let evoPendingMachine = null;
+
+// Entry point used by the Treino view to deep-link into a specific exercise chart.
+function openEvolucaoFor(name, machine){
+  evoPendingName = name || null;
+  evoPendingMachine = (machineFilterActive() && machine) ? normMachine(machine) : null;
+  const wasInit = evoInitialized;
+  showTab("evolucao");
+  window.scrollTo({top:0, behavior:"auto"});
+  // showTab -> initEvolucao only renders on first init; force a re-render otherwise.
+  if(wasInit) renderEvolucao();
+}
+
 function initEvolucao(){
   if(evoInitialized) return;
   evoInitialized = true;
@@ -4450,8 +4907,15 @@ async function renderEvolucao(){
   const prevName = EXERCISES[+prevSelected]?.name;
   EXERCISES = buildExerciseList();
   rebuildEvoDropdown();
-  // Try to restore previous selection by name
-  if(prevName){
+  // A pending deep-link wins over restoring the previous selection.
+  if(evoPendingName){
+    const pIdx = EXERCISES.findIndex(x => x.name === evoPendingName);
+    if(pIdx >= 0) $evoSelect.value = pIdx;
+    // Machine select is built further down and restores from dataset.prevNorm.
+    if(evoPendingMachine) $evoMachineSelect.dataset.prevNorm = evoPendingMachine;
+    evoPendingName = null;
+    evoPendingMachine = null;
+  } else if(prevName){
     const newIdx = EXERCISES.findIndex(x => x.name === prevName);
     if(newIdx >= 0) $evoSelect.value = newIdx;
   }
@@ -4472,7 +4936,7 @@ async function renderEvolucao(){
         sets.push(...entry.main);
         machine = entry.machine || null;
       }
-      if(entry.supName === sel.name && entry.sup){
+      if((entry.supSubName || entry.supName) === sel.name && entry.sup){
         sets.push(...entry.sup);
         machine = entry.supMachine || null;
       }
