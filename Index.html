@@ -1046,6 +1046,9 @@
   /* 4. Modal max-height dvh fallback */
   .modal{max-height:90vh;max-height:90dvh}
 
+  /* 4b. Tall sheet standard — search-driven modals */
+  .modal.modal-tall{min-height:88vh;min-height:88dvh}
+
   /* 4. Modal sticky footer */
   .modal-footer{
     position:sticky;bottom:0;background:var(--surface);
@@ -1270,7 +1273,7 @@
   <div class="modal-overlay" id="dayEditModal"><div class="modal" id="dayEditModalBody"></div></div>
   <!-- MODAL: Trocar exercício (só hoje) -->
   <div class="modal-overlay" id="subModal">
-    <div class="modal" id="subModalInner"></div>
+    <div class="modal modal-tall" id="subModalInner"></div>
   </div>
   <!-- MODAL: Configurações (mobile) -->
   <div class="modal-overlay" id="settingsModal">
@@ -1370,7 +1373,7 @@
   </div>
   <!-- MODAL: Máquina por exercício -->
   <div class="modal-overlay" id="machineModal">
-    <div class="modal" id="machineModalInner"></div>
+    <div class="modal modal-tall" id="machineModalInner"></div>
   </div>
   <!-- MODAL: Progresso (gamificação) -->
   <div class="modal-overlay" id="gamifModal">
@@ -4330,6 +4333,12 @@ function openSubModal(exIdx, isSup=false){
     html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
   }
 
+  html += `<div class="sub-section-label">Buscar exercício</div>`;
+  html += `<div class="sub-input-wrap">`;
+  html += `<input class="modal-input" id="subSearchInput" placeholder="Digite o nome do exercício" autocomplete="off">`;
+  html += `<div class="ac-list" id="subAcList"></div>`;
+  html += `</div>`;
+
   if(suggestions.length){
     html += `<div class="sub-section-label">Sugestões (${MUSCLE_LABEL[originalMuscle]||originalMuscle})</div>`;
     html += `<div class="sub-chips">`;
@@ -4338,12 +4347,6 @@ function openSubModal(exIdx, isSup=false){
     });
     html += `</div>`;
   }
-
-  html += `<div class="sub-section-label">Buscar exercício</div>`;
-  html += `<div class="sub-input-wrap">`;
-  html += `<input class="modal-input" id="subSearchInput" placeholder="Digite o nome do exercício" autocomplete="off">`;
-  html += `<div class="ac-list" id="subAcList"></div>`;
-  html += `</div>`;
 
   $subModalInner.innerHTML = html;
   $subModal.classList.add("open");
