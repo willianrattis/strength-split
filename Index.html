@@ -250,8 +250,11 @@
   .compact .series-head .h-prev{display:none !important}
   body.layout-prev-column .compact .prev-panel{display:block}
 
-  /* suggestion echoed as the empty weight placeholder, in both variants */
-  .load-cell.sug-ph .weight-input::placeholder{color:var(--accent);font-weight:500}
+  /* Suggestion echoed as the empty weight placeholder, in both variants, and the same
+     lighter accent once that suggestion is adopted as the logged load. Distinguishes a
+     number the app proposed from one the user typed. */
+  .load-cell.sug-ph .weight-input::placeholder{color:var(--accent);font-weight:500;opacity:.68}
+  .load-cell.from-sug .weight-input{font-weight:500;opacity:.68}
 
   /* deload card */
   .deload-card{
@@ -440,12 +443,17 @@
     border-radius:8px;background:var(--surface-2);overflow:hidden;transition:.15s;min-height:44px;
   }
   .load-cell:focus-within{border-color:var(--accent)}
+  /* The global :focus-visible ring is declared later at equal specificity, so it overrides
+     the outline:none below — and .load-cell{overflow:hidden} clips it against the unit
+     label. The cell's focus-within border is the affordance; no inner ring. */
+  .weight-input:focus-visible{outline:none}
   .weight-input{
-    font-family:var(--display);font-weight:500;font-size:14px;
-    text-align:right;background:transparent;border:none;color:var(--text);
+    font-family:var(--display);font-weight:600;font-size:14px;
+    text-align:right;background:transparent;border:none;color:var(--accent);
     font-variant-numeric:tabular-nums;outline:none;width:100%;
     padding:8px 4px 8px 8px;min-width:0;
   }
+  /* neutral placeholder (no suggestion available) stays muted */
   .weight-input::placeholder{color:var(--faint);font-weight:400}
   .load-cell .unit{font-size:11px;color:var(--faint);padding-right:8px;flex:0 0 auto}
 
@@ -1208,6 +1216,189 @@
     .days-toolbar{padding-top:16px}
     .bottom-nav{display:none !important}
   }
+
+  /* ========= Modo Treino (carrossel de 1 exercício) ========= */
+  .train-start{display:none}
+  .train-bar{display:none}
+  .train-dots{display:none}
+
+  @media(max-width:600px){
+    .train-start{
+      display:flex;flex:1 0 100%;align-items:center;justify-content:center;gap:8px;
+      margin-top:10px;min-height:46px;cursor:pointer;
+      font-family:var(--display);font-weight:600;font-size:13px;
+      letter-spacing:.06em;text-transform:uppercase;
+      background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);
+      border-radius:12px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+    }
+
+    body.mode-train{overflow:hidden}
+    body.mode-train nav.days,
+    body.mode-train #viewTreino footer,
+    body.mode-train header.top,
+    body.mode-train .bottom-nav{display:none !important}
+
+    /* ---- top bar: row + full-bleed progress strip ---- */
+    body.mode-train .train-bar{
+      display:block;position:fixed;top:0;left:0;right:0;z-index:40;
+      background:var(--ink);padding-top:env(safe-area-inset-top);
+    }
+    .train-bar-row{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 14px;border-bottom:1px solid var(--border);
+    }
+    .train-exit{
+      flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+      background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+      font-size:14px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    }
+    .train-focus{
+      flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);
+    }
+    .train-count{
+      flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:12px;
+      letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums;
+    }
+    .train-segs{display:flex;align-items:center;gap:2px;height:14px;padding:0 14px}
+    .train-seg{
+      flex:1 1 0;min-width:0;height:14px;padding:0;border:none;background:none;
+      position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    }
+    .train-seg::after{
+      content:"";position:absolute;left:0;right:0;top:6px;height:3px;border-radius:99px;
+      background:var(--surface-3);opacity:1;transition:background .2s ease,opacity .2s ease,height .2s ease,top .2s ease;
+    }
+    .train-seg.is-done::after{background:var(--accent);opacity:.42}
+    .train-seg.is-current::after{background:var(--accent);opacity:1;height:4px;top:5px}
+    .train-seg-end{flex:0 0 10px}
+
+    /* ---- bottom page dots (affordance only, non-interactive) ---- */
+    body.mode-train .train-dots{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
+      align-items:center;justify-content:center;gap:5px;pointer-events:none;
+      height:calc(26px + env(safe-area-inset-bottom));
+      padding-bottom:env(safe-area-inset-bottom);
+      background:linear-gradient(to top,var(--ink) 60%,rgba(0,0,0,0));
+    }
+    .train-dot{
+      width:5px;height:5px;border-radius:50%;background:var(--text);opacity:.15;
+      transition:opacity .2s ease,transform .2s ease;
+    }
+    .train-dot.is-current{opacity:.6;transform:scale(1.3)}
+
+    /* ---- carousel viewport ----
+       top = safe-area + 8 + 34 + 8 + 1px border + 14px strip = safe-area + 65 */
+    body.mode-train #viewTreino > main.wrap{padding:0}
+    body.mode-train #panel{
+      position:fixed;left:0;right:0;margin:0;
+      top:calc(env(safe-area-inset-top) + 65px);
+      bottom:calc(26px + env(safe-area-inset-bottom));
+    }
+    .train-track{
+      display:flex;height:100%;
+      overflow-x:auto;overflow-y:hidden;
+      scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    }
+    .train-track::-webkit-scrollbar{display:none}
+    .train-track > .ex{
+      flex:0 0 100%;width:100%;height:100%;margin:0;
+      display:flex;flex-direction:column;
+      scroll-snap-align:start;scroll-snap-stop:always;
+      overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;
+      -webkit-overflow-scrolling:touch;
+      border-radius:0;border-top:none;border-left:none;border-right:none;
+      padding-bottom:8px;
+    }
+    .train-track > .ex.done{opacity:1}
+
+    /* ---- card density: reclaim the 60px left gutter, hide the redundant index ---- */
+    body.mode-train .num{display:none}
+    body.mode-train .ex-header{padding:12px 14px 8px;gap:10px}
+    body.mode-train .name{font-size:19px}
+    /* Direct-child scoping. Unscoped, these outrank `.superset .prev-block` and
+       `.superset .series-table` and inject side padding inside the superset block. */
+    body.mode-train .train-track > .ex > .prev-block,
+    body.mode-train .train-track > .ex > .series-table{padding:2px 14px 12px}
+    /* Neutralise the list-mode left-bleed compensation (which assumes padding-left:46px)
+       and give the highlight a small symmetric bleed instead. */
+    body.mode-train .series-table:not([data-sup]) .set-done-row{
+      margin-left:-6px;padding-left:6px;margin-right:-6px;padding-right:6px;
+    }
+    body.mode-train .badges{padding:0 14px 12px}
+
+    /* reference panel is the hero in train mode */
+    body.mode-train .prev-meta{font-size:12px;margin-bottom:9px}
+    body.mode-train .prev-panel{padding:12px 13px 13px;border-radius:12px}
+    body.mode-train .pp-row{grid-template-columns:60px repeat(var(--pp-cols,4),1fr)}
+    body.mode-train .pp-val{font-size:15px}
+    body.mode-train .suggest-apply{min-height:34px}
+
+    /* Taller targets, natural stacking. Every direct child of the card keeps its own
+       height: the default flex-shrink:1 let the main table collapse below its content
+       and its rows overflowed on top of the badges and the superset block. */
+    body.mode-train .series-grid{grid-template-columns:52px 1fr 118px;gap:12px}
+    body.mode-train .train-track > .ex > *{flex:0 0 auto}
+    body.mode-train .superset{margin:0 14px 14px}
+    body.mode-train .chip,
+    body.mode-train .reps-input,
+    body.mode-train .load-cell{min-height:52px}
+    body.mode-train .chip,
+    body.mode-train .reps-input{font-size:18px}
+    body.mode-train .weight-input{font-size:17px}
+
+    /* ---- summary card ---- */
+    .train-end-inner{
+      min-height:100%;display:flex;flex-direction:column;align-items:stretch;
+      justify-content:safe center;gap:14px;padding:24px 16px;text-align:center;
+    }
+    .ts-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ts-tile{
+      background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+      padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    }
+    .ts-wide{grid-column:1 / -1}
+    .ts-val{
+      font-family:var(--display);font-weight:700;font-size:24px;line-height:1.05;
+      color:var(--text);font-variant-numeric:tabular-nums;
+    }
+    .ts-val em{font-style:normal;font-size:13px;font-weight:500;color:var(--muted);margin-left:3px}
+    .ts-lbl{
+      font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.12em;
+      text-transform:uppercase;color:var(--faint);line-height:1.2;
+    }
+    .ts-sub{font-size:10.5px;color:var(--muted);line-height:1.3}
+    .ts-prs{
+      background:var(--accent-ghost);border:1px solid var(--accent-soft);border-radius:12px;
+      padding:11px 12px;display:flex;flex-direction:column;gap:7px;text-align:left;
+    }
+    .ts-prs-title{
+      font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.14em;
+      text-transform:uppercase;color:var(--accent);
+    }
+    .ts-pr{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+    .ts-pr-name{
+      font-size:13px;color:var(--text);min-width:0;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .ts-pr-w{
+      flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:14px;
+      color:var(--accent);font-variant-numeric:tabular-nums;
+    }
+    .ts-pr-w em{font-style:normal;font-weight:500;font-size:11px;color:var(--muted)}
+    .train-end-big{
+      font-family:var(--display);font-weight:700;font-size:22px;
+      text-transform:uppercase;letter-spacing:.02em;color:var(--text);
+    }
+    .train-end-sub{font-size:13px;color:var(--muted);margin:0;line-height:1.4;max-width:26ch}
+    .train-end-btn{
+      margin-top:6px;min-height:46px;padding:0 22px;border-radius:12px;cursor:pointer;
+      background:var(--accent);border:1px solid var(--accent);color:#fff;
+      font-family:var(--display);font-weight:600;font-size:13px;
+      letter-spacing:.06em;text-transform:uppercase;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1274,6 +1465,15 @@
         </div>
       </div>
     </nav>
+    <div class="train-bar" id="trainBar">
+      <div class="train-bar-row">
+        <button class="train-exit" id="trainExit" type="button" aria-label="Sair do modo treino">&#10005;</button>
+        <span class="train-focus" id="trainFocus"></span>
+        <span class="train-count" id="trainCount">1/1</span>
+      </div>
+      <div class="train-segs" id="trainSegs" aria-label="Exercícios do treino"></div>
+    </div>
+    <div class="train-dots" id="trainDots" aria-hidden="true"></div>
     <main class="wrap">
       <section id="panel" role="tabpanel" aria-live="polite"></section>
       <footer>
@@ -2237,6 +2437,10 @@ let session = null;      // documento da sessão atual
 let prevSession = null;  // sessão anterior para o mesmo dia (referência de carga)
 let saveTimer = null;
 let viewMode = "load";   // "load" | "compact" — preferência de visualização
+// Train mode — ephemeral session UI state. NEVER persisted (not in savePref/loadPref).
+let trainMode = false;
+let trainIdx = 0;
+let _trainScrollT = null;
 let theme = null;        // "dark" | "light" — null = segue o sistema
 let allSessions = null;  // cache: array de todas as sessões do usuário
 let exercisesCatalog = new Map(); // docId -> exercise doc
@@ -2347,6 +2551,7 @@ prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
 
 // ========= Abas principais =========
 function showTab(which){
+  if(which !== "treino" && trainMode) exitTrainMode();
   $tabTreino.classList.toggle("active", which === "treino");
   $tabExercicios.classList.toggle("active", which === "exercicios");
   $tabEvolucao.classList.toggle("active", which === "evolucao");
@@ -2382,7 +2587,7 @@ $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 // ========= Settings bottom-sheet (mobile) =========
 const $bnConfig = document.getElementById("bnConfig");
 function applyPrevLayoutState(){
-  document.body.classList.toggle("layout-prev-column", prevLayout === "column");
+  document.body.classList.toggle("layout-prev-column", prevLayout === "column" && !trainMode);
 }
 function syncPrevLayoutToggle(){
   document.querySelectorAll('#prevLayoutToggle [data-prevlayout]').forEach(b =>
@@ -3059,8 +3264,8 @@ function emptySession(dayKey){
         supSubMuscle: null,
         supMachine: machinesActive && supName ? lastMachineFor(supName, true) : null,
         firstSetAt: null,
-        main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})),
-        sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null})) : null
+        main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false})),
+        sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false})) : null
       };
     })
   };
@@ -3073,11 +3278,12 @@ function reconcileSession(s, dayKey){
   if(!s || !Array.isArray(s.exercises)) return fresh;
   fresh.exercises = day.ex.map((e, i) => {
     const old = s.exercises[i];
+    // doneAt must be carried here or it is dropped on every reload of the day.
     const merge = arr => (old && Array.isArray(old.main))
-      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null} : cell)
+      ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null, doneAt:old.main[j].doneAt ?? null, fromSug:!!old.main[j].fromSug} : cell)
       : arr;
     const mergeSup = arr => (old && old.sup && Array.isArray(old.sup))
-      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null} : cell)
+      ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null, doneAt:old.sup[j].doneAt ?? null, fromSug:!!old.sup[j].fromSug} : cell)
       : arr;
     return {
       name: e.name,
@@ -3089,8 +3295,8 @@ function reconcileSession(s, dayKey){
       supSubMuscle: e.superset && old && old.supSubMuscle ? old.supSubMuscle : null,
       supMachine: old && old.supMachine != null ? old.supMachine : null,
       firstSetAt: old && old.firstSetAt ? old.firstSetAt : null,
-      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))),
-      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null}))) : null
+      main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false}))),
+      sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false}))) : null
     };
   });
   return fresh;
@@ -4134,7 +4340,10 @@ function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
   const autoreg = document.body.classList.contains("flag-autoreg");
   // In panel layout the SUGESTÃO row already carries these values; echoing them as
   // placeholders reads like pre-filled data. Column layout has no such row, so it keeps them.
-  const colLayout = document.body.classList.contains("layout-prev-column");
+  // Train mode is the exception: it shows the panel AND the placeholder — the panel is a
+  // stable reference across sets, the placeholder is the field the user is about to type in.
+  const colLayout = document.body.classList.contains("layout-prev-column")
+                 || document.body.classList.contains("mode-train");
   let html = `<div class="series-table" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>`;
   html += `<span class="compact-reps-lbl">Reps</span>`;
   html += `<div class="series-grid series-head">
@@ -4143,6 +4352,7 @@ function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
   sets.forEach((s, si) => {
     const cls = "chip" + (s.done ? " set-done" : "");
     const filled = (s.weight != null && s.weight !== "") ? " filled" : "";
+    const fromSug = (filled && s.fromSug) ? " from-sug" : "";
     const ps = (prev && prev.perSet[si]) ? prev.perSet[si] : null;
     const pw = ps ? ps.weight : null;
     const prevCell = `<span class="prev-cell">${pw != null
@@ -4157,7 +4367,7 @@ function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
       ${prevCell}
       <button class="${cls}" data-si="${si}" aria-label="Série ${si+1}: ${s.reps} reps${s.done?' concluída':''}"><span class="tick">✓</span>${s.reps}</button>
       <input class="reps-input" type="text" inputmode="numeric" data-si="${si}" placeholder="${s.reps}" value="${s.repsDone ?? ""}" aria-label="Reps feitas série ${si+1}">
-      <div class="load-cell${filled}${sugPh}">
+      <div class="load-cell${filled}${sugPh}${fromSug}">
         <input class="weight-input" type="text" inputmode="decimal" data-si="${si}" placeholder="${wPlaceholder}" value="${s.weight ?? ""}" aria-label="Carga da série ${si+1} em ${UNIT_ABBR[u]}">
         <span class="unit">${UNIT_ABBR[u]}</span>
       </div>
@@ -4235,13 +4445,327 @@ function skeletonEvo(){
   return stats;
 }
 
+// ========= Train mode =========
+const $trainBar   = document.getElementById("trainBar");
+const $trainSegs  = document.getElementById("trainSegs");
+const $trainCount = document.getElementById("trainCount");
+const $trainFocus = document.getElementById("trainFocus");
+const $trainDots  = document.getElementById("trainDots");
+
+function trainExCount(){ return activeDays()[current].ex.length; }
+
+function firstIncompleteIdx(){
+  if(!session) return 0;
+  const i = session.exercises.findIndex(ex => !exDone(ex));
+  return i < 0 ? 0 : i;
+}
+
+function enterTrainMode(){
+  if(!session || trainExCount() === 0) return;
+  trainMode = true;
+  trainIdx = firstIncompleteIdx();
+  document.body.classList.add("mode-train");
+  applyPrevLayoutState();
+  renderDay();
+}
+
+function exitTrainMode(){
+  const back = trainIdx;
+  trainMode = false;
+  document.body.classList.remove("mode-train");
+  applyPrevLayoutState();
+  renderDay();
+  const art = $panel.querySelector(`.ex[data-i="${back}"]`);
+  if(art) art.scrollIntoView({ block: "center" });
+}
+
+function renderTrainBar(){
+  if(!trainMode || !session) return;
+  const day = activeDays()[current];
+  const n = day.ex.length;
+  const exs = session.exercises || [];
+  let segs = "", dots = "";
+  for(let i = 0; i < n; i++){
+    const done = exs[i] ? exDone(exs[i]) : false;
+    segs += `<button class="train-seg${done?" is-done":""}${i===trainIdx?" is-current":""}" data-seg="${i}" type="button" aria-label="Ir para exercício ${i+1}"></button>`;
+    dots += `<span class="train-dot${i===trainIdx?" is-current":""}"></span>`;
+  }
+  segs += `<button class="train-seg train-seg-end${trainIdx>=n?" is-current":""}" data-seg="${n}" type="button" aria-label="Resumo do treino"></button>`;
+  dots += `<span class="train-dot${trainIdx>=n?" is-current":""}"></span>`;
+  $trainSegs.innerHTML = segs;
+  $trainDots.innerHTML = dots;
+  $trainCount.textContent = trainIdx >= n ? "fim" : `${trainIdx+1}/${n}`;
+  $trainFocus.textContent = day.focus || "";
+}
+
+// Restore horizontal position synchronously after renderDay() rebuilds $panel.
+function restoreTrainScroll(){
+  const track = document.getElementById("trainTrack");
+  if(!track) return;
+  const prev = track.style.scrollBehavior;
+  track.style.scrollBehavior = "auto";
+  track.scrollLeft = trainIdx * track.clientWidth;
+  track.style.scrollBehavior = prev;
+}
+
+// Track is recreated on every render, so this binds per render (no listener stacking).
+function bindTrainTrack(){
+  const track = document.getElementById("trainTrack");
+  if(!track) return;
+  track.addEventListener("scroll", () => {
+    clearTimeout(_trainScrollT);
+    _trainScrollT = setTimeout(() => {
+      const w = track.clientWidth || 1;
+      const i = Math.round(track.scrollLeft / w);
+      // renderTrainBar() only — never renderDay() here, or the swipe rebuilds the DOM mid-gesture.
+      if(i !== trainIdx){
+        trainIdx = i;
+        renderTrainBar();
+        if(trainIdx >= trainExCount()) refreshTrainEndCard();
+      }
+    }, 120);
+  }, { passive: true });
+}
+
+function goToTrainIdx(i){
+  const track = document.getElementById("trainTrack");
+  if(!track) return;
+  trainIdx = Math.max(0, Math.min(i, trainExCount()));
+  track.scrollTo({ left: trainIdx * track.clientWidth, behavior: "smooth" });
+  renderTrainBar();
+  if(trainIdx >= trainExCount()) refreshTrainEndCard();
+}
+
+// ========= Session summary (pure; derived from firstSetAt + per-set doneAt) =========
+const LB_TO_KG = 0.45359237;
+const GAP_MIN_MS = 20 * 1000;      // below this the user is marking retroactively
+const GAP_MAX_MS = 8 * 60 * 1000;  // above this the phone was abandoned
+
+function fmtDur(ms, withSecs){
+  const t = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  if(h) return `${h}h${String(m).padStart(2,"0")}`;
+  if(m) return withSecs ? `${m}min${String(s).padStart(2,"0")}` : `${m}min`;
+  return `${s}s`;
+}
+function fmtNum(v){ return (Math.round(v * 10) / 10).toLocaleString("pt-BR"); }
+function fmtKg(v){ return Math.round(v).toLocaleString("pt-BR"); }
+
+// All-time heaviest logged weight for this exercise + machine variant, excluding today.
+// Mirrors prevLoadData's matching rules (subName/supSubName fallback + matchVariant).
+function bestWeightEver(name, machine){
+  if(!allSessions || !allSessions.length) return null;
+  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
+  let best = null;
+  for(const sess of allSessions){
+    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
+    if(!sess.exercises) continue;
+    for(const entry of sess.exercises){
+      let sets = null;
+      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
+      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
+      if(!sets) continue;
+      for(const s of sets){
+        const w = (s && typeof s.weight === "number") ? s.weight : null;
+        if(w != null && (best == null || w > best)) best = w;
+      }
+    }
+  }
+  return best;
+}
+
+// Returns null when there is not enough data to say anything.
+function trainSummary(){
+  if(!session) return null;
+  const day = activeDays()[current];
+  const evts = [];
+  let volKg = 0, volSkipped = 0, doneSets = 0;
+  const prs = [];
+
+  session.exercises.forEach((ex, i) => {
+    const e = day.ex[i];
+    if(!e) return;
+    const blocks = [{
+      sets: ex.main || [], sup: false, unit: e.unit || "kg",
+      name: ex.subName || e.name,
+      machine: machineFilterActive() ? ex.machine : undefined
+    }];
+    if(ex.sup && e.superset) blocks.push({
+      sets: ex.sup, sup: true, unit: e.superset.unit || "kg",
+      name: ex.supSubName || e.superset.name,
+      machine: machineFilterActive() ? ex.supMachine : undefined
+    });
+
+    blocks.forEach(b => {
+      let topW = null;
+      b.sets.forEach(s => {
+        if(!s || !s.done) return;
+        doneSets++;
+        if(s.doneAt){ const t = Date.parse(s.doneAt); if(!isNaN(t)) evts.push({t, ex:i, sup:b.sup}); }
+        const w = typeof s.weight === "number" ? s.weight : null;
+        const r = typeof s.repsDone === "number" ? s.repsDone : null;
+        if(w != null && r != null){
+          // "placas" is not a mass unit — it cannot enter a tonnage sum.
+          if(b.unit === "kg") volKg += w * r;
+          else if(b.unit === "lb") volKg += w * LB_TO_KG * r;
+          else volSkipped++;
+        }
+        if(w != null && b.unit !== "placas" && (topW == null || w > topW)) topW = w;
+      });
+      if(topW != null){
+        const prev = bestWeightEver(b.name, b.machine);
+        if(prev != null && topW > prev) prs.push({ name: b.name, weight: topW, unit: b.unit, prev });
+      }
+    });
+  });
+
+  if(!evts.length) return null;
+  evts.sort((a, b) => a.t - b.t);
+
+  // Start = earliest firstSetAt (stamped on the first keystroke, before any set completes).
+  let startT = null;
+  session.exercises.forEach(ex => {
+    if(!ex.firstSetAt) return;
+    const t = Date.parse(ex.firstSetAt);
+    if(!isNaN(t) && (startT == null || t < startT)) startT = t;
+  });
+  if(startT == null || startT > evts[0].t) startT = evts[0].t;
+  const totalMs = Math.max(0, evts[evts.length - 1].t - startT);
+
+  // Consecutive completions. Superset-internal transitions carry no rest by design.
+  const gaps = [];
+  for(let k = 1; k < evts.length; k++){
+    const a = evts[k-1], b = evts[k];
+    if(a.ex === b.ex && a.sup !== b.sup) continue;
+    const d = b.t - a.t;
+    if(d >= GAP_MIN_MS && d <= GAP_MAX_MS) gaps.push(d);
+  }
+  // Median, not mean: one bathroom break would dominate a mean.
+  let gapMs = null;
+  if(gaps.length >= 3){
+    gaps.sort((x, y) => x - y);
+    const mid = gaps.length >> 1;
+    gapMs = gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid-1] + gaps[mid]) / 2);
+  }
+
+  const mins = totalMs / 60000;
+  const density = (volKg > 0 && mins >= 1) ? volKg / mins : null;
+
+  return { totalMs, gapMs, gapN: gaps.length, volKg, volSkipped, density, doneSets, prs };
+}
+
+function trainEndInnerHTML(done, total){
+  const all = done >= total;
+  const sum = trainSummary();
+
+  if(!sum){
+    return `<div class="train-end-inner">
+      <span class="train-end-big">${done}/${total} exercícios</span>
+      <p class="train-end-sub">Ainda faltam exercícios — deslize de volta ou toque na barra para escolher.</p>
+      <button class="train-end-btn" id="trainFinish" type="button">Voltar à lista</button>
+    </div>`;
+  }
+
+  let h = `<div class="train-end-inner">`;
+  h += `<span class="train-end-big">${all ? "Treino concluído" : done + "/" + total + " exercícios"}</span>`;
+
+  h += `<div class="ts-grid">`;
+  h += `<div class="ts-tile">
+    <span class="ts-val">${fmtDur(sum.totalMs, false)}</span>
+    <span class="ts-lbl">Tempo total</span>
+  </div>`;
+  h += `<div class="ts-tile">
+    <span class="ts-val">${sum.gapMs != null ? fmtDur(sum.gapMs, true) : "—"}</span>
+    <span class="ts-lbl">Intervalo entre séries</span>
+    <span class="ts-sub">${sum.gapMs != null ? "mediana de " + sum.gapN : "poucos dados"}</span>
+  </div>`;
+  if(sum.density != null){
+    const skipped = sum.volSkipped
+      ? ` · ${sum.volSkipped} série${sum.volSkipped > 1 ? "s" : ""} em placas fora da conta`
+      : "";
+    h += `<div class="ts-tile ts-wide">
+      <span class="ts-val">${fmtKg(sum.density)}<em>kg/min</em></span>
+      <span class="ts-lbl">Densidade</span>
+      <span class="ts-sub">${fmtKg(sum.volKg)} kg em ${fmtDur(sum.totalMs, false)}${skipped}</span>
+    </div>`;
+  }
+  h += `</div>`;
+
+  if(sum.prs.length){
+    h += `<div class="ts-prs"><span class="ts-prs-title">${sum.prs.length === 1 ? "1 recorde" : sum.prs.length + " recordes"}</span>`;
+    sum.prs.slice(0, 4).forEach(p => {
+      h += `<div class="ts-pr">
+        <span class="ts-pr-name">${p.name}</span>
+        <span class="ts-pr-w">${fmtNum(p.weight)} ${UNIT_ABBR[p.unit] || "kg"}<em> · antes ${fmtNum(p.prev)}</em></span>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  if(!all) h += `<p class="train-end-sub">Faltam ${total - done} exercício${total - done > 1 ? "s" : ""}.</p>`;
+  h += `<button class="train-end-btn" id="trainFinish" type="button">${all ? "Concluir" : "Voltar à lista"}</button>`;
+  h += `</div>`;
+  return h;
+}
+
+// Placeholder while the user is still on an exercise card — the summary scans allSessions,
+// which is too expensive to recompute on every renderDay().
+function trainEndCardHTML(done, total){
+  const body = (trainIdx >= total)
+    ? trainEndInnerHTML(done, total)
+    : `<div class="train-end-inner"><span class="train-end-big">Resumo</span></div>`;
+  return `<article class="ex train-end" data-i="end">${body}</article>`;
+}
+
+// Targeted refresh when the carousel lands on the terminal card. Avoids a full renderDay(),
+// which would rebuild the track and disturb the in-flight scroll.
+function refreshTrainEndCard(){
+  if(!trainMode || !session) return;
+  const card = document.querySelector(".train-track > .train-end");
+  if(!card) return;
+  card.innerHTML = trainEndInnerHTML(countDone(), trainExCount());
+  const $tf = document.getElementById("trainFinish");
+  if($tf) $tf.addEventListener("click", exitTrainMode);
+}
+
+// Bound once — $panel is never recreated, only its innerHTML.
+document.getElementById("trainExit").addEventListener("click", exitTrainMode);
+$trainSegs.addEventListener("click", e => {
+  const b = e.target.closest("[data-seg]");
+  if(b) goToTrainIdx(+b.dataset.seg);
+});
+// iOS: fixed panel + soft keyboard can hide the focused field. Re-center it inside the card.
+$panel.addEventListener("focusin", e => {
+  if(!trainMode) return;
+  const t = e.target;
+  if(!t.matches || !t.matches(".weight-input, .reps-input")) return;
+  setTimeout(() => t.scrollIntoView({ block: "center", behavior: "smooth" }), 260);
+});
+
+// renderDay() replaces $panel.innerHTML, which destroys the element the user is tapping
+// next — the tap never lands and the field looks uneditable. Defer one task, then skip the
+// rebuild if focus moved to another field inside the panel. State was already written by
+// the `input` handler, so nothing is lost; the panel refreshes when focus leaves the table.
+let _softRenderT = null;
+function renderDaySoft(){
+  clearTimeout(_softRenderT);
+  _softRenderT = setTimeout(() => {
+    const a = document.activeElement;
+    if(a && $panel.contains(a) &&
+       (a.classList.contains("weight-input") || a.classList.contains("reps-input"))) return;
+    renderDay();
+  }, 0);
+}
+
 function renderDay(){
+  clearTimeout(_softRenderT);
   if(!session) return;
   $panel.classList.toggle("compact", viewMode === "compact");
   const day = activeDays()[current];
   const total = day.ex.length;
 
   if(total === 0){
+    if(trainMode){ trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
     document.getElementById("dayProgressFill").style.width = "0%";
     document.getElementById("dayProgressPct").textContent = "0%";
     $panel.innerHTML = `
@@ -4258,17 +4782,19 @@ function renderDay(){
   const _deloadActive = isDeloadActive();
   const _deload = !_deloadActive && !deloadDismissed ? deloadDue() : { due: false };
 
-  let html = `
+  let head = `
     <div class="panel-head">
       <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
+      <button class="train-start" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
     </div>
   `;
+  let html = "";
   if(_deload.due){
-    html += `<div class="deload-card">
+    head += `<div class="deload-card">
       <div class="deload-title">Hora de uma semana de descarga</div>
       <div class="deload-reason">${_deload.reason}. Reduza carga/volume por uma semana para recuperar e voltar a progredir.</div>
       <div class="deload-actions">
@@ -4319,8 +4845,96 @@ function renderDay(){
     html += `</article>`;
   });
 
-  $panel.innerHTML = html;
-  attachHandlers();
+  if(trainMode){
+    html += trainEndCardHTML(completed, total);
+    if(trainIdx > total) trainIdx = total;
+    $panel.innerHTML = `<div class="train-track" id="trainTrack">${html}</div>`;
+    attachHandlers();
+    renderTrainBar();
+    bindTrainTrack();
+    restoreTrainScroll();   // must run synchronously, before paint
+  } else {
+    $panel.innerHTML = head + html;
+    attachHandlers();
+  }
+}
+
+// Single write path for set completion. Stamps doneAt only on the false→true edge, so
+// editing weight/reps on an already-completed set never moves the timestamp.
+function setDoneState(set, val){
+  if(!set) return;
+  const was = !!set.done;
+  set.done = !!val;
+  if(!val) set.doneAt = null;
+  else if(!was || !set.doneAt) set.doneAt = new Date().toISOString();
+}
+
+// In-place feedback for a single set row. renderDay() rebuilds the whole panel and would
+// destroy the field the user is tapping next, so completion is reflected here; the full
+// re-render (hints and placeholders on the other rows) still follows via renderDaySoft().
+function syncSetRow(row, si, set){
+  const idx = row.querySelector(`.set-idx[data-si="${si}"]`);
+  const grid = idx ? idx.closest(".series-grid") : null;
+  if(!grid) return;
+  const on = !!set.done;
+  grid.classList.toggle("set-done-row", on);
+  idx.classList.toggle("done", on);
+  idx.textContent = on ? "✓" : (si + 1) + "ª";
+  idx.setAttribute("aria-pressed", String(on));
+  idx.setAttribute("aria-label", `Série ${si + 1}${on ? " — concluída" : ""}`);
+  const chip = grid.querySelector(".chip");
+  if(chip) chip.classList.toggle("set-done", on);
+  const w = grid.querySelector(".weight-input");
+  if(w && w.parentElement){
+    const has = set.weight != null && set.weight !== "";
+    if(has && w.value === "") w.value = set.weight;
+    w.parentElement.classList.toggle("filled", has);
+    w.parentElement.classList.toggle("from-sug", has && !!set.fromSug);
+    if(has) w.parentElement.classList.remove("sug-ph");
+  }
+}
+
+// The load currently shown for this set, in precedence order:
+//   1. the suggestion echoed in the weight placeholder (.load-cell.sug-ph)
+//   2. the SUGESTÃO row of the reference panel (panel layout)
+//   3. the in-session autoreg hint under the row (.set-hint)
+// Read from the DOM on purpose: suggestData() switches off once any set in the block has a
+// weight, so re-deriving it would let only the first completed set adopt anything.
+function displayedLoadFor(row, si){
+  const idx = row.querySelector(`.set-idx[data-si="${si}"]`);
+  const grid = idx ? idx.closest(".series-grid") : null;
+  if(!grid) return null;
+  const num = t => { const v = parseFloat(String(t).replace(",", ".")); return isNaN(v) ? null : v; };
+
+  const cell = grid.querySelector(".load-cell");
+  if(cell && cell.classList.contains("sug-ph")){
+    const inp = cell.querySelector(".weight-input");
+    const v = inp ? num(inp.placeholder) : null;
+    if(v != null) return v;
+  }
+
+  const block = row.previousElementSibling;
+  if(block && block.classList.contains("prev-block")){
+    const vals = block.querySelectorAll(".pp-sug .pp-val");
+    if(vals[si]){ const v = num(vals[si].textContent); if(v != null) return v; }
+  }
+
+  const hint = grid.nextElementSibling;
+  if(hint && hint.classList.contains("set-hint")){
+    const b = hint.querySelector("b");
+    if(b){ const v = num(b.textContent); if(v != null) return v; }
+  }
+  return null;
+}
+
+// Completing a set with no typed load adopts the load on screen, and remembers that the
+// number came from a suggestion rather than from the user.
+function adoptSuggestedLoad(row, si, set){
+  if(!set || (set.weight != null && set.weight !== "")) return;
+  const v = displayedLoadFor(row, si);
+  if(v == null) return;
+  set.weight = v;
+  set.fromSug = true;
 }
 
 function markExecStart(ei){ const ex = session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
@@ -4335,7 +4949,7 @@ function attachHandlers(){
       btn.addEventListener("click", () => {
         const si = +btn.dataset.si;
         const toggling = !target()[si].done;
-        target()[si].done = toggling;
+        setDoneState(target()[si], toggling);
         if(toggling) markExecStart(ei);
         scheduleSave(); renderDay(); renderStrip();
       });
@@ -4346,7 +4960,8 @@ function attachHandlers(){
         const set = target()[si];
         const period = document.body.classList.contains("flag-periodization");
         const turningOn = !set.done;
-        set.done = turningOn;
+        if (turningOn) adoptSuggestedLoad(row, si, set);
+        setDoneState(set, turningOn);
         if (turningOn) {
           if (period && (set.repsDone == null || set.repsDone === "")) set.repsDone = set.reps;
           markExecStart(ei);
@@ -4361,11 +4976,13 @@ function attachHandlers(){
         const si = +inp.dataset.si;
         const v = inp.value.replace(",", ".").trim();
         target()[si].weight = v === "" ? null : (isNaN(parseFloat(v)) ? target()[si].weight : parseFloat(v));
+        target()[si].fromSug = false;
         inp.parentElement.classList.toggle("filled", v !== "");
+        inp.parentElement.classList.remove("from-sug");
         if(v !== "") markExecStart(ei);
         scheduleSave();
       });
-      inp.addEventListener("change", () => { renderDay(); });
+      inp.addEventListener("change", () => { renderDaySoft(); });
     });
     row.querySelectorAll(".reps-input").forEach(inp => {
       inp.addEventListener("input", () => {
@@ -4377,8 +4994,14 @@ function attachHandlers(){
       });
       inp.addEventListener("change", () => {
         const si = +inp.dataset.si;
-        target()[si].done = target()[si].repsDone != null;
-        scheduleSave(); renderDay(); renderStrip();
+        const set = target()[si];
+        const on = set.repsDone != null;
+        if(on) adoptSuggestedLoad(row, si, set);
+        setDoneState(set, on);
+        scheduleSave();
+        syncSetRow(row, si, set);
+        renderStrip(); renderTrainBar();
+        renderDaySoft();
       });
     });
   });
@@ -4448,7 +5071,8 @@ function attachHandlers(){
     btn.addEventListener("click", () => openMachineModal(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
-  document.getElementById("resetBtn").addEventListener("click", () => {
+  const $reset = document.getElementById("resetBtn");
+  if($reset) $reset.addEventListener("click", () => {
     if(!confirm("Limpar séries e cargas deste dia?")) return;
     session = emptySession(current);
     scheduleSave(); renderDay(); renderStrip();
@@ -4500,6 +5124,11 @@ function attachHandlers(){
     await saveDeloadDate();
     scheduleSave(); renderDay(); renderStrip();
   });
+
+  const $ts = document.getElementById("trainStartBtn");
+  if($ts) $ts.addEventListener("click", enterTrainMode);
+  const $tf = document.getElementById("trainFinish");
+  if($tf) $tf.addEventListener("click", exitTrainMode);
 }
 
 // ========= Substitution Modal =========
