@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0E0F12">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem("ss_theme");
+    var eff = (t === "dark" || t === "light")
+      ? t
+      : (window.matchMedia && matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", eff);
+    var m = document.querySelector('meta[name="theme-color"]');
+    if(m) m.setAttribute("content", eff === "dark" ? "#0E0F12" : "#F4F5F7");
+  }catch(_){}
+})();
+</script>
 <title>Strength Split · Treino da Semana</title>
 <meta name="description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
 
@@ -117,6 +130,7 @@
   .modal-btn.primary.loading .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin-apply .6s linear infinite}
 
   /* logged-out overlay */
+  #gateWrap{display:none}
   .gate{
     background:var(--surface);border:1px solid var(--border);border-radius:18px;
     padding:32px 24px;text-align:center;margin:18px 0;
@@ -618,6 +632,26 @@
   .gamif-chip-label{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);white-space:nowrap}
   .gamif-chip-bar{width:48px;height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden;flex-shrink:0}
   .gamif-chip-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+  .gamif-chip.loading{pointer-events:none;cursor:default}
+  .gamif-chip.loading .gamif-chip-label{
+    min-width:82px;height:13px;border-radius:4px;color:transparent;
+    background:linear-gradient(90deg,var(--surface-3) 25%,var(--border) 50%,var(--surface-3) 75%);
+    background-size:200% 100%;animation:skeleton-shimmer 1.3s linear infinite;
+  }
+  .gamif-chip.loading .gamif-chip-bar{
+    background:linear-gradient(90deg,var(--surface-3) 25%,var(--border) 50%,var(--surface-3) 75%);
+    background-size:200% 100%;animation:skeleton-shimmer 1.3s linear infinite;
+  }
+  .gamif-chip.loading .gamif-chip-fill{width:0!important;transition:none}
+  .gamif-chip.revealed .gamif-chip-label,
+  .gamif-chip.revealed .gamif-chip-bar{animation:gamifChipIn 260ms ease}
+  @keyframes gamifChipIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){
+    .gamif-chip.loading .gamif-chip-label,
+    .gamif-chip.loading .gamif-chip-bar,
+    .gamif-chip.revealed .gamif-chip-label,
+    .gamif-chip.revealed .gamif-chip-bar{animation:none}
+  }
   .gamif-modal-body{text-align:center;padding:8px 0 0}
   .gamif-level-big{font-family:var(--display);font-weight:700;font-size:56px;color:var(--accent);line-height:1}
   .gamif-title-big{font-family:var(--display);font-weight:600;font-size:18px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);margin:4px 0 16px}
@@ -1387,9 +1421,167 @@
       letter-spacing:.06em;text-transform:uppercase;
     }
   }
+
+  /* ===== Boot splash ===== */
+  html.splash-lock, html.splash-lock body{overflow:hidden}
+  .splash{--sd:1;position:fixed;inset:0;z-index:9999;opacity:1;transition:opacity 380ms ease}
+  .splash.gone{opacity:0;pointer-events:none}
+  .splash-half{
+    position:absolute;left:0;right:0;height:50%;overflow:hidden;
+    background:var(--accent);transform-origin:center;will-change:transform,clip-path;
+    transition:transform 620ms cubic-bezier(.6,.02,.34,1);
+  }
+  .splash-top{top:0}
+  .splash-bottom{bottom:0}
+  .splash-stage{position:absolute;left:0;width:100%;height:200%;display:grid;place-items:center}
+  .splash-top .splash-stage{top:0}
+  .splash-bottom .splash-stage{bottom:0}
+  .splash-core{display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 24px}
+  .splash-kicker{
+    font-family:var(--display);font-weight:500;text-transform:uppercase;font-size:12px;
+    letter-spacing:.32em;color:rgba(255,255,255,.88);opacity:0;transform:translateY(-22px);
+    animation:splashKicker calc(var(--sd)*420ms) cubic-bezier(.2,.9,.25,1.25) calc(var(--sd)*540ms) forwards;
+  }
+  .splash-word{
+    font-family:var(--display);font-weight:700;color:#fff;text-transform:uppercase;
+    font-size:clamp(38px,13vw,64px);line-height:.92;letter-spacing:.005em;
+    text-align:center;display:flex;flex-direction:column;
+  }
+  .splash-word span{
+    display:block;clip-path:inset(0 0 100% 0);transform:translateY(16px);
+    animation:splashLine calc(var(--sd)*520ms) cubic-bezier(.16,.84,.28,1) forwards;
+  }
+  .splash-word span:nth-child(1){animation-delay:calc(var(--sd)*160ms)}
+  .splash-word span:nth-child(2){animation-delay:calc(var(--sd)*260ms)}
+  .splash-bell{
+    position:absolute;left:50%;top:50%;width:min(46vw,172px);color:#fff;
+    transform:translate(-50%,calc(-50% - 82vh)) rotate(-10deg);
+    animation:splashDrop calc(var(--sd)*300ms) cubic-bezier(.55,.06,.9,.6) calc(var(--sd)*880ms) forwards;
+  }
+  .splash-crack{
+    position:absolute;left:0;top:50%;width:100%;height:64px;margin-top:-32px;
+    opacity:0;pointer-events:none;
+  }
+  .splash-crack path{
+    fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;
+    vector-effect:non-scaling-stroke;stroke-dasharray:1200;stroke-dashoffset:1200;
+  }
+  .splash-ring{
+    position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;
+    border-radius:50%;border:2px solid rgba(255,255,255,.9);opacity:0;
+  }
+  .splash.impact .splash-crack{opacity:1}
+  .splash.impact .splash-crack path{animation:splashCrack calc(var(--sd)*240ms) ease-out forwards}
+  .splash.impact .splash-ring{animation:splashRing calc(var(--sd)*520ms) ease-out forwards}
+  .splash.impact .splash-stage{animation:splashShake 300ms cubic-bezier(.36,.07,.19,.97)}
+  .splash.cracked .splash-top{
+    clip-path:polygon(0 0,100% 0,100% 96%,87% 100%,74% 93%,61% 100%,48% 92%,35% 99%,22% 93%,9% 100%,0 95%);
+    transform:translateY(-104%) rotate(-1.1deg);
+  }
+  .splash.cracked .splash-bottom{
+    clip-path:polygon(0 5%,9% 0,22% 7%,35% 1%,48% 8%,61% 0,74% 7%,87% 0,100% 4%,100% 100%,0 100%);
+    transform:translateY(104%) rotate(1.1deg);
+  }
+  @keyframes splashLine{to{clip-path:inset(0 0 0 0);transform:translateY(0)}}
+  @keyframes splashKicker{
+    0%{opacity:0;transform:translateY(-22px);letter-spacing:.5em}
+    70%{opacity:1;transform:translateY(3px);letter-spacing:.30em}
+    100%{opacity:1;transform:translateY(0);letter-spacing:.32em}
+  }
+  @keyframes splashDrop{
+    0%{transform:translate(-50%,calc(-50% - 82vh)) rotate(-10deg)}
+    88%{transform:translate(-50%,-46%) rotate(1.5deg)}
+    100%{transform:translate(-50%,-50%) rotate(0)}
+  }
+  @keyframes splashRing{0%{opacity:.85;transform:scale(.4)}100%{opacity:0;transform:scale(9)}}
+  @keyframes splashCrack{to{stroke-dashoffset:0}}
+  @keyframes splashShake{
+    0%,100%{transform:translate3d(0,0,0)}
+    20%{transform:translate3d(0,7px,0)}
+    45%{transform:translate3d(-3px,-4px,0)}
+    70%{transform:translate3d(3px,2px,0)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .splash-kicker,.splash-word span,.splash-bell{animation:none;opacity:1;transform:none;clip-path:none}
+    .splash-bell{transform:translate(-50%,-50%)}
+    .splash-crack,.splash-ring{display:none}
+    .splash.impact .splash-stage{animation:none}
+    .splash.cracked .splash-top,.splash.cracked .splash-bottom{clip-path:none;transform:none}
+  }
 </style>
 </head>
 <body>
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="splash-half splash-top">
+    <div class="splash-stage">
+      <div class="splash-core">
+        <span class="splash-kicker">Programa semanal</span>
+        <h1 class="splash-word"><span>Treino</span><span>da Semana</span></h1>
+      </div>
+      <svg class="splash-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+      <svg class="splash-crack" viewBox="0 0 400 64" preserveAspectRatio="none"><path d="M0 34 L38 26 L76 40 L112 24 L150 38 L188 22 L226 36 L264 25 L302 39 L340 27 L400 35"/><path d="M150 38 L162 52"/><path d="M226 36 L214 14"/></svg>
+      <div class="splash-ring"></div>
+    </div>
+  </div>
+  <div class="splash-half splash-bottom">
+    <div class="splash-stage">
+      <div class="splash-core">
+        <span class="splash-kicker">Programa semanal</span>
+        <h1 class="splash-word"><span>Treino</span><span>da Semana</span></h1>
+      </div>
+      <svg class="splash-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+      <svg class="splash-crack" viewBox="0 0 400 64" preserveAspectRatio="none"><path d="M0 34 L38 26 L76 40 L112 24 L150 38 L188 22 L226 36 L264 25 L302 39 L340 27 L400 35"/><path d="M150 38 L162 52"/><path d="M226 36 L214 14"/></svg>
+      <div class="splash-ring"></div>
+    </div>
+  </div>
+</div>
+<script>
+window.SSSplash = (function(){
+  var el = document.getElementById("splash");
+  if(!el) return { ready:function(){} };
+  var rm = window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches;
+  var quick = false;
+  try{
+    var last = parseInt(sessionStorage.getItem("ss_splashAt") || "0", 10);
+    quick = last > 0 && (Date.now() - last) < 300000;
+    sessionStorage.setItem("ss_splashAt", String(Date.now()));
+  }catch(_){}
+  var sd = (rm || quick) ? 0.3 : 1;
+  el.style.setProperty("--sd", sd);
+  document.documentElement.classList.add("splash-lock");
+  var meta = document.querySelector('meta[name="theme-color"]');
+  var accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  if(meta && accent) meta.setAttribute("content", accent);
+  var t0 = Date.now(), ready = false, impacted = false, cracked = false, done = false;
+  var IMPACT = Math.round(1180 * sd), HOLD = Math.round(220 * sd), CAP = 5000;
+  function at(ms, fn){ setTimeout(fn, Math.max(0, ms - (Date.now() - t0))); }
+  function impact(){
+    if(impacted || done) return;
+    impacted = true;
+    el.classList.add("impact");
+    at(IMPACT + HOLD, crack);
+  }
+  function crack(){
+    if(cracked || done) return;
+    if(!ready && (Date.now() - t0) < CAP) return;
+    cracked = true;
+    el.classList.add("cracked");
+    setTimeout(finish, Math.round(620 * sd) + 80);
+  }
+  function finish(){
+    if(done) return;
+    done = true;
+    el.classList.add("gone");
+    document.documentElement.classList.remove("splash-lock");
+    var t = document.documentElement.getAttribute("data-theme");
+    if(meta) meta.setAttribute("content", t === "light" ? "#F4F5F7" : "#0E0F12");
+    setTimeout(function(){ if(el && el.parentNode) el.parentNode.removeChild(el); }, 420);
+  }
+  at(IMPACT, impact);
+  setTimeout(function(){ ready = true; crack(); }, CAP);
+  return { ready:function(){ ready = true; if((Date.now() - t0) >= IMPACT + HOLD) crack(); } };
+})();
+</script>
 <div class="wrap">
   <header class="top">
     <div class="top-text">
@@ -1813,12 +2005,19 @@ function applyExecOrderState(){
   document.body.classList.toggle("flag-exec-order-available", available);
   document.body.classList.toggle("flag-exec-order", active);
 }
+function setGamifChipLoading(on){
+  const $chip = document.getElementById("gamifChip");
+  if($chip) $chip.classList.toggle("loading", !!on);
+}
 function applyGamificationState(){
   const available = isFeatureEnabled("gamification");
   const active = available && gamificationEnabled;
   document.body.classList.toggle("flag-gamification-available", available);
   document.body.classList.toggle("flag-gamification", active);
-  if(active) renderGamifChip();
+  if(active){
+    if(gamification) renderGamifChip();
+    else setGamifChipLoading(true);
+  }
 }
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
@@ -2428,7 +2627,10 @@ let viewMode = "load";   // "load" | "compact" — preferência de visualizaçã
 let trainMode = false;
 let trainIdx = 0;
 let _trainScrollT = null;
-let theme = null;        // "dark" | "light" — null = segue o sistema
+let theme = (function(){
+  try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
+  catch(_){ return null; }
+})();                    // "dark" | "light" — null = segue o sistema
 let allSessions = null;  // cache: array de todas as sessões do usuário
 let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
@@ -2524,6 +2726,10 @@ function applyTheme(){
   }
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
+  try{
+    if(theme) localStorage.setItem("ss_theme", theme);
+    else localStorage.removeItem("ss_theme");
+  }catch(_){}
 }
 
 function toggleTheme(){
@@ -3016,6 +3222,7 @@ onAuthStateChanged(auth, async u => {
   gamification = null;
   gamificationEnabled = false;
   gamifStartDate = null;
+  setGamifChipLoading(true);
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
     $gateWrap.style.display = "none";
@@ -3023,6 +3230,7 @@ onAuthStateChanged(auth, async u => {
     $strip.innerHTML = skeletonStrip();
     $panel.innerHTML = skeletonPanel();
     setSync("live", "sincronizado");
+    if(window.SSSplash) window.SSSplash.ready();
     try {
       await initWithTimeout(u);
     } catch(e) {
@@ -3031,9 +3239,10 @@ onAuthStateChanged(auth, async u => {
     }
   } else {
     $authBox.textContent = "";
-    $gateWrap.style.display = "";
+    $gateWrap.style.display = "block";
     $appContent.style.display = "none";
     setSync("", "aguardando login");
+    if(window.SSSplash) window.SSSplash.ready();
     exercisesCatalog.clear();
     userDays = null;
     dayCustomizations = {};
@@ -3703,6 +3912,12 @@ function renderGamifChip(){
   $label.textContent = `Nv ${gamification.level} · ${gamification.title}`;
   const pct = gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(gamification.xpIntoLevel / gamification.xpForNextLevel * 100)) : 100;
   $fill.style.width = pct + "%";
+  const $chip = document.getElementById("gamifChip");
+  if($chip && $chip.classList.contains("loading")){
+    $chip.classList.remove("loading");
+    $chip.classList.add("revealed");
+    setTimeout(() => $chip.classList.remove("revealed"), 320);
+  }
 }
 
 function renderGamifModal(){
