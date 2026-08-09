@@ -420,6 +420,9 @@
     box-sizing:border-box;
   }
   .reps-input:focus{border-color:var(--accent)}
+  /* Match the load cell. The global :focus-visible rule is declared later at equal
+     specificity and would stack a second, offset ring on top of this border. */
+  .reps-input:focus-visible{outline:none}
   .reps-input::placeholder{color:var(--faint);font-weight:400}
   .set-idx{font-family:var(--display);font-size:14px;color:var(--muted);
    background:none;border:none;padding:0;width:100%;min-height:44px;
