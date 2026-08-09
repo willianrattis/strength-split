@@ -3451,6 +3451,7 @@ function emptySession(dayKey){
       const effectiveName = e.name;
       const supName = e.superset ? e.superset.name : null;
       return {
+        exId: e._id ?? null,
         name: e.name,
         subName: null,
         subMuscle: null,
@@ -3472,8 +3473,42 @@ function reconcileSession(s, dayKey){
   const fresh = emptySession(dayKey);
   if(!day.ex.length) return fresh;
   if(!s || !Array.isArray(s.exercises)) return fresh;
+
+  const olds = s.exercises;
+  const used = new Set();
+
+  const indexBy = key => {
+    const m = new Map();
+    olds.forEach((o, idx) => {
+      if(!o) return;
+      const k = o[key];
+      if(k == null || k === "") return;
+      if(!m.has(k)) m.set(k, []);
+      m.get(k).push(idx);
+    });
+    return m;
+  };
+  const byId = indexBy("exId");
+  const byName = indexBy("name");
+
+  // consumes at most one unused entry per key (handles duplicate names)
+  const take = (map, key) => {
+    if(key == null) return null;
+    const list = map.get(key);
+    if(!list) return null;
+    for(const idx of list){
+      if(!used.has(idx)){ used.add(idx); return olds[idx]; }
+    }
+    return null;
+  };
+
+  // pass 1: exId (sessions saved after this change)
+  const matched = day.ex.map(e => take(byId, e._id));
+  // pass 2: name fallback (legacy sessions with no exId)
+  day.ex.forEach((e, i) => { if(!matched[i]) matched[i] = take(byName, e.name); });
+
   fresh.exercises = day.ex.map((e, i) => {
-    const old = s.exercises[i];
+    const old = matched[i] || null;
     // doneAt must be carried here or it is dropped on every reload of the day.
     const merge = arr => (old && Array.isArray(old.main))
       ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null, doneAt:old.main[j].doneAt ?? null, fromSug:!!old.main[j].fromSug} : cell)
@@ -3482,6 +3517,7 @@ function reconcileSession(s, dayKey){
       ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null, doneAt:old.sup[j].doneAt ?? null, fromSug:!!old.sup[j].fromSug} : cell)
       : arr;
     return {
+      exId: e._id ?? null,
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
