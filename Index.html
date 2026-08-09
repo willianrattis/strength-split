@@ -1814,6 +1814,12 @@ window.SSSplash = (function(){
       </div>
       </div>
       </div>
+      <div id="settingsExportRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+        <div class="setting-text">
+          <span class="period-label" id="settingsExportLabel">Exportar meus dados</span>
+          <span class="setting-desc">Baixa um arquivo com todo o seu histórico, exercícios e planos.</span>
+        </div>
+      </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-weight:600;font-size:13px">Editar perfil</span>
       </div>
@@ -1897,7 +1903,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot
+  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot,
+  query, orderBy, limit, documentId
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2631,7 +2638,12 @@ let theme = (function(){
   try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
   catch(_){ return null; }
 })();                    // "dark" | "light" — null = segue o sistema
-let allSessions = null;  // cache: array de todas as sessões do usuário
+let allSessions = null;  // cache: array de todas as sessões do usuário (mais recente primeiro)
+// Palliative cap on the session cache. ~750 sessions is several years of
+// training; raising it is cheaper than the Phase 5 aggregate work if a real
+// user ever hits it. Phase 5 replaces this with aggregates + pagination.
+const SESSIONS_FETCH_LIMIT = 750;
+let allSessionsTruncated = false;
 let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
 let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
@@ -2933,6 +2945,7 @@ document.getElementById("settingsProfileEditRow").addEventListener("click", () =
   closeSettings();
   openProfileModal();
 });
+document.getElementById("settingsExportRow").addEventListener("click", exportUserData);
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
 document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
@@ -3218,6 +3231,7 @@ $loginBtn.addEventListener("click", () => {
 onAuthStateChanged(auth, async u => {
   user = u;
   allSessions = null;
+  allSessionsTruncated = false;
   allSessionsPromise = null;
   gamification = null;
   gamificationEnabled = false;
@@ -3275,6 +3289,16 @@ function initWithTimeout(u, ms = 15000){
     new Promise((_, rej) => setTimeout(() => rej(new Error("init timeout")), ms)),
   ]);
 }
+// Escapes user-controlled strings for interpolation into innerHTML template
+// literals — safe for both text nodes and quoted attribute values.
+// & must be replaced first or the later entities get double-escaped.
+const esc = v => String(v ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
 function renderInitError(){
   $panel.innerHTML = `<div class="evo-empty">
     <span class="big">Não foi possível carregar</span>
@@ -3451,6 +3475,7 @@ function emptySession(dayKey){
       const effectiveName = e.name;
       const supName = e.superset ? e.superset.name : null;
       return {
+        exId: e._id ?? null,
         name: e.name,
         subName: null,
         subMuscle: null,
@@ -3472,8 +3497,42 @@ function reconcileSession(s, dayKey){
   const fresh = emptySession(dayKey);
   if(!day.ex.length) return fresh;
   if(!s || !Array.isArray(s.exercises)) return fresh;
+
+  const olds = s.exercises;
+  const used = new Set();
+
+  const indexBy = key => {
+    const m = new Map();
+    olds.forEach((o, idx) => {
+      if(!o) return;
+      const k = o[key];
+      if(k == null || k === "") return;
+      if(!m.has(k)) m.set(k, []);
+      m.get(k).push(idx);
+    });
+    return m;
+  };
+  const byId = indexBy("exId");
+  const byName = indexBy("name");
+
+  // consumes at most one unused entry per key (handles duplicate names)
+  const take = (map, key) => {
+    if(key == null) return null;
+    const list = map.get(key);
+    if(!list) return null;
+    for(const idx of list){
+      if(!used.has(idx)){ used.add(idx); return olds[idx]; }
+    }
+    return null;
+  };
+
+  // pass 1: exId (sessions saved after this change)
+  const matched = day.ex.map(e => take(byId, e._id));
+  // pass 2: name fallback (legacy sessions with no exId)
+  day.ex.forEach((e, i) => { if(!matched[i]) matched[i] = take(byName, e.name); });
+
   fresh.exercises = day.ex.map((e, i) => {
-    const old = s.exercises[i];
+    const old = matched[i] || null;
     // doneAt must be carried here or it is dropped on every reload of the day.
     const merge = arr => (old && Array.isArray(old.main))
       ? arr.map((cell, j) => old.main[j] ? {...cell, done:!!old.main[j].done, weight:old.main[j].weight ?? null, repsDone:old.main[j].repsDone ?? null, doneAt:old.main[j].doneAt ?? null, fromSug:!!old.main[j].fromSug} : cell)
@@ -3482,6 +3541,7 @@ function reconcileSession(s, dayKey){
       ? arr.map((cell, j) => old.sup[j] ? {...cell, done:!!old.sup[j].done, weight:old.sup[j].weight ?? null, repsDone:old.sup[j].repsDone ?? null, doneAt:old.sup[j].doneAt ?? null, fromSug:!!old.sup[j].fromSug} : cell)
       : arr;
     return {
+      exId: e._id ?? null,
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
@@ -3504,9 +3564,18 @@ async function loadAllSessions(){
   if(allSessionsPromise) return allSessionsPromise;
   allSessionsPromise = (async () => {
     try{
-      const snap = await getDocs(collection(db, "users", user.uid, "sessions"));
+      // Ordered by documentId() (== chronological, since ids are ${date}_${dayKey}) so the
+      // limit keeps the most recent sessions, not the oldest. No composite index needed.
+      const q = query(
+        collection(db, "users", user.uid, "sessions"),
+        orderBy(documentId(), "desc"),
+        limit(SESSIONS_FETCH_LIMIT)
+      );
+      const snap = await getDocs(q);
       allSessions = [];
       snap.forEach(d => allSessions.push(d.data()));
+      allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
+      if(allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
     }catch(e){
       console.warn("loadAllSessions:", e.message);
       allSessions = [];
@@ -3948,8 +4017,8 @@ function renderGamifModal(){
     }
     html += `<div class="gamif-badge${locked ? " locked" : ""}">
       <div class="gamif-badge-icon">${def.icon}</div>
-      <div class="gamif-badge-name">${def.name}</div>
-      ${locked ? `<div class="gamif-badge-desc">${def.desc}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
+      <div class="gamif-badge-name">${esc(def.name)}</div>
+      ${locked ? `<div class="gamif-badge-desc">${esc(def.desc)}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
     </div>`;
   }
   html += '</div>';
@@ -4011,7 +4080,7 @@ function buildWrappedSlides(data){
   if(data.topMuscle){
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Grupo mais treinado</div>
-      <div class="wrapped-big-num" style="font-size:36px">${wrappedCapitalize(data.topMuscle)}</div>
+      <div class="wrapped-big-num" style="font-size:36px">${esc(wrappedCapitalize(data.topMuscle))}</div>
       <div class="wrapped-stat-row" style="margin-top:16px">
         <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleSets.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Séries</span></div>
         <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleReps.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Repetições</span></div>
@@ -4024,7 +4093,7 @@ function buildWrappedSlides(data){
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Maior carga do ano</div>
       <div class="wrapped-big-num">${data.heaviest.weight.toLocaleString("pt-BR")} kg</div>
-      <div class="wrapped-detail"><strong>${data.heaviest.exercise}</strong></div>
+      <div class="wrapped-detail"><strong>${esc(data.heaviest.exercise)}</strong></div>
       <div class="wrapped-detail">${fmtDateBR(data.heaviest.date)}</div>
     </div>`);
   }
@@ -4034,7 +4103,7 @@ function buildWrappedSlides(data){
     const mp = data.mostProgressed;
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Maior evolução</div>
-      <div class="wrapped-detail" style="font-size:16px;margin-bottom:12px"><strong>${mp.exercise}</strong></div>
+      <div class="wrapped-detail" style="font-size:16px;margin-bottom:12px"><strong>${esc(mp.exercise)}</strong></div>
       <div class="wrapped-detail" style="font-size:18px">de <strong>${mp.from.toLocaleString("pt-BR")} kg</strong> → <strong>${mp.to.toLocaleString("pt-BR")} kg</strong></div>
       <div class="wrapped-big-num" style="font-size:48px;margin-top:8px">+${mp.delta.toLocaleString("pt-BR")} kg</div>
     </div>`);
@@ -4045,11 +4114,11 @@ function buildWrappedSlides(data){
     const top6 = data.repsByMuscle.slice(0,6);
     let rankHtml = '';
     top6.forEach((m,i) => {
-      rankHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${wrappedCapitalize(m.muscle)}</span><span class="wrapped-rank-val">${m.reps.toLocaleString("pt-BR")} reps</span></div>`;
+      rankHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(wrappedCapitalize(m.muscle))}</span><span class="wrapped-rank-val">${m.reps.toLocaleString("pt-BR")} reps</span></div>`;
     });
     let topExHtml = '';
     data.topExercisesByReps.forEach((e,i) => {
-      topExHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${e.name}</span><span class="wrapped-rank-val">${e.reps.toLocaleString("pt-BR")} reps</span></div>`;
+      topExHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(e.name)}</span><span class="wrapped-rank-val">${e.reps.toLocaleString("pt-BR")} reps</span></div>`;
     });
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Repetições por grupo</div>
@@ -4893,7 +4962,7 @@ function trainEndInnerHTML(done, total){
     h += `<div class="ts-prs"><span class="ts-prs-title">${sum.prs.length === 1 ? "1 recorde" : sum.prs.length + " recordes"}</span>`;
     sum.prs.slice(0, 4).forEach(p => {
       h += `<div class="ts-pr">
-        <span class="ts-pr-name">${p.name}</span>
+        <span class="ts-pr-name">${esc(p.name)}</span>
         <span class="ts-pr-w">${fmtNum(p.weight)} ${UNIT_ABBR[p.unit] || "kg"}<em> · antes ${fmtNum(p.prev)}</em></span>
       </div>`;
     });
@@ -4982,7 +5051,7 @@ function renderDay(){
 
   let head = `
     <div class="panel-head">
-      <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+      <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
         <button class="reset" id="resetBtn">Limpar</button>
@@ -5017,8 +5086,8 @@ function renderDay(){
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${effectiveName}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
-        ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}</div>
+        ${!isSub && e.note?`<div class="note">${esc(e.note)}</div>`:""}
       </div>
       <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
       <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
@@ -5035,7 +5104,7 @@ function renderDay(){
       const sugSup = suggestData(supEffName, e.superset.unit, true, i);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${supEffName}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
         ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
@@ -5291,9 +5360,11 @@ function attachHandlers(){
         const hist = exerciseTopHistory(name, null, machine);
         if(!hist.length) return;
         const lastEntry = hist[hist.length - 1];
-        // find the session's per-set weights for this exercise variant
+        // find the session's per-set weights for this exercise variant.
+        // allSessions is newest-first, so a forward scan hits the most recent
+        // matching session first when the date is shared by more than one.
         let refSets = null;
-        for(let k = allSessions.length - 1; k >= 0; k--){
+        for(let k = 0; k < allSessions.length; k++){
           const sess = allSessions[k];
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
@@ -5352,11 +5423,11 @@ function openSubModal(exIdx, isSup=false){
     .slice(0, 8);
 
   let html = `<h3 style="margin:0 0 4px">Trocar ${isSup ? "supersérie" : "exercício"} (só hoje)</h3>`;
-  html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${originalName}</b>.</p>`;
+  html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${esc(originalName)}</b>.</p>`;
 
   if(isSub){
-    html += `<div class="sub-current">Atual: ${curSub}</div>`;
-    html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
+    html += `<div class="sub-current">Atual: ${esc(curSub)}</div>`;
+    html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${esc(originalName)})</button>`;
   }
 
   html += `<div class="sub-section-label">Buscar exercício</div>`;
@@ -5366,10 +5437,10 @@ function openSubModal(exIdx, isSup=false){
   html += `</div>`;
 
   if(suggestions.length){
-    html += `<div class="sub-section-label">Sugestões (${MUSCLE_LABEL[originalMuscle]||originalMuscle})</div>`;
+    html += `<div class="sub-section-label">Sugestões (${esc(MUSCLE_LABEL[originalMuscle]||originalMuscle)})</div>`;
     html += `<div class="sub-chips">`;
     suggestions.forEach(c => {
-      html += `<button class="sub-chip" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}</button>`;
+      html += `<button class="sub-chip" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}</button>`;
     });
     html += `</div>`;
   }
@@ -5421,7 +5492,7 @@ function openSubModal(exIdx, isSup=false){
     if(!results.length){ subList.classList.remove("open"); return; }
     subActiveIdx = -1;
     subList.innerHTML = results.map((c,i) =>
-      `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+      `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
     ).join("");
     subList.classList.add("open");
     subList.querySelectorAll(".ac-item").forEach(el => {
@@ -5475,21 +5546,21 @@ function openMachineModal(exIdx, isSup){
   html += `<p class="sub-desc">Identifica o equipamento usado. Histórico e sugestões ficam separados por máquina.</p>`;
 
   if(currentMachine){
-    html += `<div class="sub-current">Atual: ${currentMachine}</div>`;
+    html += `<div class="sub-current">Atual: ${esc(currentMachine)}</div>`;
   }
 
   if(chips.length){
     html += `<div class="sub-section-label">Usadas anteriormente</div>`;
     html += `<div class="sub-chips">`;
     chips.forEach(m => {
-      html += `<button class="sub-chip machine-chip" data-machine="${m}">${m}</button>`;
+      html += `<button class="sub-chip machine-chip" data-machine="${esc(m)}">${esc(m)}</button>`;
     });
     html += `</div>`;
   }
 
   html += `<div class="sub-section-label">Nova máquina</div>`;
   html += `<div class="sub-input-wrap">`;
-  html += `<input class="modal-input" id="machineInput" placeholder="Ex: Gervasport, Life Fitness…" autocomplete="off" value="${currentMachine||''}">`;
+  html += `<input class="modal-input" id="machineInput" placeholder="Ex: Gervasport, Life Fitness…" autocomplete="off" value="${esc(currentMachine)}">`;
   html += `<div class="ac-list" id="machineAcList"></div>`;
   html += `</div>`;
 
@@ -5540,7 +5611,7 @@ function openMachineModal(exIdx, isSup){
     const results = prefix.concat(sub).slice(0, 8);
     if(!results.length){ machList.classList.remove("open"); return; }
     machActiveIdx = -1;
-    machList.innerHTML = results.map((m,i) => `<div class="ac-item" data-i="${i}" data-machine="${m}">${m}</div>`).join("");
+    machList.innerHTML = results.map((m,i) => `<div class="ac-item" data-i="${i}" data-machine="${esc(m)}">${esc(m)}</div>`).join("");
     machList.classList.add("open");
     machList.querySelectorAll(".ac-item").forEach(el => {
       el.addEventListener("mousedown", ev => { ev.preventDefault(); applyMachine(el.dataset.machine); });
@@ -5572,7 +5643,7 @@ function renderStrip(){
       <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
-        <span class="focus">${isRest ? 'Descanso' : (d.tag || d.focus.split('\u00b7')[0].trim())}</span>
+        <span class="focus">${isRest ? 'Descanso' : esc(d.tag || d.focus.split('\u00b7')[0].trim())}</span>
         <span class="today">Hoje</span>
         <span class="dot"></span>
       </button>`;
@@ -5684,7 +5755,7 @@ function rebuildEvoDropdown(){
     if(!items) return;
     items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
     html += `<optgroup label="${MUSCLE_LABEL[m]}">`;
-    items.forEach(x => { html += `<option value="${x.idx}">${x.name}</option>`; });
+    items.forEach(x => { html += `<option value="${x.idx}">${esc(x.name)}</option>`; });
     html += `</optgroup>`;
   });
   $evoSelect.innerHTML = html;
@@ -6024,6 +6095,19 @@ const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
 function activeDays(){ return userDays || DAYS; }
 
+// Sentinel for exercises with no explicit order in a given day.
+// Must stay finite: Infinity - Infinity is NaN and would corrupt the sort.
+const ORDER_UNSET = 1e9;
+const orderForDay = (ex, dk) =>
+  (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : ORDER_UNSET;
+
+// Total order: explicit order, then name, then docId. The docId tail guarantees
+// determinism even for two exercises with the same order and the same name.
+const cmpExOrder = (oa, na, ia, ob, nb, ib) =>
+  (oa - ob)
+  || String(na || "").localeCompare(String(nb || ""), "pt-BR")
+  || String(ia ?? "").localeCompare(String(ib ?? ""));
+
 // Build userDays from exercisesCatalog
 function rebuildUserDays(){
   const base = [
@@ -6047,7 +6131,7 @@ function rebuildUserDays(){
     if(!ex.active) return;
     (ex.days || []).forEach(dk => {
       if(dk < 0 || dk > 6) return;
-      const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
+      const order = orderForDay(ex, dk);
       const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
       base[dk].ex.push({
         _id: id,
@@ -6062,7 +6146,8 @@ function rebuildUserDays(){
       });
     });
   });
-  base.forEach(d => d.ex.sort((a,b) => a._order - b._order));
+  base.forEach(d => d.ex.sort((a,b) =>
+    cmpExOrder(a._order, a.name, a._id, b._order, b.name, b._id)));
   userDays = base;
   EXERCISES = buildExerciseList();
   evoInitialized = false;
@@ -6216,14 +6301,14 @@ function openDayEditSheet(dk, dayName){
   const focusVal = custom.focus ?? DAY_DEFAULTS[dk].focus;
   const isCustom = dayCustomizations[dk] != null;
 
-  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${dayName}</h3>`;
+  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${esc(dayName)}</h3>`;
   html += `<div class="modal-field" style="margin-bottom:14px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Tag</label>
-    <input class="modal-input" id="dayEditTag" value="${tagVal.replace(/"/g,'&quot;')}" maxlength="30" placeholder="${DAY_DEFAULTS[dk].tag}">
+    <input class="modal-input" id="dayEditTag" value="${esc(tagVal)}" maxlength="30" placeholder="${DAY_DEFAULTS[dk].tag}">
   </div>`;
   html += `<div class="modal-field" style="margin-bottom:18px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Foco</label>
-    <input class="modal-input" id="dayEditFocus" value="${focusVal.replace(/"/g,'&quot;')}" maxlength="80" placeholder="${DAY_DEFAULTS[dk].focus}">
+    <input class="modal-input" id="dayEditFocus" value="${esc(focusVal)}" maxlength="80" placeholder="${DAY_DEFAULTS[dk].focus}">
   </div>`;
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">`;
   if(isCustom) html += `<button class="modal-btn" id="dayEditReset" style="margin-right:auto;color:var(--muted)">Restaurar padrão</button>`;
@@ -6283,7 +6368,7 @@ function renderExercicios(){
 function renderExFilterBar(){
   const muscles = Object.entries(MUSCLE_LABEL);
   let html = `<div class="ex-toolbar">
-    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${exSearchQuery.replace(/"/g,'&quot;')}">
+    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${esc(exSearchQuery)}">
     <button class="ex-new-btn" id="exNewBtn" style="width:auto;flex:0 0 auto">+ Novo</button>
   </div>`;
   // Muscle chips
@@ -6337,9 +6422,9 @@ function renderExItemHtml(ex, canDrag){
   let h = `<div class="ex-list-item ${isInactive?'inactive':''}" data-id="${ex._id}" ${canDrag?'draggable="true"':''}>`;
   if(canDrag) h += `<div class="drag-handle"><span></span><span></span><span></span></div>`;
   h += `<div class="ex-list-body">
-    <div class="ex-list-name">${ex.name}</div>
+    <div class="ex-list-name">${esc(ex.name)}</div>
     <div class="ex-list-meta">
-      <span class="ex-tag">${MUSCLE_LABEL[ex.muscle]||ex.muscle}</span>
+      <span class="ex-tag">${esc(MUSCLE_LABEL[ex.muscle]||ex.muscle)}</span>
       <span class="ex-tag">${dayPills}</span>
       <span class="ex-tag">${repsSummary}</span>
       ${badgeTags}
@@ -6380,11 +6465,9 @@ function renderExList(){
 
   if(canDrag){
     // Flat list sorted by day order — drag-and-drop enabled
-    items.sort((a,b) => {
-      const oa = (a.orderByDay && a.orderByDay[exFilterDay] != null) ? a.orderByDay[exFilterDay] : 999;
-      const ob = (b.orderByDay && b.orderByDay[exFilterDay] != null) ? b.orderByDay[exFilterDay] : 999;
-      return oa - ob;
-    });
+    items.sort((a,b) => cmpExOrder(
+      orderForDay(a, exFilterDay), a.name, a._id,
+      orderForDay(b, exFilterDay), b.name, b._id));
     items.forEach(ex => { html += renderExItemHtml(ex, true); });
   } else {
     // Grouped by weekday — no drag-and-drop
@@ -6400,11 +6483,9 @@ function renderExList(){
     });
     // Sort each group by orderByDay within that day, then by name
     dayGroups.forEach((list, dk) => {
-      list.sort((a,b) => {
-        const oa = (a.orderByDay && a.orderByDay[dk] != null) ? a.orderByDay[dk] : 999;
-        const ob = (b.orderByDay && b.orderByDay[dk] != null) ? b.orderByDay[dk] : 999;
-        return oa - ob || a.name.localeCompare(b.name, "pt-BR");
-      });
+      list.sort((a,b) => cmpExOrder(
+        orderForDay(a, dk), a.name, a._id,
+        orderForDay(b, dk), b.name, b._id));
     });
     noDayItems.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
 
@@ -6622,12 +6703,102 @@ async function deletePlanDoc(docId){
   await deleteDoc(doc(db, "users", user.uid, "plans", docId));
 }
 
+// ========= Data export (Phase 1, item 4) =========
+
+// Firestore Timestamps don't survive JSON.stringify (they'd silently become {}).
+// Detect them by duck-typing .toDate() rather than importing the Timestamp class.
+function serializeTimestamps(value){
+  if(value && typeof value.toDate === "function") return value.toDate().toISOString();
+  if(Array.isArray(value)) return value.map(serializeTimestamps);
+  if(value && typeof value === "object"){
+    const out = {};
+    for(const k in value) out[k] = serializeTimestamps(value[k]);
+    return out;
+  }
+  return value;
+}
+
+// Reads straight from Firestore rather than the in-memory caches (allSessions,
+// exercisesCatalog, plansCache) — those are partial by design (and about to gain
+// a query limit), so a cache-built export could silently ship an incomplete backup.
+async function buildExportPayload(){
+  const [exSnap, planSnap, sessSnap, appPrefSnap, profilePrefSnap] = await Promise.all([
+    getDocs(collection(db, "users", user.uid, "exercises")),
+    getDocs(collection(db, "users", user.uid, "plans")),
+    getDocs(collection(db, "users", user.uid, "sessions")),
+    getDoc(doc(db, "users", user.uid, "prefs", "app")),
+    getDoc(doc(db, "users", user.uid, "prefs", "profile")),
+  ]);
+
+  const toRecord = d => ({ id: d.id, ...serializeTimestamps(d.data()) });
+  const exercises = [];
+  exSnap.forEach(d => exercises.push(toRecord(d)));
+  const plans = [];
+  planSnap.forEach(d => plans.push(toRecord(d)));
+  const sessions = [];
+  sessSnap.forEach(d => sessions.push(toRecord(d)));
+  sessions.sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")));
+
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    app: "strength-split",
+    user: { uid: user.uid, email: user.email || null, displayName: user.displayName || null },
+    prefs: {
+      app: appPrefSnap.exists() ? serializeTimestamps(appPrefSnap.data()) : null,
+      profile: profilePrefSnap.exists() ? serializeTimestamps(profilePrefSnap.data()) : null,
+    },
+    exercises, plans, sessions,
+  };
+}
+
+let exportingData = false;
+async function exportUserData(){
+  if(exportingData || !user) return;
+  exportingData = true;
+  const $row = document.getElementById("settingsExportRow");
+  const $label = document.getElementById("settingsExportLabel");
+  const originalLabel = $label.textContent;
+  $row.style.pointerEvents = "none";
+  $row.style.opacity = ".6";
+  $label.textContent = "Exportando…";
+
+  try {
+    const payload = await buildExportPayload();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const filename = `strength-split-backup-${todayStr()}.json`;
+    const file = new File([blob], filename, { type: "application/json" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: "Backup Strength Split" });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+  } catch(e){
+    if(e.name !== "AbortError"){
+      console.error("exportUserData:", e);
+      alert("Erro ao exportar dados: " + e.message);
+    }
+  } finally {
+    exportingData = false;
+    $row.style.pointerEvents = "";
+    $row.style.opacity = "";
+    $label.textContent = originalLabel;
+  }
+}
+
 function renderPlansSection(){
   let html = "";
 
   if(currentPlanName){
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-      Plano ativo: <b style="color:var(--accent)">${currentPlanName}</b>
+      Plano ativo: <b style="color:var(--accent)">${esc(currentPlanName)}</b>
     </div>`;
   }
 
@@ -6639,7 +6810,7 @@ function renderPlansSection(){
     const daysSummary = t.days.map(d => d.type).join(' \u00b7 ');
     html += `<div class="plan-card ${isActive?'active-plan':''}" data-key="${t.templateKey}">
       <div class="plan-card-body">
-        <div class="plan-card-name">${t.name}</div>
+        <div class="plan-card-name">${esc(t.name)}</div>
         <div class="plan-card-meta">
           <span class="ex-tag">${daysSummary}</span>
           ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
@@ -6658,7 +6829,7 @@ function renderPlansSection(){
       const daysSummary = (plan.days||[]).map(d => d.type).join(' \u00b7 ');
       html += `<div class="plan-card ${isActive?'active-plan':''}" data-id="${id}">
         <div class="plan-card-body">
-          <div class="plan-card-name">${plan.name}</div>
+          <div class="plan-card-name">${esc(plan.name)}</div>
           <div class="plan-card-meta">
             <span class="ex-tag">${daysSummary}</span>
             ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
@@ -6720,14 +6891,14 @@ function openApplyPlanModal(plan, planDocId){
   const autoMap = dayTypes.length === 5 || dayTypes.length === 7;
 
   let html = `<h3>Aplicar plano</h3>`;
-  html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${plan.name}</p>`;
+  html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${esc(plan.name)}</p>`;
   html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias n\u00e3o mapeados ser\u00e3o dias de descanso.</p>`;
 
   dayTypes.forEach((d, i) => {
     const defaultDay = autoMap ? i : -1;
     html += `<div class="day-map-row">
       <span class="day-map-type">${d.type}</span>
-      <span class="day-map-label">${d.label} (${d.exercises.length} ex.)</span>
+      <span class="day-map-label">${esc(d.label)} (${d.exercises.length} ex.)</span>
       <select class="day-map-select" data-idx="${i}">
         <option value="">— Selecionar —</option>
         ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
@@ -6939,7 +7110,7 @@ function openPlanEditor(planDocId){
     let html = `<h3>${isNew ? 'Novo plano' : 'Editar plano'}</h3>`;
     html += `<div class="modal-field">
       <label>Nome do plano</label>
-      <input class="modal-input" id="pfName" value="${plan.name||''}" placeholder="Ex: Push Pull Legs">
+      <input class="modal-input" id="pfName" value="${esc(plan.name)}" placeholder="Ex: Push Pull Legs">
     </div>`;
     html += `<div class="modal-field"><label>Dias do plano</label></div>`;
 
@@ -6947,14 +7118,14 @@ function openPlanEditor(planDocId){
       html += `<div class="plan-day-type" data-di="${di}">
         <div class="plan-day-type-header">
           <span class="plan-day-type-letter">${d.type}</span>
-          <input class="plan-day-type-label-input" data-di="${di}" value="${d.label||''}" placeholder="Ex: Push, Pull, Legs...">
+          <input class="plan-day-type-label-input" data-di="${di}" value="${esc(d.label)}" placeholder="Ex: Push, Pull, Legs...">
           ${plan.days.length > 1 ? `<button class="plan-remove-day" data-di="${di}" title="Remover dia">\u2715</button>` : ''}
         </div>`;
 
       d.exercises.forEach((e, ei) => {
         html += `<div class="plan-ex-row" data-di="${di}" data-ei="${ei}">
           <div class="ac-wrap plan-ex-name-wrap">
-            <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
+            <input class="plan-ex-name" value="${esc(e.name)}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
             <div class="ac-list"></div>
           </div>
           <select class="plan-ex-muscle" data-di="${di}" data-ei="${ei}">
@@ -7037,7 +7208,7 @@ function openPlanEditor(planDocId){
           if(!results.length){ list.classList.remove("open"); return; }
           activeIdx = -1;
           list.innerHTML = results.map((c,i) =>
-            `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+            `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
           ).join("");
           list.classList.add("open");
           list.querySelectorAll(".ac-item").forEach(el => {
@@ -7191,7 +7362,7 @@ function openExEditor(docId){
   html += `<div class="modal-field">
     <label>Nome</label>
     <div class="ac-wrap">
-      <input class="modal-input" id="mfName" value="${ex.name||''}" placeholder="Nome do exercício" autocomplete="off">
+      <input class="modal-input" id="mfName" value="${esc(ex.name)}" placeholder="Nome do exercício" autocomplete="off">
       <div class="ac-list" id="acName"></div>
     </div>
   </div>`;
@@ -7224,7 +7395,7 @@ function openExEditor(docId){
   // Nota
   html += `<div class="modal-field">
     <label>Observação</label>
-    <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${ex.note||''}</textarea>
+    <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${esc(ex.note)}</textarea>
   </div>`;
 
   // Dias
@@ -7252,7 +7423,7 @@ function openExEditor(docId){
       <div class="modal-field">
         <label>Nome</label>
         <div class="ac-wrap">
-          <input class="modal-input" id="mfSupName" value="${sup.name||''}" placeholder="Nome da supersérie" autocomplete="off">
+          <input class="modal-input" id="mfSupName" value="${esc(sup.name)}" placeholder="Nome da supersérie" autocomplete="off">
           <div class="ac-list" id="acSupName"></div>
         </div>
       </div>
@@ -7277,7 +7448,7 @@ function openExEditor(docId){
       </div>
       <div class="modal-field">
         <label>Observação</label>
-        <textarea class="modal-textarea" id="mfSupNote" placeholder="Opcional">${sup.note||''}</textarea>
+        <textarea class="modal-textarea" id="mfSupNote" placeholder="Opcional">${esc(sup.note)}</textarea>
       </div>
     </div>
   </div>`;
@@ -7358,7 +7529,7 @@ function openExEditor(docId){
       if(!results.length){ list.classList.remove("open"); return; }
       activeIdx = -1;
       list.innerHTML = results.map((c,i) =>
-        `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+        `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
       ).join("");
       list.classList.add("open");
       list.querySelectorAll(".ac-item").forEach(el => {
