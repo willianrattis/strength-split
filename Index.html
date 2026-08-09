@@ -3275,6 +3275,16 @@ function initWithTimeout(u, ms = 15000){
     new Promise((_, rej) => setTimeout(() => rej(new Error("init timeout")), ms)),
   ]);
 }
+// Escapes user-controlled strings for interpolation into innerHTML template
+// literals — safe for both text nodes and quoted attribute values.
+// & must be replaced first or the later entities get double-escaped.
+const esc = v => String(v ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
 function renderInitError(){
   $panel.innerHTML = `<div class="evo-empty">
     <span class="big">Não foi possível carregar</span>
@@ -4929,7 +4939,7 @@ function trainEndInnerHTML(done, total){
     h += `<div class="ts-prs"><span class="ts-prs-title">${sum.prs.length === 1 ? "1 recorde" : sum.prs.length + " recordes"}</span>`;
     sum.prs.slice(0, 4).forEach(p => {
       h += `<div class="ts-pr">
-        <span class="ts-pr-name">${p.name}</span>
+        <span class="ts-pr-name">${esc(p.name)}</span>
         <span class="ts-pr-w">${fmtNum(p.weight)} ${UNIT_ABBR[p.unit] || "kg"}<em> · antes ${fmtNum(p.prev)}</em></span>
       </div>`;
     });
@@ -5018,7 +5028,7 @@ function renderDay(){
 
   let head = `
     <div class="panel-head">
-      <div class="focus-tag">${day.focus}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+      <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} conclu\u00eddos</span>
         <button class="reset" id="resetBtn">Limpar</button>
@@ -5053,8 +5063,8 @@ function renderDay(){
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${effectiveName}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${ex.machine}</span>`:''}</div>
-        ${!isSub && e.note?`<div class="note">${e.note}</div>`:""}
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}</div>
+        ${!isSub && e.note?`<div class="note">${esc(e.note)}</div>`:""}
       </div>
       <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
       <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
@@ -5071,7 +5081,7 @@ function renderDay(){
       const sugSup = suggestData(supEffName, e.superset.unit, true, i);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${supEffName}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${ex.supMachine}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
         ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
@@ -5388,11 +5398,11 @@ function openSubModal(exIdx, isSup=false){
     .slice(0, 8);
 
   let html = `<h3 style="margin:0 0 4px">Trocar ${isSup ? "supersérie" : "exercício"} (só hoje)</h3>`;
-  html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${originalName}</b>.</p>`;
+  html += `<p class="sub-desc">Substitui apenas esta sessão. O plano mantém <b>${esc(originalName)}</b>.</p>`;
 
   if(isSub){
-    html += `<div class="sub-current">Atual: ${curSub}</div>`;
-    html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${originalName})</button>`;
+    html += `<div class="sub-current">Atual: ${esc(curSub)}</div>`;
+    html += `<button class="sub-revert" id="subRevertBtn">↩ Reverter ao padrão (${esc(originalName)})</button>`;
   }
 
   html += `<div class="sub-section-label">Buscar exercício</div>`;
@@ -5402,10 +5412,10 @@ function openSubModal(exIdx, isSup=false){
   html += `</div>`;
 
   if(suggestions.length){
-    html += `<div class="sub-section-label">Sugestões (${MUSCLE_LABEL[originalMuscle]||originalMuscle})</div>`;
+    html += `<div class="sub-section-label">Sugestões (${esc(MUSCLE_LABEL[originalMuscle]||originalMuscle)})</div>`;
     html += `<div class="sub-chips">`;
     suggestions.forEach(c => {
-      html += `<button class="sub-chip" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}</button>`;
+      html += `<button class="sub-chip" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}</button>`;
     });
     html += `</div>`;
   }
@@ -5457,7 +5467,7 @@ function openSubModal(exIdx, isSup=false){
     if(!results.length){ subList.classList.remove("open"); return; }
     subActiveIdx = -1;
     subList.innerHTML = results.map((c,i) =>
-      `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+      `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
     ).join("");
     subList.classList.add("open");
     subList.querySelectorAll(".ac-item").forEach(el => {
@@ -5511,21 +5521,21 @@ function openMachineModal(exIdx, isSup){
   html += `<p class="sub-desc">Identifica o equipamento usado. Histórico e sugestões ficam separados por máquina.</p>`;
 
   if(currentMachine){
-    html += `<div class="sub-current">Atual: ${currentMachine}</div>`;
+    html += `<div class="sub-current">Atual: ${esc(currentMachine)}</div>`;
   }
 
   if(chips.length){
     html += `<div class="sub-section-label">Usadas anteriormente</div>`;
     html += `<div class="sub-chips">`;
     chips.forEach(m => {
-      html += `<button class="sub-chip machine-chip" data-machine="${m}">${m}</button>`;
+      html += `<button class="sub-chip machine-chip" data-machine="${esc(m)}">${esc(m)}</button>`;
     });
     html += `</div>`;
   }
 
   html += `<div class="sub-section-label">Nova máquina</div>`;
   html += `<div class="sub-input-wrap">`;
-  html += `<input class="modal-input" id="machineInput" placeholder="Ex: Gervasport, Life Fitness…" autocomplete="off" value="${currentMachine||''}">`;
+  html += `<input class="modal-input" id="machineInput" placeholder="Ex: Gervasport, Life Fitness…" autocomplete="off" value="${esc(currentMachine)}">`;
   html += `<div class="ac-list" id="machineAcList"></div>`;
   html += `</div>`;
 
@@ -5576,7 +5586,7 @@ function openMachineModal(exIdx, isSup){
     const results = prefix.concat(sub).slice(0, 8);
     if(!results.length){ machList.classList.remove("open"); return; }
     machActiveIdx = -1;
-    machList.innerHTML = results.map((m,i) => `<div class="ac-item" data-i="${i}" data-machine="${m}">${m}</div>`).join("");
+    machList.innerHTML = results.map((m,i) => `<div class="ac-item" data-i="${i}" data-machine="${esc(m)}">${esc(m)}</div>`).join("");
     machList.classList.add("open");
     machList.querySelectorAll(".ac-item").forEach(el => {
       el.addEventListener("mousedown", ev => { ev.preventDefault(); applyMachine(el.dataset.machine); });
@@ -5608,7 +5618,7 @@ function renderStrip(){
       <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
               role="tab" aria-selected="${i===current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
-        <span class="focus">${isRest ? 'Descanso' : (d.tag || d.focus.split('\u00b7')[0].trim())}</span>
+        <span class="focus">${isRest ? 'Descanso' : esc(d.tag || d.focus.split('\u00b7')[0].trim())}</span>
         <span class="today">Hoje</span>
         <span class="dot"></span>
       </button>`;
