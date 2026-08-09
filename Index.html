@@ -1814,6 +1814,12 @@ window.SSSplash = (function(){
       </div>
       </div>
       </div>
+      <div id="settingsExportRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+        <div class="setting-text">
+          <span class="period-label" id="settingsExportLabel">Exportar meus dados</span>
+          <span class="setting-desc">Baixa um arquivo com todo o seu histórico, exercícios e planos.</span>
+        </div>
+      </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
         <span style="font-weight:600;font-size:13px">Editar perfil</span>
       </div>
@@ -2933,6 +2939,7 @@ document.getElementById("settingsProfileEditRow").addEventListener("click", () =
   closeSettings();
   openProfileModal();
 });
+document.getElementById("settingsExportRow").addEventListener("click", exportUserData);
 $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
 document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
@@ -6676,6 +6683,96 @@ async function savePlanDoc(docId, data){
 async function deletePlanDoc(docId){
   if(!user) return;
   await deleteDoc(doc(db, "users", user.uid, "plans", docId));
+}
+
+// ========= Data export (Phase 1, item 4) =========
+
+// Firestore Timestamps don't survive JSON.stringify (they'd silently become {}).
+// Detect them by duck-typing .toDate() rather than importing the Timestamp class.
+function serializeTimestamps(value){
+  if(value && typeof value.toDate === "function") return value.toDate().toISOString();
+  if(Array.isArray(value)) return value.map(serializeTimestamps);
+  if(value && typeof value === "object"){
+    const out = {};
+    for(const k in value) out[k] = serializeTimestamps(value[k]);
+    return out;
+  }
+  return value;
+}
+
+// Reads straight from Firestore rather than the in-memory caches (allSessions,
+// exercisesCatalog, plansCache) — those are partial by design (and about to gain
+// a query limit), so a cache-built export could silently ship an incomplete backup.
+async function buildExportPayload(){
+  const [exSnap, planSnap, sessSnap, appPrefSnap, profilePrefSnap] = await Promise.all([
+    getDocs(collection(db, "users", user.uid, "exercises")),
+    getDocs(collection(db, "users", user.uid, "plans")),
+    getDocs(collection(db, "users", user.uid, "sessions")),
+    getDoc(doc(db, "users", user.uid, "prefs", "app")),
+    getDoc(doc(db, "users", user.uid, "prefs", "profile")),
+  ]);
+
+  const toRecord = d => ({ id: d.id, ...serializeTimestamps(d.data()) });
+  const exercises = [];
+  exSnap.forEach(d => exercises.push(toRecord(d)));
+  const plans = [];
+  planSnap.forEach(d => plans.push(toRecord(d)));
+  const sessions = [];
+  sessSnap.forEach(d => sessions.push(toRecord(d)));
+  sessions.sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")));
+
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    app: "strength-split",
+    user: { uid: user.uid, email: user.email || null, displayName: user.displayName || null },
+    prefs: {
+      app: appPrefSnap.exists() ? serializeTimestamps(appPrefSnap.data()) : null,
+      profile: profilePrefSnap.exists() ? serializeTimestamps(profilePrefSnap.data()) : null,
+    },
+    exercises, plans, sessions,
+  };
+}
+
+let exportingData = false;
+async function exportUserData(){
+  if(exportingData || !user) return;
+  exportingData = true;
+  const $row = document.getElementById("settingsExportRow");
+  const $label = document.getElementById("settingsExportLabel");
+  const originalLabel = $label.textContent;
+  $row.style.pointerEvents = "none";
+  $row.style.opacity = ".6";
+  $label.textContent = "Exportando…";
+
+  try {
+    const payload = await buildExportPayload();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const filename = `strength-split-backup-${todayStr()}.json`;
+    const file = new File([blob], filename, { type: "application/json" });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: "Backup Strength Split" });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+  } catch(e){
+    if(e.name !== "AbortError"){
+      console.error("exportUserData:", e);
+      alert("Erro ao exportar dados: " + e.message);
+    }
+  } finally {
+    exportingData = false;
+    $row.style.pointerEvents = "";
+    $row.style.opacity = "";
+    $label.textContent = originalLabel;
+  }
 }
 
 function renderPlansSection(){
