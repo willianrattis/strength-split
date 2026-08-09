@@ -1,3 +1,5 @@
 .vscode
 AI_CONTEXT.md
 Claude.md
+node_modules/
+dist/
