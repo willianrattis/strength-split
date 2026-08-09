@@ -1903,7 +1903,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot
+  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot,
+  query, orderBy, limit, documentId
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2637,7 +2638,12 @@ let theme = (function(){
   try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
   catch(_){ return null; }
 })();                    // "dark" | "light" — null = segue o sistema
-let allSessions = null;  // cache: array de todas as sessões do usuário
+let allSessions = null;  // cache: array de todas as sessões do usuário (mais recente primeiro)
+// Palliative cap on the session cache. ~750 sessions is several years of
+// training; raising it is cheaper than the Phase 5 aggregate work if a real
+// user ever hits it. Phase 5 replaces this with aggregates + pagination.
+const SESSIONS_FETCH_LIMIT = 750;
+let allSessionsTruncated = false;
 let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
 let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
@@ -3225,6 +3231,7 @@ $loginBtn.addEventListener("click", () => {
 onAuthStateChanged(auth, async u => {
   user = u;
   allSessions = null;
+  allSessionsTruncated = false;
   allSessionsPromise = null;
   gamification = null;
   gamificationEnabled = false;
@@ -3557,9 +3564,18 @@ async function loadAllSessions(){
   if(allSessionsPromise) return allSessionsPromise;
   allSessionsPromise = (async () => {
     try{
-      const snap = await getDocs(collection(db, "users", user.uid, "sessions"));
+      // Ordered by documentId() (== chronological, since ids are ${date}_${dayKey}) so the
+      // limit keeps the most recent sessions, not the oldest. No composite index needed.
+      const q = query(
+        collection(db, "users", user.uid, "sessions"),
+        orderBy(documentId(), "desc"),
+        limit(SESSIONS_FETCH_LIMIT)
+      );
+      const snap = await getDocs(q);
       allSessions = [];
       snap.forEach(d => allSessions.push(d.data()));
+      allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
+      if(allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
     }catch(e){
       console.warn("loadAllSessions:", e.message);
       allSessions = [];
@@ -5344,9 +5360,11 @@ function attachHandlers(){
         const hist = exerciseTopHistory(name, null, machine);
         if(!hist.length) return;
         const lastEntry = hist[hist.length - 1];
-        // find the session's per-set weights for this exercise variant
+        // find the session's per-set weights for this exercise variant.
+        // allSessions is newest-first, so a forward scan hits the most recent
+        // matching session first when the date is shared by more than one.
         let refSets = null;
-        for(let k = allSessions.length - 1; k >= 0; k--){
+        for(let k = 0; k < allSessions.length; k++){
           const sess = allSessions[k];
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
