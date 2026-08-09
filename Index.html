@@ -1904,7 +1904,7 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot,
-  query, orderBy, limit, documentId
+  query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2644,6 +2644,7 @@ let allSessions = null;  // cache: array de todas as sessões do usuário (mais 
 // user ever hits it. Phase 5 replaces this with aggregates + pagination.
 const SESSIONS_FETCH_LIMIT = 750;
 let allSessionsTruncated = false;
+let allSessionsError = false;
 let exercisesCatalog = new Map(); // docId -> exercise doc
 let userDays = null; // replaces DAYS when loaded from Firestore
 let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
@@ -3232,6 +3233,7 @@ onAuthStateChanged(auth, async u => {
   user = u;
   allSessions = null;
   allSessionsTruncated = false;
+  allSessionsError = false;
   allSessionsPromise = null;
   gamification = null;
   gamificationEnabled = false;
@@ -3564,21 +3566,26 @@ async function loadAllSessions(){
   if(allSessionsPromise) return allSessionsPromise;
   allSessionsPromise = (async () => {
     try{
-      // Ordered by documentId() (== chronological, since ids are ${date}_${dayKey}) so the
-      // limit keeps the most recent sessions, not the oldest. No composite index needed.
+      // Ordered by the `date` field, not documentId(): Firestore's automatic
+      // single-field index covers normal fields in both directions, but the
+      // automatic __name__ index is ascending only, so desc on documentId()
+      // demands an explicitly created index. A single orderBy with no where
+      // clause needs no composite index.
       const q = query(
         collection(db, "users", user.uid, "sessions"),
-        orderBy(documentId(), "desc"),
+        orderBy("date", "desc"),
         limit(SESSIONS_FETCH_LIMIT)
       );
       const snap = await getDocs(q);
       allSessions = [];
       snap.forEach(d => allSessions.push(d.data()));
       allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
+      allSessionsError = false;
       if(allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
     }catch(e){
-      console.warn("loadAllSessions:", e.message);
-      allSessions = [];
+      console.error("loadAllSessions failed:", e);
+      allSessionsError = true;
+      allSessions = null;   // leave unset so the next navigation retries
     } finally {
       allSessionsPromise = null;
       refreshGamification();
