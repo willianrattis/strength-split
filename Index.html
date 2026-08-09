@@ -3994,8 +3994,8 @@ function renderGamifModal(){
     }
     html += `<div class="gamif-badge${locked ? " locked" : ""}">
       <div class="gamif-badge-icon">${def.icon}</div>
-      <div class="gamif-badge-name">${def.name}</div>
-      ${locked ? `<div class="gamif-badge-desc">${def.desc}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
+      <div class="gamif-badge-name">${esc(def.name)}</div>
+      ${locked ? `<div class="gamif-badge-desc">${esc(def.desc)}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
     </div>`;
   }
   html += '</div>';
@@ -4057,7 +4057,7 @@ function buildWrappedSlides(data){
   if(data.topMuscle){
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Grupo mais treinado</div>
-      <div class="wrapped-big-num" style="font-size:36px">${wrappedCapitalize(data.topMuscle)}</div>
+      <div class="wrapped-big-num" style="font-size:36px">${esc(wrappedCapitalize(data.topMuscle))}</div>
       <div class="wrapped-stat-row" style="margin-top:16px">
         <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleSets.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Séries</span></div>
         <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleReps.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Repetições</span></div>
@@ -4070,7 +4070,7 @@ function buildWrappedSlides(data){
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Maior carga do ano</div>
       <div class="wrapped-big-num">${data.heaviest.weight.toLocaleString("pt-BR")} kg</div>
-      <div class="wrapped-detail"><strong>${data.heaviest.exercise}</strong></div>
+      <div class="wrapped-detail"><strong>${esc(data.heaviest.exercise)}</strong></div>
       <div class="wrapped-detail">${fmtDateBR(data.heaviest.date)}</div>
     </div>`);
   }
@@ -4080,7 +4080,7 @@ function buildWrappedSlides(data){
     const mp = data.mostProgressed;
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Maior evolução</div>
-      <div class="wrapped-detail" style="font-size:16px;margin-bottom:12px"><strong>${mp.exercise}</strong></div>
+      <div class="wrapped-detail" style="font-size:16px;margin-bottom:12px"><strong>${esc(mp.exercise)}</strong></div>
       <div class="wrapped-detail" style="font-size:18px">de <strong>${mp.from.toLocaleString("pt-BR")} kg</strong> → <strong>${mp.to.toLocaleString("pt-BR")} kg</strong></div>
       <div class="wrapped-big-num" style="font-size:48px;margin-top:8px">+${mp.delta.toLocaleString("pt-BR")} kg</div>
     </div>`);
@@ -4091,11 +4091,11 @@ function buildWrappedSlides(data){
     const top6 = data.repsByMuscle.slice(0,6);
     let rankHtml = '';
     top6.forEach((m,i) => {
-      rankHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${wrappedCapitalize(m.muscle)}</span><span class="wrapped-rank-val">${m.reps.toLocaleString("pt-BR")} reps</span></div>`;
+      rankHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(wrappedCapitalize(m.muscle))}</span><span class="wrapped-rank-val">${m.reps.toLocaleString("pt-BR")} reps</span></div>`;
     });
     let topExHtml = '';
     data.topExercisesByReps.forEach((e,i) => {
-      topExHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${e.name}</span><span class="wrapped-rank-val">${e.reps.toLocaleString("pt-BR")} reps</span></div>`;
+      topExHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(e.name)}</span><span class="wrapped-rank-val">${e.reps.toLocaleString("pt-BR")} reps</span></div>`;
     });
     slides.push(`<div class="wrapped-card">
       <div class="wrapped-big-label">Repetições por grupo</div>
@@ -5730,7 +5730,7 @@ function rebuildEvoDropdown(){
     if(!items) return;
     items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
     html += `<optgroup label="${MUSCLE_LABEL[m]}">`;
-    items.forEach(x => { html += `<option value="${x.idx}">${x.name}</option>`; });
+    items.forEach(x => { html += `<option value="${x.idx}">${esc(x.name)}</option>`; });
     html += `</optgroup>`;
   });
   $evoSelect.innerHTML = html;
@@ -6276,14 +6276,14 @@ function openDayEditSheet(dk, dayName){
   const focusVal = custom.focus ?? DAY_DEFAULTS[dk].focus;
   const isCustom = dayCustomizations[dk] != null;
 
-  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${dayName}</h3>`;
+  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${esc(dayName)}</h3>`;
   html += `<div class="modal-field" style="margin-bottom:14px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Tag</label>
-    <input class="modal-input" id="dayEditTag" value="${tagVal.replace(/"/g,'&quot;')}" maxlength="30" placeholder="${DAY_DEFAULTS[dk].tag}">
+    <input class="modal-input" id="dayEditTag" value="${esc(tagVal)}" maxlength="30" placeholder="${DAY_DEFAULTS[dk].tag}">
   </div>`;
   html += `<div class="modal-field" style="margin-bottom:18px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Foco</label>
-    <input class="modal-input" id="dayEditFocus" value="${focusVal.replace(/"/g,'&quot;')}" maxlength="80" placeholder="${DAY_DEFAULTS[dk].focus}">
+    <input class="modal-input" id="dayEditFocus" value="${esc(focusVal)}" maxlength="80" placeholder="${DAY_DEFAULTS[dk].focus}">
   </div>`;
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">`;
   if(isCustom) html += `<button class="modal-btn" id="dayEditReset" style="margin-right:auto;color:var(--muted)">Restaurar padrão</button>`;
@@ -6343,7 +6343,7 @@ function renderExercicios(){
 function renderExFilterBar(){
   const muscles = Object.entries(MUSCLE_LABEL);
   let html = `<div class="ex-toolbar">
-    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${exSearchQuery.replace(/"/g,'&quot;')}">
+    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${esc(exSearchQuery)}">
     <button class="ex-new-btn" id="exNewBtn" style="width:auto;flex:0 0 auto">+ Novo</button>
   </div>`;
   // Muscle chips
@@ -6397,9 +6397,9 @@ function renderExItemHtml(ex, canDrag){
   let h = `<div class="ex-list-item ${isInactive?'inactive':''}" data-id="${ex._id}" ${canDrag?'draggable="true"':''}>`;
   if(canDrag) h += `<div class="drag-handle"><span></span><span></span><span></span></div>`;
   h += `<div class="ex-list-body">
-    <div class="ex-list-name">${ex.name}</div>
+    <div class="ex-list-name">${esc(ex.name)}</div>
     <div class="ex-list-meta">
-      <span class="ex-tag">${MUSCLE_LABEL[ex.muscle]||ex.muscle}</span>
+      <span class="ex-tag">${esc(MUSCLE_LABEL[ex.muscle]||ex.muscle)}</span>
       <span class="ex-tag">${dayPills}</span>
       <span class="ex-tag">${repsSummary}</span>
       ${badgeTags}
@@ -6683,7 +6683,7 @@ function renderPlansSection(){
 
   if(currentPlanName){
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-      Plano ativo: <b style="color:var(--accent)">${currentPlanName}</b>
+      Plano ativo: <b style="color:var(--accent)">${esc(currentPlanName)}</b>
     </div>`;
   }
 
@@ -6695,7 +6695,7 @@ function renderPlansSection(){
     const daysSummary = t.days.map(d => d.type).join(' \u00b7 ');
     html += `<div class="plan-card ${isActive?'active-plan':''}" data-key="${t.templateKey}">
       <div class="plan-card-body">
-        <div class="plan-card-name">${t.name}</div>
+        <div class="plan-card-name">${esc(t.name)}</div>
         <div class="plan-card-meta">
           <span class="ex-tag">${daysSummary}</span>
           ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
@@ -6714,7 +6714,7 @@ function renderPlansSection(){
       const daysSummary = (plan.days||[]).map(d => d.type).join(' \u00b7 ');
       html += `<div class="plan-card ${isActive?'active-plan':''}" data-id="${id}">
         <div class="plan-card-body">
-          <div class="plan-card-name">${plan.name}</div>
+          <div class="plan-card-name">${esc(plan.name)}</div>
           <div class="plan-card-meta">
             <span class="ex-tag">${daysSummary}</span>
             ${isActive ? '<span class="ex-tag accent">Ativo</span>' : ''}
@@ -6776,14 +6776,14 @@ function openApplyPlanModal(plan, planDocId){
   const autoMap = dayTypes.length === 5 || dayTypes.length === 7;
 
   let html = `<h3>Aplicar plano</h3>`;
-  html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${plan.name}</p>`;
+  html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${esc(plan.name)}</p>`;
   html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias n\u00e3o mapeados ser\u00e3o dias de descanso.</p>`;
 
   dayTypes.forEach((d, i) => {
     const defaultDay = autoMap ? i : -1;
     html += `<div class="day-map-row">
       <span class="day-map-type">${d.type}</span>
-      <span class="day-map-label">${d.label} (${d.exercises.length} ex.)</span>
+      <span class="day-map-label">${esc(d.label)} (${d.exercises.length} ex.)</span>
       <select class="day-map-select" data-idx="${i}">
         <option value="">— Selecionar —</option>
         ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
@@ -6995,7 +6995,7 @@ function openPlanEditor(planDocId){
     let html = `<h3>${isNew ? 'Novo plano' : 'Editar plano'}</h3>`;
     html += `<div class="modal-field">
       <label>Nome do plano</label>
-      <input class="modal-input" id="pfName" value="${plan.name||''}" placeholder="Ex: Push Pull Legs">
+      <input class="modal-input" id="pfName" value="${esc(plan.name)}" placeholder="Ex: Push Pull Legs">
     </div>`;
     html += `<div class="modal-field"><label>Dias do plano</label></div>`;
 
@@ -7003,14 +7003,14 @@ function openPlanEditor(planDocId){
       html += `<div class="plan-day-type" data-di="${di}">
         <div class="plan-day-type-header">
           <span class="plan-day-type-letter">${d.type}</span>
-          <input class="plan-day-type-label-input" data-di="${di}" value="${d.label||''}" placeholder="Ex: Push, Pull, Legs...">
+          <input class="plan-day-type-label-input" data-di="${di}" value="${esc(d.label)}" placeholder="Ex: Push, Pull, Legs...">
           ${plan.days.length > 1 ? `<button class="plan-remove-day" data-di="${di}" title="Remover dia">\u2715</button>` : ''}
         </div>`;
 
       d.exercises.forEach((e, ei) => {
         html += `<div class="plan-ex-row" data-di="${di}" data-ei="${ei}">
           <div class="ac-wrap plan-ex-name-wrap">
-            <input class="plan-ex-name" value="${e.name||''}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
+            <input class="plan-ex-name" value="${esc(e.name)}" placeholder="Nome do exerc\u00edcio" data-di="${di}" data-ei="${ei}" autocomplete="off">
             <div class="ac-list"></div>
           </div>
           <select class="plan-ex-muscle" data-di="${di}" data-ei="${ei}">
@@ -7093,7 +7093,7 @@ function openPlanEditor(planDocId){
           if(!results.length){ list.classList.remove("open"); return; }
           activeIdx = -1;
           list.innerHTML = results.map((c,i) =>
-            `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+            `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
           ).join("");
           list.classList.add("open");
           list.querySelectorAll(".ac-item").forEach(el => {
@@ -7247,7 +7247,7 @@ function openExEditor(docId){
   html += `<div class="modal-field">
     <label>Nome</label>
     <div class="ac-wrap">
-      <input class="modal-input" id="mfName" value="${ex.name||''}" placeholder="Nome do exercício" autocomplete="off">
+      <input class="modal-input" id="mfName" value="${esc(ex.name)}" placeholder="Nome do exercício" autocomplete="off">
       <div class="ac-list" id="acName"></div>
     </div>
   </div>`;
@@ -7280,7 +7280,7 @@ function openExEditor(docId){
   // Nota
   html += `<div class="modal-field">
     <label>Observação</label>
-    <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${ex.note||''}</textarea>
+    <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${esc(ex.note)}</textarea>
   </div>`;
 
   // Dias
@@ -7308,7 +7308,7 @@ function openExEditor(docId){
       <div class="modal-field">
         <label>Nome</label>
         <div class="ac-wrap">
-          <input class="modal-input" id="mfSupName" value="${sup.name||''}" placeholder="Nome da supersérie" autocomplete="off">
+          <input class="modal-input" id="mfSupName" value="${esc(sup.name)}" placeholder="Nome da supersérie" autocomplete="off">
           <div class="ac-list" id="acSupName"></div>
         </div>
       </div>
@@ -7333,7 +7333,7 @@ function openExEditor(docId){
       </div>
       <div class="modal-field">
         <label>Observação</label>
-        <textarea class="modal-textarea" id="mfSupNote" placeholder="Opcional">${sup.note||''}</textarea>
+        <textarea class="modal-textarea" id="mfSupNote" placeholder="Opcional">${esc(sup.note)}</textarea>
       </div>
     </div>
   </div>`;
@@ -7414,7 +7414,7 @@ function openExEditor(docId){
       if(!results.length){ list.classList.remove("open"); return; }
       activeIdx = -1;
       list.innerHTML = results.map((c,i) =>
-        `<div class="ac-item" data-i="${i}" data-name="${c.name}" data-muscle="${c.muscle}">${c.name}<span class="ac-muscle">${MUSCLE_LABEL[c.muscle]||c.muscle}</span></div>`
+        `<div class="ac-item" data-i="${i}" data-name="${esc(c.name)}" data-muscle="${esc(c.muscle)}">${esc(c.name)}<span class="ac-muscle">${esc(MUSCLE_LABEL[c.muscle]||c.muscle)}</span></div>`
       ).join("");
       list.classList.add("open");
       list.querySelectorAll(".ac-item").forEach(el => {
