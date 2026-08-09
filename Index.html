@@ -6060,6 +6060,19 @@ const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
 function activeDays(){ return userDays || DAYS; }
 
+// Sentinel for exercises with no explicit order in a given day.
+// Must stay finite: Infinity - Infinity is NaN and would corrupt the sort.
+const ORDER_UNSET = 1e9;
+const orderForDay = (ex, dk) =>
+  (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : ORDER_UNSET;
+
+// Total order: explicit order, then name, then docId. The docId tail guarantees
+// determinism even for two exercises with the same order and the same name.
+const cmpExOrder = (oa, na, ia, ob, nb, ib) =>
+  (oa - ob)
+  || String(na || "").localeCompare(String(nb || ""), "pt-BR")
+  || String(ia ?? "").localeCompare(String(ib ?? ""));
+
 // Build userDays from exercisesCatalog
 function rebuildUserDays(){
   const base = [
@@ -6083,7 +6096,7 @@ function rebuildUserDays(){
     if(!ex.active) return;
     (ex.days || []).forEach(dk => {
       if(dk < 0 || dk > 6) return;
-      const order = (ex.orderByDay && ex.orderByDay[dk] != null) ? ex.orderByDay[dk] : 999;
+      const order = orderForDay(ex, dk);
       const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
       base[dk].ex.push({
         _id: id,
@@ -6098,7 +6111,8 @@ function rebuildUserDays(){
       });
     });
   });
-  base.forEach(d => d.ex.sort((a,b) => a._order - b._order));
+  base.forEach(d => d.ex.sort((a,b) =>
+    cmpExOrder(a._order, a.name, a._id, b._order, b.name, b._id)));
   userDays = base;
   EXERCISES = buildExerciseList();
   evoInitialized = false;
@@ -6416,11 +6430,9 @@ function renderExList(){
 
   if(canDrag){
     // Flat list sorted by day order — drag-and-drop enabled
-    items.sort((a,b) => {
-      const oa = (a.orderByDay && a.orderByDay[exFilterDay] != null) ? a.orderByDay[exFilterDay] : 999;
-      const ob = (b.orderByDay && b.orderByDay[exFilterDay] != null) ? b.orderByDay[exFilterDay] : 999;
-      return oa - ob;
-    });
+    items.sort((a,b) => cmpExOrder(
+      orderForDay(a, exFilterDay), a.name, a._id,
+      orderForDay(b, exFilterDay), b.name, b._id));
     items.forEach(ex => { html += renderExItemHtml(ex, true); });
   } else {
     // Grouped by weekday — no drag-and-drop
@@ -6436,11 +6448,9 @@ function renderExList(){
     });
     // Sort each group by orderByDay within that day, then by name
     dayGroups.forEach((list, dk) => {
-      list.sort((a,b) => {
-        const oa = (a.orderByDay && a.orderByDay[dk] != null) ? a.orderByDay[dk] : 999;
-        const ob = (b.orderByDay && b.orderByDay[dk] != null) ? b.orderByDay[dk] : 999;
-        return oa - ob || a.name.localeCompare(b.name, "pt-BR");
-      });
+      list.sort((a,b) => cmpExOrder(
+        orderForDay(a, dk), a.name, a._id,
+        orderForDay(b, dk), b.name, b._id));
     });
     noDayItems.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
 
