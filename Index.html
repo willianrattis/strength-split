@@ -632,6 +632,26 @@
   .gamif-chip-label{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);white-space:nowrap}
   .gamif-chip-bar{width:48px;height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden;flex-shrink:0}
   .gamif-chip-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+  .gamif-chip.loading{pointer-events:none;cursor:default}
+  .gamif-chip.loading .gamif-chip-label{
+    min-width:82px;height:13px;border-radius:4px;color:transparent;
+    background:linear-gradient(90deg,var(--surface-3) 25%,var(--border) 50%,var(--surface-3) 75%);
+    background-size:200% 100%;animation:skeleton-shimmer 1.3s linear infinite;
+  }
+  .gamif-chip.loading .gamif-chip-bar{
+    background:linear-gradient(90deg,var(--surface-3) 25%,var(--border) 50%,var(--surface-3) 75%);
+    background-size:200% 100%;animation:skeleton-shimmer 1.3s linear infinite;
+  }
+  .gamif-chip.loading .gamif-chip-fill{width:0!important;transition:none}
+  .gamif-chip.revealed .gamif-chip-label,
+  .gamif-chip.revealed .gamif-chip-bar{animation:gamifChipIn 260ms ease}
+  @keyframes gamifChipIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){
+    .gamif-chip.loading .gamif-chip-label,
+    .gamif-chip.loading .gamif-chip-bar,
+    .gamif-chip.revealed .gamif-chip-label,
+    .gamif-chip.revealed .gamif-chip-bar{animation:none}
+  }
   .gamif-modal-body{text-align:center;padding:8px 0 0}
   .gamif-level-big{font-family:var(--display);font-weight:700;font-size:56px;color:var(--accent);line-height:1}
   .gamif-title-big{font-family:var(--display);font-weight:600;font-size:18px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);margin:4px 0 16px}
@@ -1985,12 +2005,19 @@ function applyExecOrderState(){
   document.body.classList.toggle("flag-exec-order-available", available);
   document.body.classList.toggle("flag-exec-order", active);
 }
+function setGamifChipLoading(on){
+  const $chip = document.getElementById("gamifChip");
+  if($chip) $chip.classList.toggle("loading", !!on);
+}
 function applyGamificationState(){
   const available = isFeatureEnabled("gamification");
   const active = available && gamificationEnabled;
   document.body.classList.toggle("flag-gamification-available", available);
   document.body.classList.toggle("flag-gamification", active);
-  if(active) renderGamifChip();
+  if(active){
+    if(gamification) renderGamifChip();
+    else setGamifChipLoading(true);
+  }
 }
 window.addEventListener("flagsUpdated", () => {
   applyPeriodizationState();
@@ -3195,6 +3222,7 @@ onAuthStateChanged(auth, async u => {
   gamification = null;
   gamificationEnabled = false;
   gamifStartDate = null;
+  setGamifChipLoading(true);
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
     $gateWrap.style.display = "none";
@@ -3884,6 +3912,12 @@ function renderGamifChip(){
   $label.textContent = `Nv ${gamification.level} · ${gamification.title}`;
   const pct = gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(gamification.xpIntoLevel / gamification.xpForNextLevel * 100)) : 100;
   $fill.style.width = pct + "%";
+  const $chip = document.getElementById("gamifChip");
+  if($chip && $chip.classList.contains("loading")){
+    $chip.classList.remove("loading");
+    $chip.classList.add("revealed");
+    setTimeout(() => $chip.classList.remove("revealed"), 320);
+  }
 }
 
 function renderGamifModal(){
