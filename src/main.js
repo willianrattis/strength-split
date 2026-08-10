@@ -13,7 +13,7 @@ window.jspdf = { jsPDF };
 
 import { stripDiacritics, esc, normMachine, sameMachine } from "./domain/text.js";
 import { formatDate, todayStr, getWeekMonday, dateForDay, sessionId, fmtDateBR, shortDate } from "./domain/dates.js";
-import { equipmentOf, buildExTypeMap, exTypeOf } from "./domain/equipment.js";
+import { equipmentOf, buildExTypeMap } from "./domain/equipment.js";
 import { ORDER_UNSET, orderForDay, cmpExOrder } from "./domain/order.js";
 import { lastMachineFor as domainLastMachineFor, usedMachinesRanked as domainUsedMachinesRanked, matchVariant as domainMatchVariant } from "./domain/machines.js";
 import { emptySession as domainEmptySession, reconcileSession as domainReconcileSession } from "./domain/session.js";
@@ -26,6 +26,17 @@ import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } 
 import { computeGamification } from "./domain/gamification.js";
 import { buildMuscleIndex as domainBuildMuscleIndex } from "./domain/muscles.js";
 import { computeWrapped as domainComputeWrapped } from "./domain/wrapped.js";
+import { state } from "./core/state.js";
+import {
+  $authBox, $loginBtn, $appContent, $gateWrap, $strip, $panel, $sync, $weekPrev, $weekNext, $weekLabel,
+  $modeCompact, $modeLoad, $themeBtn, $tabTreino, $tabExercicios, $tabEvolucao, $viewTreino, $viewExercicios,
+  $viewEvolucao, $dayCustomSection, $exFilterBar, $exList, $exModal, $exModalInner, $plansSection, $planModal,
+  $planModalInner, $applyPlanModal, $applyPlanModalInner, $dayEditModal, $dayEditModalBody, $evoSelect,
+  $evoMachineSelect, $evoBody, $settingsModal, $settingsThemeToggle, $settingsLogoutBtn, $bnTreino,
+  $bnExercicios, $bnEvolucao, $bnConfig, $profileModal, $profileModalInner, $gamifModal, $wrappedOverlay,
+  $wrappedSlides, $wrappedProgress, $wrappedYearPills, $trainBar, $trainSegs, $trainCount, $trainFocus,
+  $subModal, $subModalInner, $machineModal, $machineModalInner, $btnSharePdf
+} from "./core/dom.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCpq7zytWeXpjEhIFaiqHZKbODcM-ZYhKU",
@@ -104,31 +115,31 @@ const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFl
 
 function applyPeriodizationState(){
   const available = isFeatureEnabled("periodization");
-  const active = available && periodizationEnabled;
+  const active = available && state.periodizationEnabled;
   document.body.classList.toggle("flag-periodization-available", available);
   document.body.classList.toggle("flag-periodization", active);
 }
 function applyMachinesState(){
   const available = isFeatureEnabled("machines");
-  const active = available && machinesEnabled;
+  const active = available && state.machinesEnabled;
   document.body.classList.toggle("flag-machines-available", available);
   document.body.classList.toggle("flag-machines", active);
 }
 function applyProfileState(){
   const available = isFeatureEnabled("profile");
-  const active = available && profileEnabled;
+  const active = available && state.profileEnabled;
   document.body.classList.toggle("flag-profile-available", available);
   document.body.classList.toggle("flag-profile", active);
 }
 function applyAutoregState(){
   const available = isFeatureEnabled("autoreg");
-  const active = available && autoregEnabled;
+  const active = available && state.autoregEnabled;
   document.body.classList.toggle("flag-autoreg-available", available);
   document.body.classList.toggle("flag-autoreg", active);
 }
 function applyExecOrderState(){
   const available = isFeatureEnabled("execOrder");
-  const active = available && execOrderEnabled;
+  const active = available && state.execOrderEnabled;
   document.body.classList.toggle("flag-exec-order-available", available);
   document.body.classList.toggle("flag-exec-order", active);
 }
@@ -138,11 +149,11 @@ function setGamifChipLoading(on){
 }
 function applyGamificationState(){
   const available = isFeatureEnabled("gamification");
-  const active = available && gamificationEnabled;
+  const active = available && state.gamificationEnabled;
   document.body.classList.toggle("flag-gamification-available", available);
   document.body.classList.toggle("flag-gamification", active);
   if(active){
-    if(gamification) renderGamifChip();
+    if(state.gamification) renderGamifChip();
     else setGamifChipLoading(true);
   }
 }
@@ -737,97 +748,15 @@ const _exTypeMap = buildExTypeMap(EXERCISE_CATALOG);
 const MACHINE_CATALOG = ["Hammer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
 
 // ========= Estado em memória =========
-let user = null;
-let current = 0;
-let session = null;      // documento da sessão atual
-let prevSession = null;  // sessão anterior para o mesmo dia (referência de carga)
-let saveTimer = null;
-let viewMode = "load";   // "load" | "compact" — preferência de visualização
-// Train mode — ephemeral session UI state. NEVER persisted (not in savePref/loadPref).
-let trainMode = false;
-let trainIdx = 0;
-let _trainScrollT = null;
-let theme = (function(){
-  try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
-  catch(_){ return null; }
-})();                    // "dark" | "light" — null = segue o sistema
-let allSessions = null;  // cache: array de todas as sessões do usuário (mais recente primeiro)
 // Palliative cap on the session cache. ~750 sessions is several years of
 // training; raising it is cheaper than the Phase 5 aggregate work if a real
 // user ever hits it. Phase 5 replaces this with aggregates + pagination.
 const SESSIONS_FETCH_LIMIT = 750;
-let allSessionsTruncated = false;
-let allSessionsError = false;
-let exercisesCatalog = new Map(); // docId -> exercise doc
-let userDays = null; // replaces DAYS when loaded from Firestore
-let dayCustomizations = {}; // {0: {tag, focus}, 1: ...} from Firestore
-let weekOffset = 0; // 0 = current week, -1 = last week, etc.
-let plansCache = new Map(); // planId -> plan doc (custom plans from Firestore)
-let currentPlanName = null;
-let currentPlanId = null;   // custom plan doc id
-let currentPlanKey = null;  // predefined template key
-let exSubTab = "list";
-let exSearchQuery = "";
-let lastDeloadDate = null;
-let prevLayout = "column"; // 'column' | 'panel' — how previous load + suggestion are shown
-let periodizationEnabled = true;
-let machinesEnabled = true;
-let profileEnabled = true;
-let autoregEnabled = true;
-let autoregSensitivity = "mod"; // 'suave' | 'mod' | 'agr'
-let execOrderEnabled = true;
-let gamificationEnabled = false;
-let gamifStartDate = null; // YYYY-MM-DD; start of the counting window (set on first enable)
-let gamification = null; // cached result of computeGamification
-// sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
-let profile = { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} };
-let deloadDismissed = false;
-
-// exercise list filters
-let exFilterMuscle = null; // null = todos
-let exFilterDay = null; // null = todos
-let exShowInactive = false;
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
-current = todayIdx;
+state.current = todayIdx;
 
 // ========= DOM =========
-const $authBox = document.getElementById("authBox");
-const $loginBtn = document.getElementById("loginBtn");
-const $appContent = document.getElementById("appContent");
-const $gateWrap = document.getElementById("gateWrap");
-const $strip = document.getElementById("dayStrip");
-const $panel = document.getElementById("panel");
-const $sync = document.getElementById("syncStatus");
-const $weekPrev = document.getElementById("weekPrev");
-const $weekNext = document.getElementById("weekNext");
-const $weekLabel = document.getElementById("weekLabel");
-const $modeCompact = document.getElementById("modeCompact");
-const $modeLoad = document.getElementById("modeLoad");
-const $themeBtn = document.getElementById("themeBtn");
-const $tabTreino = document.getElementById("tabTreino");
-const $tabExercicios = document.getElementById("tabExercicios");
-const $tabEvolucao = document.getElementById("tabEvolucao");
-const $viewTreino = document.getElementById("viewTreino");
-const $viewExercicios = document.getElementById("viewExercicios");
-const $viewEvolucao = document.getElementById("viewEvolucao");
-const $dayCustomSection = document.getElementById("dayCustomSection");
-const $exFilterBar = document.getElementById("exFilterBar");
-const $exList = document.getElementById("exList");
-const $exModal = document.getElementById("exModal");
-const $exModalInner = document.getElementById("exModalInner");
-const $plansSection = document.getElementById("plansSection");
-const $planModal = document.getElementById("planModal");
-const $planModalInner = document.getElementById("planModalInner");
-const $applyPlanModal = document.getElementById("applyPlanModal");
-const $applyPlanModalInner = document.getElementById("applyPlanModalInner");
-const $dayEditModal = document.getElementById("dayEditModal");
-const $dayEditModalBody = document.getElementById("dayEditModalBody");
-const $evoSelect = document.getElementById("evoSelect");
-const $evoMachineSelect = document.getElementById("evoMachineSelect");
-const $evoBody = document.getElementById("evoBody");
-let evoChart = null;
-
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
@@ -835,12 +764,8 @@ const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
 function effectiveTheme(){
-  return theme || (prefersDark.matches ? "dark" : "light");
+  return state.theme || (prefersDark.matches ? "dark" : "light");
 }
-const $settingsModal = document.getElementById("settingsModal");
-const $settingsThemeToggle = document.getElementById("settingsThemeToggle");
-const $settingsLogoutBtn = document.getElementById("settingsLogoutBtn");
-
 function applyTheme(){
   const t = effectiveTheme();
   document.documentElement.setAttribute("data-theme", t);
@@ -853,24 +778,24 @@ function applyTheme(){
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
   try{
-    if(theme) localStorage.setItem("ss_theme", theme);
+    if(state.theme) localStorage.setItem("ss_theme", state.theme);
     else localStorage.removeItem("ss_theme");
   }catch(_){}
 }
 
 function toggleTheme(){
-  theme = effectiveTheme() === "dark" ? "light" : "dark";
+  state.theme = effectiveTheme() === "dark" ? "light" : "dark";
   applyTheme();
   savePref();
-  if(evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
+  if(state.evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
 }
 
 $themeBtn.addEventListener("click", toggleTheme);
-prefersDark.addEventListener("change", () => { if(!theme) applyTheme(); });
+prefersDark.addEventListener("change", () => { if(!state.theme) applyTheme(); });
 
 // ========= Abas principais =========
 function showTab(which){
-  if(which !== "treino" && trainMode) exitTrainMode();
+  if(which !== "treino" && state.trainMode) exitTrainMode();
   $tabTreino.classList.toggle("active", which === "treino");
   $tabExercicios.classList.toggle("active", which === "exercicios");
   $tabEvolucao.classList.toggle("active", which === "evolucao");
@@ -887,13 +812,10 @@ $tabExercicios.addEventListener("click", () => showTab("exercicios"));
 $tabEvolucao.addEventListener("click", () => showTab("evolucao"));
 document.getElementById("exSubTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-subtab]"); if(!b) return;
-  exSubTab = b.dataset.subtab; renderExercicios();
+  state.exSubTab = b.dataset.subtab; renderExercicios();
 });
 
 // ========= Bottom nav (mobile) =========
-const $bnTreino = document.getElementById("bnTreino");
-const $bnExercicios = document.getElementById("bnExercicios");
-const $bnEvolucao = document.getElementById("bnEvolucao");
 function syncBottomNav(which){
   $bnTreino.setAttribute("aria-selected", which === "treino");
   $bnExercicios.setAttribute("aria-selected", which === "exercicios");
@@ -904,61 +826,60 @@ $bnExercicios.addEventListener("click", () => showTab("exercicios"));
 $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
 
 // ========= Settings bottom-sheet (mobile) =========
-const $bnConfig = document.getElementById("bnConfig");
 function applyPrevLayoutState(){
-  document.body.classList.toggle("layout-prev-column", prevLayout === "column" && !trainMode);
+  document.body.classList.toggle("layout-prev-column", state.prevLayout === "column" && !state.trainMode);
 }
 function syncPrevLayoutToggle(){
   document.querySelectorAll('#prevLayoutToggle [data-prevlayout]').forEach(b =>
-    b.classList.toggle("active", b.dataset.prevlayout === prevLayout));
+    b.classList.toggle("active", b.dataset.prevlayout === state.prevLayout));
 }
 applyPrevLayoutState(); // default before any prefs load
 
 function syncPeriodToggle(){
   const $on = document.querySelector('#periodToggle [data-period="on"]');
   const $off = document.querySelector('#periodToggle [data-period="off"]');
-  $on.classList.toggle("active", periodizationEnabled);
-  $off.classList.toggle("active", !periodizationEnabled);
+  $on.classList.toggle("active", state.periodizationEnabled);
+  $off.classList.toggle("active", !state.periodizationEnabled);
 }
 function syncMachinesToggle(){
   const $on = document.querySelector('#machinesToggle [data-mach="on"]');
   const $off = document.querySelector('#machinesToggle [data-mach="off"]');
-  $on.classList.toggle("active", machinesEnabled);
-  $off.classList.toggle("active", !machinesEnabled);
+  $on.classList.toggle("active", state.machinesEnabled);
+  $off.classList.toggle("active", !state.machinesEnabled);
 }
 function syncProfileToggle(){
   const $on = document.querySelector('#profileToggle [data-prof="on"]');
   const $off = document.querySelector('#profileToggle [data-prof="off"]');
-  $on.classList.toggle("active", profileEnabled);
-  $off.classList.toggle("active", !profileEnabled);
+  $on.classList.toggle("active", state.profileEnabled);
+  $off.classList.toggle("active", !state.profileEnabled);
 }
 function syncAutoregToggle(){
   const $on = document.querySelector('#autoregToggle [data-autoreg="on"]');
   const $off = document.querySelector('#autoregToggle [data-autoreg="off"]');
-  $on.classList.toggle("active", autoregEnabled);
-  $off.classList.toggle("active", !autoregEnabled);
+  $on.classList.toggle("active", state.autoregEnabled);
+  $off.classList.toggle("active", !state.autoregEnabled);
 }
 function syncExecOrderToggle(){
   const $on = document.querySelector('#execOrderToggle [data-execorder="on"]');
   const $off = document.querySelector('#execOrderToggle [data-execorder="off"]');
-  $on.classList.toggle("active", execOrderEnabled);
-  $off.classList.toggle("active", !execOrderEnabled);
+  $on.classList.toggle("active", state.execOrderEnabled);
+  $off.classList.toggle("active", !state.execOrderEnabled);
 }
 function syncGamificationToggle(){
   const $on = document.querySelector('#gamificationToggle [data-gamif="on"]');
   const $off = document.querySelector('#gamificationToggle [data-gamif="off"]');
-  $on.classList.toggle("active", gamificationEnabled);
-  $off.classList.toggle("active", !gamificationEnabled);
+  $on.classList.toggle("active", state.gamificationEnabled);
+  $off.classList.toggle("active", !state.gamificationEnabled);
 }
 function syncAutoregSensToggle(){
   document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
-    b.classList.toggle("active", b.dataset.sens === autoregSensitivity));
+    b.classList.toggle("active", b.dataset.sens === state.autoregSensitivity));
   const desc = document.getElementById("autoregSensDesc");
   if(desc) desc.textContent = ({
     suave: "Só sugere mudança em desvios grandes; prioriza estabilidade.",
     mod:   "Equilíbrio entre reagir ao desempenho e respeitar a fadiga.",
     agr:   "Sobe a carga assim que você supera a meta, mesmo cansado.",
-  })[autoregSensitivity] || "";
+  })[state.autoregSensitivity] || "";
 }
 function openSettings(){
   syncPrevLayoutToggle();
@@ -978,7 +899,7 @@ $settingsThemeToggle.addEventListener("click", toggleTheme);
 document.getElementById("prevLayoutToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-prevlayout]");
   if(!btn) return;
-  prevLayout = btn.dataset.prevlayout === "panel" ? "panel" : "column";
+  state.prevLayout = btn.dataset.prevlayout === "panel" ? "panel" : "column";
   syncPrevLayoutToggle();
   savePref();
   applyPrevLayoutState();
@@ -988,7 +909,7 @@ document.getElementById("prevLayoutToggle").addEventListener("click", e => {
 document.getElementById("periodToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-period]");
   if(!btn) return;
-  periodizationEnabled = btn.dataset.period === "on";
+  state.periodizationEnabled = btn.dataset.period === "on";
   syncPeriodToggle();
   savePref();
   applyPeriodizationState();
@@ -997,7 +918,7 @@ document.getElementById("periodToggle").addEventListener("click", e => {
 document.getElementById("machinesToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-mach]");
   if(!btn) return;
-  machinesEnabled = btn.dataset.mach === "on";
+  state.machinesEnabled = btn.dataset.mach === "on";
   syncMachinesToggle();
   savePref();
   applyMachinesState();
@@ -1006,7 +927,7 @@ document.getElementById("machinesToggle").addEventListener("click", e => {
 document.getElementById("profileToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-prof]");
   if(!btn) return;
-  profileEnabled = btn.dataset.prof === "on";
+  state.profileEnabled = btn.dataset.prof === "on";
   syncProfileToggle();
   savePref();
   applyProfileState();
@@ -1014,7 +935,7 @@ document.getElementById("profileToggle").addEventListener("click", e => {
 document.getElementById("autoregToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-autoreg]");
   if(!btn) return;
-  autoregEnabled = btn.dataset.autoreg === "on";
+  state.autoregEnabled = btn.dataset.autoreg === "on";
   syncAutoregToggle();
   savePref();
   applyAutoregState();
@@ -1023,7 +944,7 @@ document.getElementById("autoregToggle").addEventListener("click", e => {
 document.getElementById("autoregSensToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-sens]");
   if(!btn) return;
-  autoregSensitivity = btn.dataset.sens;
+  state.autoregSensitivity = btn.dataset.sens;
   syncAutoregSensToggle();
   savePref();
   if($viewTreino.style.display !== "none") renderDay();
@@ -1031,7 +952,7 @@ document.getElementById("autoregSensToggle").addEventListener("click", e => {
 document.getElementById("execOrderToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-execorder]");
   if(!btn) return;
-  execOrderEnabled = btn.dataset.execorder === "on";
+  state.execOrderEnabled = btn.dataset.execorder === "on";
   syncExecOrderToggle();
   savePref();
   applyExecOrderState();
@@ -1040,8 +961,8 @@ document.getElementById("execOrderToggle").addEventListener("click", e => {
 document.getElementById("gamificationToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-gamif]");
   if(!btn) return;
-  gamificationEnabled = btn.dataset.gamif === "on";
-  if(gamificationEnabled && !gamifStartDate) gamifStartDate = todayStr();
+  state.gamificationEnabled = btn.dataset.gamif === "on";
+  if(state.gamificationEnabled && !state.gamifStartDate) state.gamifStartDate = todayStr();
   syncGamificationToggle();
   savePref();
   refreshGamification();
@@ -1064,8 +985,6 @@ $settingsLogoutBtn.addEventListener("click", () => signOut(auth));
 document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
 // ========= Profile modal =========
-const $profileModal = document.getElementById("profileModal");
-const $profileModalInner = document.getElementById("profileModalInner");
 $profileModal.addEventListener("click", e => { if(e.target === $profileModal) closeProfileModal(); });
 function closeProfileModal(){ $profileModal.classList.remove("open"); }
 function openProfileModal(){
@@ -1079,27 +998,27 @@ function openProfileModal(){
   const todayISO = new Date().toISOString().slice(0,10);
   const ageHint = profileAge();
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Data de nascimento</label>`;
-  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
   html += `<span id="profAgeHint" style="font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
 
   // Sexo
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
   html += `<div id="profSex" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
   SEX_OPTS.forEach(o => {
-    const active = profile.sex === o.val;
+    const active = state.profile.sex === o.val;
     html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
   });
   html += `</div>`;
 
   // Peso corporal
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Peso corporal (kg)</label>`;
-  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${profile.bodyweight != null ? profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
 
   // Experiência
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Experiência</label>`;
   html += `<div id="profExp" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
   EXP_OPTS.forEach(o => {
-    const active = profile.experience === o.val;
+    const active = state.profile.experience === o.val;
     html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
   });
   html += `</div>`;
@@ -1109,7 +1028,7 @@ function openProfileModal(){
   html += `<p style="font-size:11px;color:var(--muted);margin:0 0 8px;line-height:1.3">O app evita sugerir aumento de carga nos grupos marcados.</p>`;
   html += `<div id="profInjuries" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
   MUSCLE_ORDER.forEach(k => {
-    const active = !!profile.injuries[k];
+    const active = !!state.profile.injuries[k];
     html += `<button type="button" class="sub-chip${active?" active":""}" data-muscle="${k}" style="padding:5px 12px;font-size:11px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${MUSCLE_LABEL[k]}</button>`;
   });
   html += `</div>`;
@@ -1124,9 +1043,9 @@ function openProfileModal(){
     if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
       const yr = parseInt(v.slice(0,4),10);
       if(yr >= 1920 && v <= new Date().toISOString().slice(0,10)){
-        profile.birthDate = v;
-      } else { profile.birthDate = null; }
-    } else { profile.birthDate = null; }
+        state.profile.birthDate = v;
+      } else { state.profile.birthDate = null; }
+    } else { state.profile.birthDate = null; }
     const hint = document.getElementById("profAgeHint");
     const a = profileAge();
     if(hint) hint.textContent = a != null ? "("+a+" anos)" : "";
@@ -1138,7 +1057,7 @@ function openProfileModal(){
     const btn = e.target.closest("[data-val]");
     if(!btn) return;
     const val = btn.dataset.val === "null" ? null : btn.dataset.val;
-    profile.sex = val;
+    state.profile.sex = val;
     btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
       const isActive = c === btn;
       c.classList.toggle("active", isActive);
@@ -1154,7 +1073,7 @@ function openProfileModal(){
     const v = e.target.value.replace(/[^0-9.,]/g,"").replace(",",".");
     e.target.value = v;
     const n = parseFloat(v);
-    profile.bodyweight = (n > 0 && isFinite(n)) ? Math.round(n * 10) / 10 : null;
+    state.profile.bodyweight = (n > 0 && isFinite(n)) ? Math.round(n * 10) / 10 : null;
     scheduleProfileSave();
   });
 
@@ -1164,7 +1083,7 @@ function openProfileModal(){
     if(!btn) return;
     const val = btn.dataset.val;
     const wasActive = btn.classList.contains("active");
-    profile.experience = wasActive ? null : val;
+    state.profile.experience = wasActive ? null : val;
     btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
       const isActive = !wasActive && c === btn;
       c.classList.toggle("active", isActive);
@@ -1180,8 +1099,8 @@ function openProfileModal(){
     const btn = e.target.closest("[data-muscle]");
     if(!btn) return;
     const k = btn.dataset.muscle;
-    if(profile.injuries[k]){ delete profile.injuries[k]; } else { profile.injuries[k] = true; }
-    const active = !!profile.injuries[k];
+    if(state.profile.injuries[k]){ delete state.profile.injuries[k]; } else { state.profile.injuries[k] = true; }
+    const active = !!state.profile.injuries[k];
     btn.classList.toggle("active", active);
     btn.style.borderColor = active ? "var(--accent)" : "var(--border)";
     btn.style.background = active ? "var(--accent-soft)" : "var(--surface-2)";
@@ -1226,12 +1145,11 @@ function openProfileModal(){
 }
 
 // ========= Modal scroll lock + drag-to-dismiss =========
-let _modalScrollY = 0;
 function lockBodyScroll(){
-  _modalScrollY = window.scrollY;
+  state._modalScrollY = window.scrollY;
   document.body.style.overflow = "hidden";
   document.body.style.position = "fixed";
-  document.body.style.top = `-${_modalScrollY}px`;
+  document.body.style.top = `-${state._modalScrollY}px`;
   document.body.style.left = "0";
   document.body.style.right = "0";
 }
@@ -1241,7 +1159,7 @@ function unlockBodyScroll(){
   document.body.style.top = "";
   document.body.style.left = "";
   document.body.style.right = "";
-  window.scrollTo(0, _modalScrollY);
+  window.scrollTo(0, state._modalScrollY);
 }
 
 // Observe all modal overlays for .open class changes
@@ -1318,11 +1236,11 @@ _allOverlays.forEach(overlay => {
 });
 
 function applyModeButtons(){
-  $modeCompact.classList.toggle("active", viewMode === "compact");
-  $modeLoad.classList.toggle("active", viewMode === "load");
+  $modeCompact.classList.toggle("active", state.viewMode === "compact");
+  $modeLoad.classList.toggle("active", state.viewMode === "load");
 }
 function setMode(m){
-  viewMode = m;
+  state.viewMode = m;
   applyModeButtons();
   renderDay();
   savePref();
@@ -1330,8 +1248,8 @@ function setMode(m){
 $modeCompact.addEventListener("click", () => setMode("compact"));
 $modeLoad.addEventListener("click", () => setMode("load"));
 
-function setSync(state, txt){
-  $sync.className = "sync-status " + state;
+function setSync(status, txt){
+  $sync.className = "sync-status " + status;
   $sync.querySelector(".txt").textContent = txt;
 }
 
@@ -1343,14 +1261,14 @@ $loginBtn.addEventListener("click", () => {
 });
 
 onAuthStateChanged(auth, async u => {
-  user = u;
-  allSessions = null;
-  allSessionsTruncated = false;
-  allSessionsError = false;
-  allSessionsPromise = null;
-  gamification = null;
-  gamificationEnabled = false;
-  gamifStartDate = null;
+  state.user = u;
+  state.allSessions = null;
+  state.allSessionsTruncated = false;
+  state.allSessionsError = false;
+  state.allSessionsPromise = null;
+  state.gamification = null;
+  state.gamificationEnabled = false;
+  state.gamifStartDate = null;
   setGamifChipLoading(true);
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
@@ -1372,18 +1290,18 @@ onAuthStateChanged(auth, async u => {
     $appContent.style.display = "none";
     setSync("", "aguardando login");
     if(window.SSSplash) window.SSSplash.ready();
-    exercisesCatalog.clear();
-    userDays = null;
-    dayCustomizations = {};
-    plansCache.clear();
-    currentPlanName = null;
-    currentPlanId = null;
-    currentPlanKey = null;
+    state.exercisesCatalog.clear();
+    state.userDays = null;
+    state.dayCustomizations = {};
+    state.plansCache.clear();
+    state.currentPlanName = null;
+    state.currentPlanId = null;
+    state.currentPlanKey = null;
     teardownFeatureFlags();
   }
 });
 
-window.addEventListener("online", ()=>{ if(user) setSync("live","sincronizado"); });
+window.addEventListener("online", ()=>{ if(state.user) setSync("live","sincronizado"); });
 window.addEventListener("offline", ()=>{ setSync("offline","offline — salvando local"); });
 
 async function initApp(u){
@@ -1396,7 +1314,7 @@ async function initApp(u){
   ]);
   rebuildUserDays();
   renderStrip();
-  await loadDay(current);
+  await loadDay(state.current);
 }
 function initWithTimeout(u, ms = 15000){
   return Promise.race([
@@ -1412,52 +1330,52 @@ function renderInitError(){
   document.getElementById("initRetryBtn").addEventListener("click", () => {
     $strip.innerHTML = skeletonStrip();
     $panel.innerHTML = skeletonPanel();
-    initWithTimeout(user).catch(e => { console.error(e); renderInitError(); });
+    initWithTimeout(state.user).catch(e => { console.error(e); renderInitError(); });
   });
 }
 
 // ========= Firestore =========
 
 async function loadPref(){
-  if(!user) return;
+  if(!state.user) return;
   try{
-    const ref = doc(db, "users", user.uid, "prefs", "app");
+    const ref = doc(db, "users", state.user.uid, "prefs", "app");
     const snap = await getDoc(ref);
     if(snap.exists()){
       const d = snap.data();
-      if(d.viewMode) viewMode = d.viewMode;
-      if(d.theme === "dark" || d.theme === "light") theme = d.theme;
-      if(d.currentPlanName) currentPlanName = d.currentPlanName;
-      if(d.currentPlanId) currentPlanId = d.currentPlanId;
-      if(d.currentPlanKey) currentPlanKey = d.currentPlanKey;
-      if(d.lastDeloadDate) lastDeloadDate = d.lastDeloadDate;
-      if(d.prevLayout === "panel" || d.prevLayout === "column") prevLayout = d.prevLayout;
-      if(typeof d.periodizationEnabled === "boolean") periodizationEnabled = d.periodizationEnabled;
-      if(typeof d.machinesEnabled === "boolean") machinesEnabled = d.machinesEnabled;
-      if(typeof d.profileEnabled === "boolean") profileEnabled = d.profileEnabled;
-      if(typeof d.autoregEnabled === "boolean") autoregEnabled = d.autoregEnabled;
-      if(["suave","mod","agr"].includes(d.autoregSensitivity)) autoregSensitivity = d.autoregSensitivity;
-      if(typeof d.execOrderEnabled === "boolean") execOrderEnabled = d.execOrderEnabled;
-      if(typeof d.gamificationEnabled === "boolean") gamificationEnabled = d.gamificationEnabled;
-      if(typeof d.gamifStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.gamifStartDate)) gamifStartDate = d.gamifStartDate;
+      if(d.viewMode) state.viewMode = d.viewMode;
+      if(d.theme === "dark" || d.theme === "light") state.theme = d.theme;
+      if(d.currentPlanName) state.currentPlanName = d.currentPlanName;
+      if(d.currentPlanId) state.currentPlanId = d.currentPlanId;
+      if(d.currentPlanKey) state.currentPlanKey = d.currentPlanKey;
+      if(d.lastDeloadDate) state.lastDeloadDate = d.lastDeloadDate;
+      if(d.prevLayout === "panel" || d.prevLayout === "column") state.prevLayout = d.prevLayout;
+      if(typeof d.periodizationEnabled === "boolean") state.periodizationEnabled = d.periodizationEnabled;
+      if(typeof d.machinesEnabled === "boolean") state.machinesEnabled = d.machinesEnabled;
+      if(typeof d.profileEnabled === "boolean") state.profileEnabled = d.profileEnabled;
+      if(typeof d.autoregEnabled === "boolean") state.autoregEnabled = d.autoregEnabled;
+      if(["suave","mod","agr"].includes(d.autoregSensitivity)) state.autoregSensitivity = d.autoregSensitivity;
+      if(typeof d.execOrderEnabled === "boolean") state.execOrderEnabled = d.execOrderEnabled;
+      if(typeof d.gamificationEnabled === "boolean") state.gamificationEnabled = d.gamificationEnabled;
+      if(typeof d.gamifStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.gamifStartDate)) state.gamifStartDate = d.gamifStartDate;
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // Migrate: gamification already ON but no start date → anchor to today (fresh window)
-  if(gamificationEnabled && !gamifStartDate){ gamifStartDate = todayStr(); savePref(); }
+  if(state.gamificationEnabled && !state.gamifStartDate){ state.gamifStartDate = todayStr(); savePref(); }
   // load profile doc
   try{
-    const pRef = doc(db, "users", user.uid, "prefs", "profile");
+    const pRef = doc(db, "users", state.user.uid, "prefs", "profile");
     const pSnap = await getDoc(pRef);
     if(pSnap.exists()){
       const p = pSnap.data();
-      profile.birthDate = (typeof p.birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.birthDate)) ? p.birthDate : null;
-      if(p.sex === "m" || p.sex === "f") profile.sex = p.sex; else profile.sex = null;
-      if(typeof p.bodyweight === "number" && p.bodyweight > 0) profile.bodyweight = p.bodyweight; else profile.bodyweight = null;
-      if(p.experience === "beg" || p.experience === "int" || p.experience === "adv") profile.experience = p.experience; else profile.experience = null;
+      state.profile.birthDate = (typeof p.birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.birthDate)) ? p.birthDate : null;
+      if(p.sex === "m" || p.sex === "f") state.profile.sex = p.sex; else state.profile.sex = null;
+      if(typeof p.bodyweight === "number" && p.bodyweight > 0) state.profile.bodyweight = p.bodyweight; else state.profile.bodyweight = null;
+      if(p.experience === "beg" || p.experience === "int" || p.experience === "adv") state.profile.experience = p.experience; else state.profile.experience = null;
       if(p.injuries && typeof p.injuries === "object"){
-        profile.injuries = {};
-        MUSCLE_ORDER.forEach(k => { if(p.injuries[k] === true) profile.injuries[k] = true; });
-      } else { profile.injuries = {}; }
+        state.profile.injuries = {};
+        MUSCLE_ORDER.forEach(k => { if(p.injuries[k] === true) state.profile.injuries[k] = true; });
+      } else { state.profile.injuries = {}; }
     }
   }catch(e){ console.warn("loadProfile:", e.message); }
   applyModeButtons();
@@ -1471,105 +1389,103 @@ async function loadPref(){
   applyGamificationState();
 }
 async function savePref(){
-  if(!user) return;
+  if(!state.user) return;
   try{
-    const ref = doc(db, "users", user.uid, "prefs", "app");
+    const ref = doc(db, "users", state.user.uid, "prefs", "app");
     await setDoc(ref, {
-      viewMode, theme: theme || null,
-      currentPlanName: currentPlanName || null,
-      currentPlanId: currentPlanId || null,
-      currentPlanKey: currentPlanKey || null,
-      prevLayout,
-      periodizationEnabled,
-      machinesEnabled,
-      profileEnabled,
-      autoregEnabled,
-      autoregSensitivity,
-      execOrderEnabled,
-      gamificationEnabled,
-      gamifStartDate: gamifStartDate || null,
+      viewMode: state.viewMode, theme: state.theme || null,
+      currentPlanName: state.currentPlanName || null,
+      currentPlanId: state.currentPlanId || null,
+      currentPlanKey: state.currentPlanKey || null,
+      prevLayout: state.prevLayout,
+      periodizationEnabled: state.periodizationEnabled,
+      machinesEnabled: state.machinesEnabled,
+      profileEnabled: state.profileEnabled,
+      autoregEnabled: state.autoregEnabled,
+      autoregSensitivity: state.autoregSensitivity,
+      execOrderEnabled: state.execOrderEnabled,
+      gamificationEnabled: state.gamificationEnabled,
+      gamifStartDate: state.gamifStartDate || null,
     }, { merge: true });
   }catch(e){ console.warn("savePref:", e.message); }
 }
 async function saveDeloadDate(){
-  if(!user) return;
+  if(!state.user) return;
   try{
-    const ref = doc(db, "users", user.uid, "prefs", "app");
-    await setDoc(ref, { lastDeloadDate }, { merge: true });
+    const ref = doc(db, "users", state.user.uid, "prefs", "app");
+    await setDoc(ref, { lastDeloadDate: state.lastDeloadDate }, { merge: true });
   }catch(e){ console.warn("saveDeloadDate:", e.message); }
 }
-let _profileSaveTimer = null;
 function scheduleProfileSave(){
-  clearTimeout(_profileSaveTimer);
-  _profileSaveTimer = setTimeout(saveProfileDoc, 500);
+  clearTimeout(state._profileSaveTimer);
+  state._profileSaveTimer = setTimeout(saveProfileDoc, 500);
 }
 async function saveProfileDoc(){
-  if(!user) return;
+  if(!state.user) return;
   try{
-    const ref = doc(db, "users", user.uid, "prefs", "profile");
-    await setDoc(ref, { ...profile, updatedAt: serverTimestamp() }, { merge: true });
+    const ref = doc(db, "users", state.user.uid, "prefs", "profile");
+    await setDoc(ref, { ...state.profile, updatedAt: serverTimestamp() }, { merge: true });
   }catch(e){ console.warn("saveProfileDoc:", e.message); }
 }
 
 const machineFilterActive = () => document.body.classList.contains("flag-machines");
 
-const lastMachineFor = (name, isSup = false) => domainLastMachineFor(allSessions, name, isSup);
-const usedMachinesRanked = () => domainUsedMachinesRanked(allSessions);
+const lastMachineFor = (name, isSup = false) => domainLastMachineFor(state.allSessions, name, isSup);
+const usedMachinesRanked = () => domainUsedMachinesRanked(state.allSessions);
 const matchVariant = (entryMachine, machine) => domainMatchVariant(entryMachine, machine, machineFilterActive());
 
 const sessionOpts = dayKey => ({
   day: activeDays()[dayKey],
-  date: dateForDay(dayKey, weekOffset),
-  sessions: allSessions,
+  date: dateForDay(dayKey, state.weekOffset),
+  sessions: state.allSessions,
   machinesActive: document.body.classList.contains("flag-machines")
 });
 const emptySession = dayKey => domainEmptySession(dayKey, sessionOpts(dayKey));
 const reconcileSession = (prev, dayKey) => domainReconcileSession(prev, dayKey, sessionOpts(dayKey));
 
-const autoregCfg = () => domainAutoregCfg(autoregSensitivity);
-const profileAge = () => domainProfileAge(profile.birthDate);
+const autoregCfg = () => domainAutoregCfg(state.autoregSensitivity);
+const profileAge = () => domainProfileAge(state.profile.birthDate);
 const projectLoad = (w, repsDone, target, equip, u, step, fatigueSteps) =>
   domainProjectLoad(w, repsDone, target, equip, u, step, fatigueSteps, autoregCfg());
 
 const histCtx = () => ({
-  currentKey: session ? (session.date + "_" + session.dayKey) : null,
+  currentKey: state.session ? (state.session.date + "_" + state.session.dayKey) : null,
   machineFilter: machineFilterActive(),
   execOrder: execOrderActive(),
   cfg: autoregCfg()
 });
 
-const prevLoadData = (name, machine) => domainPrevLoadData(allSessions, name, machine, histCtx());
-const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(allSessions, name, { ...histCtx(), since, machine });
-const bestWeightEver = (name, machine) => domainBestWeightEver(allSessions, name, machine, histCtx());
+const prevLoadData = (name, machine) => domainPrevLoadData(state.allSessions, name, machine, histCtx());
+const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(state.allSessions, name, { ...histCtx(), since, machine });
+const bestWeightEver = (name, machine) => domainBestWeightEver(state.allSessions, name, machine, histCtx());
 
-const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(allSessions, name, unit, machine, {
+const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(state.allSessions, name, unit, machine, {
   ...histCtx(),
   muscle: opts && opts.muscle,
   profileActive: profileActive(),
-  profile
+  profile: state.profile
 });
 
-const isDeloadActive = () => domainIsDeloadActive(lastDeloadDate, formatDate(new Date()));
-const deloadDue = () => domainDeloadDue(allSessions, {
+const isDeloadActive = () => domainIsDeloadActive(state.lastDeloadDate, formatDate(new Date()));
+const deloadDue = () => domainDeloadDue(state.allSessions, {
   ...histCtx(),
-  lastDeloadDate,
+  lastDeloadDate: state.lastDeloadDate,
   today: formatDate(new Date()),
   days: activeDays(),
   age: profileActive() ? profileAge() : null
 });
 
 const computeWrapped = (sessions, year) => domainComputeWrapped(sessions, year, domainBuildMuscleIndex({
-  plans: plansCache ? [...plansCache.values()] : [],
+  plans: state.plansCache ? [...state.plansCache.values()] : [],
   days: DAYS,
   templates: PLAN_TEMPLATES,
   catalog: EXERCISE_CATALOG
 }));
 
-let allSessionsPromise = null;
 async function loadAllSessions(){
-  if(allSessions || !user) return;
-  if(allSessionsPromise) return allSessionsPromise;
-  allSessionsPromise = (async () => {
+  if(state.allSessions || !state.user) return;
+  if(state.allSessionsPromise) return state.allSessionsPromise;
+  state.allSessionsPromise = (async () => {
     try{
       // Ordered by the `date` field, not documentId(): Firestore's automatic
       // single-field index covers normal fields in both directions, but the
@@ -1577,76 +1493,75 @@ async function loadAllSessions(){
       // demands an explicitly created index. A single orderBy with no where
       // clause needs no composite index.
       const q = query(
-        collection(db, "users", user.uid, "sessions"),
+        collection(db, "users", state.user.uid, "sessions"),
         orderBy("date", "desc"),
         limit(SESSIONS_FETCH_LIMIT)
       );
       const snap = await getDocs(q);
-      allSessions = [];
-      snap.forEach(d => allSessions.push(d.data()));
-      allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
-      allSessionsError = false;
-      if(allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
+      state.allSessions = [];
+      snap.forEach(d => state.allSessions.push(d.data()));
+      state.allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
+      state.allSessionsError = false;
+      if(state.allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
     }catch(e){
       console.error("loadAllSessions failed:", e);
-      allSessionsError = true;
-      allSessions = null;   // leave unset so the next navigation retries
+      state.allSessionsError = true;
+      state.allSessions = null;   // leave unset so the next navigation retries
     } finally {
-      allSessionsPromise = null;
+      state.allSessionsPromise = null;
       refreshGamification();
     }
   })();
-  return allSessionsPromise;
+  return state.allSessionsPromise;
 }
 
 function findPrevSession(dayKey, beforeDate){
-  if(!allSessions) return null;
-  return allSessions
+  if(!state.allSessions) return null;
+  return state.allSessions
     .filter(s => s.dayKey === dayKey && s.date < beforeDate)
     .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
 }
 
-let loadDayToken = 0;
 async function loadDay(dayKey){
-  if(!user) return;
-  const token = ++loadDayToken;
-  const date = dateForDay(dayKey, weekOffset);
-  const ref = doc(db, "users", user.uid, "sessions", sessionId(date, dayKey));
+  if(!state.user) return;
+  const token = ++state.loadDayToken;
+  const date = dateForDay(dayKey, state.weekOffset);
+  const ref = doc(db, "users", state.user.uid, "sessions", sessionId(date, dayKey));
   try{
     const snap = await getDoc(ref);
-    if(token !== loadDayToken) return;
-    session = reconcileSession(snap.exists() ? snap.data() : null, dayKey);
+    if(token !== state.loadDayToken) return;
+    state.session = reconcileSession(snap.exists() ? snap.data() : null, dayKey);
   }catch(e){
-    if(token !== loadDayToken) return;
+    if(token !== state.loadDayToken) return;
     console.warn("loadDay:", e);
-    session = emptySession(dayKey);
+    state.session = emptySession(dayKey);
   }
-  prevSession = findPrevSession(dayKey, date);
+  state.prevSession = findPrevSession(dayKey, date);
   renderDay();
-  if(!allSessions){
+  if(!state.allSessions){
     await loadAllSessions();
-    if(token !== loadDayToken) return;
-    prevSession = findPrevSession(dayKey, date);
+    if(token !== state.loadDayToken) return;
+    state.prevSession = findPrevSession(dayKey, date);
     renderDay();
   }
 }
 
 function scheduleSave(){
-  if(!user) return;
+  if(!state.user) return;
   setSync("saving","salvando…");
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveNow, 500);
+  clearTimeout(state.saveTimer);
+  state.saveTimer = setTimeout(saveNow, 500);
 }
 async function saveNow(){
-  if(!user || !session) return;
-  const ref = doc(db, "users", user.uid, "sessions", sessionId(session.date, session.dayKey));
+  if(!state.user || !state.session) return;
+  const ref = doc(db, "users", state.user.uid, "sessions", sessionId(state.session.date, state.session.dayKey));
   try{
-    await setDoc(ref, { ...session, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(ref, { ...state.session, updatedAt: serverTimestamp() }, { merge: true });
     setSync(navigator.onLine ? "live" : "offline", navigator.onLine ? "sincronizado" : "offline — salvando local");
-    if(allSessions){
-      const idx = allSessions.findIndex(s => s.date === session.date && s.dayKey === session.dayKey);
-      if(idx >= 0) allSessions[idx] = { ...session };
-      else allSessions.push({ ...session });
+    if(state.allSessions){
+      const idx = state.allSessions.findIndex(s => s.date === state.session.date && s.dayKey === state.session.dayKey);
+      if(idx >= 0) state.allSessions[idx] = { ...state.session };
+      else state.allSessions.push({ ...state.session });
       refreshGamification();
     }
   }catch(e){
@@ -1666,7 +1581,6 @@ const BADGES = [
     icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="5"/></svg>' }
 ];
 
-let _gamifToastTimer = null;
 function showGamifToast(name){
   if(!document.body.classList.contains("flag-gamification")) return;
   let $t = document.getElementById("gamifToast");
@@ -1680,19 +1594,19 @@ function showGamifToast(name){
   $t.classList.remove("show");
   void $t.offsetWidth; // reflow
   $t.classList.add("show");
-  clearTimeout(_gamifToastTimer);
-  _gamifToastTimer = setTimeout(() => $t.classList.remove("show"), 3500);
+  clearTimeout(state._gamifToastTimer);
+  state._gamifToastTimer = setTimeout(() => $t.classList.remove("show"), 3500);
 }
 
 function refreshGamification(){
-  const prevEarned = gamification && gamification.badges
-    ? new Set(gamification.badges.filter(b => b.earned).map(b => b.id))
+  const prevEarned = state.gamification && state.gamification.badges
+    ? new Set(state.gamification.badges.filter(b => b.earned).map(b => b.id))
     : null;
-  gamification = computeGamification(allSessions, gamifStartDate);
+  state.gamification = computeGamification(state.allSessions, state.gamifStartDate);
   renderGamifChip();
   // Detect newly earned badges (only if we had a previous snapshot, i.e. not initial load)
-  if(prevEarned && gamification.badges){
-    for(const b of gamification.badges){
+  if(prevEarned && state.gamification.badges){
+    for(const b of state.gamification.badges){
       if(b.earned && !prevEarned.has(b.id)){
         const def = BADGES.find(d => d.id === b.id);
         if(def) showGamifToast(def.name);
@@ -1702,12 +1616,12 @@ function refreshGamification(){
 }
 
 function renderGamifChip(){
-  if(!gamification) return;
+  if(!state.gamification) return;
   const $label = document.getElementById("gamifChipLabel");
   const $fill = document.getElementById("gamifChipFill");
   if(!$label || !$fill) return;
-  $label.textContent = `Nv ${gamification.level} · ${gamification.title}`;
-  const pct = gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(gamification.xpIntoLevel / gamification.xpForNextLevel * 100)) : 100;
+  $label.textContent = `Nv ${state.gamification.level} · ${state.gamification.title}`;
+  const pct = state.gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(state.gamification.xpIntoLevel / state.gamification.xpForNextLevel * 100)) : 100;
   $fill.style.width = pct + "%";
   const $chip = document.getElementById("gamifChip");
   if($chip && $chip.classList.contains("loading")){
@@ -1718,8 +1632,8 @@ function renderGamifChip(){
 }
 
 function renderGamifModal(){
-  if(!gamification) return;
-  const g = gamification;
+  if(!state.gamification) return;
+  const g = state.gamification;
   document.getElementById("gamifLevelBig").textContent = g.level;
   document.getElementById("gamifTitleBig").textContent = g.title;
   const pct = g.xpForNextLevel > 0 ? Math.min(100, Math.round(g.xpIntoLevel / g.xpForNextLevel * 100)) : 100;
@@ -1755,7 +1669,6 @@ function renderGamifModal(){
 }
 
 // Chip click → open modal
-const $gamifModal = document.getElementById("gamifModal");
 document.getElementById("gamifChip").addEventListener("click", () => {
   renderGamifModal();
   $gamifModal.classList.add("open");
@@ -1763,26 +1676,19 @@ document.getElementById("gamifChip").addEventListener("click", () => {
 $gamifModal.addEventListener("click", e => { if(e.target === $gamifModal) $gamifModal.classList.remove("open"); });
 
 // ========= Wrapped overlay logic =========
-const $wrappedOverlay = document.getElementById("wrappedOverlay");
-const $wrappedSlides = document.getElementById("wrappedSlides");
-const $wrappedProgress = document.getElementById("wrappedProgress");
-const $wrappedYearPills = document.getElementById("wrappedYearPills");
-let _wrappedCurrent = 0;
-let _wrappedTotal = 0;
-
 function wrappedCapitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 
 function getWrappedYears(){
-  if(!allSessions || !allSessions.length) return [];
+  if(!state.allSessions || !state.allSessions.length) return [];
   const years = new Set();
-  for(const s of allSessions){ if(s.date) years.add(s.date.slice(0,4)); }
+  for(const s of state.allSessions){ if(s.date) years.add(s.date.slice(0,4)); }
   return [...years].sort().reverse();
 }
 
 function buildWrappedSlides(data){
   if(!data){
     $wrappedSlides.innerHTML = '<div class="wrapped-card active"><div class="wrapped-empty">Nenhum treino registrado neste ano.</div></div>';
-    _wrappedTotal = 1; _wrappedCurrent = 0;
+    state._wrappedTotal = 1; state._wrappedCurrent = 0;
     $wrappedProgress.innerHTML = '<div class="wrapped-progress-seg filled"></div>';
     return;
   }
@@ -1855,8 +1761,8 @@ function buildWrappedSlides(data){
     </div>`);
   }
 
-  _wrappedTotal = slides.length;
-  _wrappedCurrent = 0;
+  state._wrappedTotal = slides.length;
+  state._wrappedCurrent = 0;
   $wrappedSlides.innerHTML = slides.join("");
   // Progress segments
   $wrappedProgress.innerHTML = slides.map(() => '<div class="wrapped-progress-seg"></div>').join("");
@@ -1865,19 +1771,19 @@ function buildWrappedSlides(data){
 
 function updateWrappedSlide(){
   const cards = $wrappedSlides.querySelectorAll(".wrapped-card");
-  cards.forEach((c,i) => c.classList.toggle("active", i === _wrappedCurrent));
+  cards.forEach((c,i) => c.classList.toggle("active", i === state._wrappedCurrent));
   const segs = $wrappedProgress.querySelectorAll(".wrapped-progress-seg");
-  segs.forEach((s,i) => s.classList.toggle("filled", i <= _wrappedCurrent));
+  segs.forEach((s,i) => s.classList.toggle("filled", i <= state._wrappedCurrent));
 }
 
 function openWrapped(){
-  if(!allSessions || !allSessions.length) return;
+  if(!state.allSessions || !state.allSessions.length) return;
   const years = getWrappedYears();
   if(!years.length) return;
   // Find most recent year with data
   let bestYear = years[0];
   for(const y of years){
-    const d = computeWrapped(allSessions, y);
+    const d = computeWrapped(state.allSessions, y);
     if(d){ bestYear = y; break; }
   }
   // Render year pills
@@ -1888,14 +1794,14 @@ function openWrapped(){
       btn.addEventListener("click", () => {
         const yr = btn.dataset.year;
         $wrappedYearPills.querySelectorAll(".wrapped-year-pill").forEach(b => b.classList.toggle("active", b.dataset.year === yr));
-        buildWrappedSlides(computeWrapped(allSessions, yr));
+        buildWrappedSlides(computeWrapped(state.allSessions, yr));
       });
     });
   } else {
     $wrappedYearPills.innerHTML = "";
     $wrappedYearPills.style.display = "none";
   }
-  buildWrappedSlides(computeWrapped(allSessions, bestYear));
+  buildWrappedSlides(computeWrapped(state.allSessions, bestYear));
   $wrappedOverlay.classList.add("open");
   document.body.style.overflow = "hidden";
 }
@@ -1917,9 +1823,9 @@ $wrappedSlides.addEventListener("click", e => {
   const rect = $wrappedSlides.getBoundingClientRect();
   const x = e.clientX - rect.left;
   if(x > rect.width / 2){
-    if(_wrappedCurrent < _wrappedTotal - 1){ _wrappedCurrent++; updateWrappedSlide(); }
+    if(state._wrappedCurrent < state._wrappedTotal - 1){ state._wrappedCurrent++; updateWrappedSlide(); }
   } else {
-    if(_wrappedCurrent > 0){ _wrappedCurrent--; updateWrappedSlide(); }
+    if(state._wrappedCurrent > 0){ state._wrappedCurrent--; updateWrappedSlide(); }
   }
 });
 
@@ -1929,11 +1835,11 @@ function exDone(ex){
   const supOk  = !ex.sup || ex.sup.every(s => s.done);
   return mainOk && supOk;
 }
-function countDone(){ return session.exercises.filter(exDone).length; }
+function countDone(){ return state.session.exercises.filter(exDone).length; }
 
 function setPct(){
   let done = 0, total = 0;
-  for(const ex of session.exercises){
+  for(const ex of state.session.exercises){
     total += ex.main.length;
     done  += ex.main.filter(s => s.done).length;
     if(ex.sup){ total += ex.sup.length; done += ex.sup.filter(s => s.done).length; }
@@ -2007,12 +1913,12 @@ const execOrderActive = () => document.body.classList.contains("flag-exec-order"
 // now lives here so the panel row, the apply button and the input placeholders agree.
 function suggestData(name, unit, isSup, exIdx){
   if(!document.body.classList.contains("flag-periodization")) return null;
-  if(!session || !session.exercises[exIdx]) return null;
-  const ex = session.exercises[exIdx];
+  if(!state.session || !state.session.exercises[exIdx]) return null;
+  const ex = state.session.exercises[exIdx];
   const sets = isSup ? ex.sup : ex.main;
   if(sets && sets.some(s => typeof s.weight === "number")) return null;
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
-  const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
+  const planEx = activeDays()[state.current] && activeDays()[state.current].ex[exIdx];
   const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
   return suggestLoads(name, unit, machine, {muscle}) || null;
 }
@@ -2130,31 +2036,27 @@ function skeletonEvo(){
 }
 
 // ========= Train mode =========
-const $trainBar   = document.getElementById("trainBar");
-const $trainSegs  = document.getElementById("trainSegs");
-const $trainCount = document.getElementById("trainCount");
-const $trainFocus = document.getElementById("trainFocus");
 
-function trainExCount(){ return activeDays()[current].ex.length; }
+function trainExCount(){ return activeDays()[state.current].ex.length; }
 
 function firstIncompleteIdx(){
-  if(!session) return 0;
-  const i = session.exercises.findIndex(ex => !exDone(ex));
+  if(!state.session) return 0;
+  const i = state.session.exercises.findIndex(ex => !exDone(ex));
   return i < 0 ? 0 : i;
 }
 
 function enterTrainMode(){
-  if(!session || trainExCount() === 0) return;
-  trainMode = true;
-  trainIdx = firstIncompleteIdx();
+  if(!state.session || trainExCount() === 0) return;
+  state.trainMode = true;
+  state.trainIdx = firstIncompleteIdx();
   document.body.classList.add("mode-train");
   applyPrevLayoutState();
   renderDay();
 }
 
 function exitTrainMode(){
-  const back = trainIdx;
-  trainMode = false;
+  const back = state.trainIdx;
+  state.trainMode = false;
   document.body.classList.remove("mode-train");
   applyPrevLayoutState();
   renderDay();
@@ -2163,18 +2065,18 @@ function exitTrainMode(){
 }
 
 function renderTrainBar(){
-  if(!trainMode || !session) return;
-  const day = activeDays()[current];
+  if(!state.trainMode || !state.session) return;
+  const day = activeDays()[state.current];
   const n = day.ex.length;
-  const exs = session.exercises || [];
+  const exs = state.session.exercises || [];
   let segs = "";
   for(let i = 0; i < n; i++){
     const done = exs[i] ? exDone(exs[i]) : false;
-    segs += `<button class="train-seg${done?" is-done":""}${i===trainIdx?" is-current":""}" data-seg="${i}" type="button" aria-label="Ir para exercício ${i+1}"></button>`;
+    segs += `<button class="train-seg${done?" is-done":""}${i===state.trainIdx?" is-current":""}" data-seg="${i}" type="button" aria-label="Ir para exercício ${i+1}"></button>`;
   }
-  segs += `<button class="train-seg train-seg-end${trainIdx>=n?" is-current":""}" data-seg="${n}" type="button" aria-label="Resumo do treino"></button>`;
+  segs += `<button class="train-seg train-seg-end${state.trainIdx>=n?" is-current":""}" data-seg="${n}" type="button" aria-label="Resumo do treino"></button>`;
   $trainSegs.innerHTML = segs;
-  $trainCount.textContent = trainIdx >= n ? "fim" : `${trainIdx+1}/${n}`;
+  $trainCount.textContent = state.trainIdx >= n ? "fim" : `${state.trainIdx+1}/${n}`;
   $trainFocus.textContent = day.focus || "";
 }
 
@@ -2184,7 +2086,7 @@ function restoreTrainScroll(){
   if(!track) return;
   const prev = track.style.scrollBehavior;
   track.style.scrollBehavior = "auto";
-  track.scrollLeft = trainIdx * track.clientWidth;
+  track.scrollLeft = state.trainIdx * track.clientWidth;
   track.style.scrollBehavior = prev;
 }
 
@@ -2193,15 +2095,15 @@ function bindTrainTrack(){
   const track = document.getElementById("trainTrack");
   if(!track) return;
   track.addEventListener("scroll", () => {
-    clearTimeout(_trainScrollT);
-    _trainScrollT = setTimeout(() => {
+    clearTimeout(state._trainScrollT);
+    state._trainScrollT = setTimeout(() => {
       const w = track.clientWidth || 1;
       const i = Math.round(track.scrollLeft / w);
       // renderTrainBar() only — never renderDay() here, or the swipe rebuilds the DOM mid-gesture.
-      if(i !== trainIdx){
-        trainIdx = i;
+      if(i !== state.trainIdx){
+        state.trainIdx = i;
         renderTrainBar();
-        if(trainIdx >= trainExCount()) refreshTrainEndCard();
+        if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
       }
     }, 120);
   }, { passive: true });
@@ -2210,10 +2112,10 @@ function bindTrainTrack(){
 function goToTrainIdx(i){
   const track = document.getElementById("trainTrack");
   if(!track) return;
-  trainIdx = Math.max(0, Math.min(i, trainExCount()));
-  track.scrollTo({ left: trainIdx * track.clientWidth, behavior: "smooth" });
+  state.trainIdx = Math.max(0, Math.min(i, trainExCount()));
+  track.scrollTo({ left: state.trainIdx * track.clientWidth, behavior: "smooth" });
   renderTrainBar();
-  if(trainIdx >= trainExCount()) refreshTrainEndCard();
+  if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
 }
 
 // ========= Session summary (pure; derived from firstSetAt + per-set doneAt) =========
@@ -2233,13 +2135,13 @@ function fmtKg(v){ return Math.round(v).toLocaleString("pt-BR"); }
 
 // Returns null when there is not enough data to say anything.
 function trainSummary(){
-  if(!session) return null;
-  const day = activeDays()[current];
+  if(!state.session) return null;
+  const day = activeDays()[state.current];
   const evts = [];
   let volKg = 0, volSkipped = 0, doneSets = 0;
   const prs = [];
 
-  session.exercises.forEach((ex, i) => {
+  state.session.exercises.forEach((ex, i) => {
     const e = day.ex[i];
     if(!e) return;
     const blocks = [{
@@ -2281,7 +2183,7 @@ function trainSummary(){
 
   // Start = earliest firstSetAt (stamped on the first keystroke, before any set completes).
   let startT = null;
-  session.exercises.forEach(ex => {
+  state.session.exercises.forEach(ex => {
     if(!ex.firstSetAt) return;
     const t = Date.parse(ex.firstSetAt);
     if(!isNaN(t) && (startT == null || t < startT)) startT = t;
@@ -2368,7 +2270,7 @@ function trainEndInnerHTML(done, total){
 // Placeholder while the user is still on an exercise card — the summary scans allSessions,
 // which is too expensive to recompute on every renderDay().
 function trainEndCardHTML(done, total){
-  const body = (trainIdx >= total)
+  const body = (state.trainIdx >= total)
     ? trainEndInnerHTML(done, total)
     : `<div class="train-end-inner"><span class="train-end-big">Resumo</span></div>`;
   return `<article class="ex train-end" data-i="end">${body}</article>`;
@@ -2377,7 +2279,7 @@ function trainEndCardHTML(done, total){
 // Targeted refresh when the carousel lands on the terminal card. Avoids a full renderDay(),
 // which would rebuild the track and disturb the in-flight scroll.
 function refreshTrainEndCard(){
-  if(!trainMode || !session) return;
+  if(!state.trainMode || !state.session) return;
   const card = document.querySelector(".train-track > .train-end");
   if(!card) return;
   card.innerHTML = trainEndInnerHTML(countDone(), trainExCount());
@@ -2393,7 +2295,7 @@ $trainSegs.addEventListener("click", e => {
 });
 // iOS: fixed panel + soft keyboard can hide the focused field. Re-center it inside the card.
 $panel.addEventListener("focusin", e => {
-  if(!trainMode) return;
+  if(!state.trainMode) return;
   const t = e.target;
   if(!t.matches || !t.matches(".weight-input, .reps-input")) return;
   setTimeout(() => t.scrollIntoView({ block: "center", behavior: "smooth" }), 260);
@@ -2403,10 +2305,9 @@ $panel.addEventListener("focusin", e => {
 // next — the tap never lands and the field looks uneditable. Defer one task, then skip the
 // rebuild if focus moved to another field inside the panel. State was already written by
 // the `input` handler, so nothing is lost; the panel refreshes when focus leaves the table.
-let _softRenderT = null;
 function renderDaySoft(){
-  clearTimeout(_softRenderT);
-  _softRenderT = setTimeout(() => {
+  clearTimeout(state._softRenderT);
+  state._softRenderT = setTimeout(() => {
     const a = document.activeElement;
     if(a && $panel.contains(a) &&
        (a.classList.contains("weight-input") || a.classList.contains("reps-input"))) return;
@@ -2415,14 +2316,14 @@ function renderDaySoft(){
 }
 
 function renderDay(){
-  clearTimeout(_softRenderT);
-  if(!session) return;
-  $panel.classList.toggle("compact", viewMode === "compact");
-  const day = activeDays()[current];
+  clearTimeout(state._softRenderT);
+  if(!state.session) return;
+  $panel.classList.toggle("compact", state.viewMode === "compact");
+  const day = activeDays()[state.current];
   const total = day.ex.length;
 
   if(total === 0){
-    if(trainMode){ trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
+    if(state.trainMode){ state.trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
     document.getElementById("dayProgressFill").style.width = "0%";
     document.getElementById("dayProgressPct").textContent = "0%";
     $panel.innerHTML = `
@@ -2437,7 +2338,7 @@ function renderDay(){
   const pct = Math.round(completed/total*100);
 
   const _deloadActive = isDeloadActive();
-  const _deload = !_deloadActive && !deloadDismissed ? deloadDue() : { due: false };
+  const _deload = !_deloadActive && !state.deloadDismissed ? deloadDue() : { due: false };
 
   let head = `
     <div class="panel-head">
@@ -2465,7 +2366,7 @@ function renderDay(){
   document.getElementById("dayProgressPct").textContent = barPct + "%";
 
   day.ex.forEach((e, i) => {
-    const ex = session.exercises[i];
+    const ex = state.session.exercises[i];
     const isDone = exDone(ex);
 
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
@@ -2502,9 +2403,9 @@ function renderDay(){
     html += `</article>`;
   });
 
-  if(trainMode){
+  if(state.trainMode){
     html += trainEndCardHTML(completed, total);
-    if(trainIdx > total) trainIdx = total;
+    if(state.trainIdx > total) state.trainIdx = total;
     $panel.innerHTML = `<div class="train-track" id="trainTrack">${html}</div>`;
     attachHandlers();
     renderTrainBar();
@@ -2594,13 +2495,13 @@ function adoptSuggestedLoad(row, si, set){
   set.fromSug = true;
 }
 
-function markExecStart(ei){ const ex = session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
+function markExecStart(ei){ const ex = state.session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
 
 function attachHandlers(){
   $panel.querySelectorAll(".series-table").forEach(row => {
     const ei = +row.dataset.ex;
     const isSup = !!row.dataset.sup;
-    const target = () => isSup ? session.exercises[ei].sup : session.exercises[ei].main;
+    const target = () => isSup ? state.session.exercises[ei].sup : state.session.exercises[ei].main;
 
     row.querySelectorAll(".chip").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -2667,8 +2568,8 @@ function attachHandlers(){
     btn.addEventListener("click", async () => {
       const ei = +btn.dataset.ex;
       const isSup = btn.dataset.sup === "1";
-      const id = activeDays()[current].ex[ei]._id;
-      const exDoc = exercisesCatalog.get(id);
+      const id = activeDays()[state.current].ex[ei]._id;
+      const exDoc = state.exercisesCatalog.get(id);
       if(!exDoc) return;
       const cur = isSup ? (exDoc.superset && exDoc.superset.unit || "kg") : (exDoc.unit || "kg");
       const next = UNIT_CYCLE[(UNIT_CYCLE.indexOf(cur) + 1) % 3];
@@ -2687,15 +2588,15 @@ function attachHandlers(){
     btn.addEventListener("click", () => {
       const ei = +btn.dataset.ex;
       const isSup = btn.dataset.sup === "1";
-      const e = activeDays()[current].ex[ei];
-      const ex = session.exercises[ei];
+      const e = activeDays()[state.current].ex[ei];
+      const ex = state.session.exercises[ei];
       const name = isSup ? (ex.supSubName || e.superset.name) : (ex.subName || e.name);
       const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
       const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
       if(!result) return;
-      const sets = isSup ? session.exercises[ei].sup : session.exercises[ei].main;
+      const sets = isSup ? state.session.exercises[ei].sup : state.session.exercises[ei].main;
       result.loads.forEach((v, si) => {
         if(v != null && sets[si]) sets[si].weight = v;
       });
@@ -2707,8 +2608,8 @@ function attachHandlers(){
     const go = () => {
       const i = +el.dataset.evoI;
       const isSup = el.dataset.evoSup === "1";
-      const ex = session.exercises[i];
-      const e = activeDays()[current]?.ex[i];
+      const ex = state.session.exercises[i];
+      const e = activeDays()[state.current]?.ex[i];
       if(!ex || !e) return;
       const name = isSup ? (ex.supSubName || e.superset?.name) : (ex.subName || e.name);
       const machine = isSup ? ex.supMachine : ex.machine;
@@ -2731,18 +2632,18 @@ function attachHandlers(){
   const $reset = document.getElementById("resetBtn");
   if($reset) $reset.addEventListener("click", () => {
     if(!confirm("Limpar séries e cargas deste dia?")) return;
-    session = emptySession(current);
+    state.session = emptySession(state.current);
     scheduleSave(); renderDay(); renderStrip();
   });
 
   const $skipBtn = $panel.querySelector(".deload-skip");
-  if($skipBtn) $skipBtn.addEventListener("click", () => { deloadDismissed = true; renderDay(); });
+  if($skipBtn) $skipBtn.addEventListener("click", () => { state.deloadDismissed = true; renderDay(); });
 
   const $applyBtn = $panel.querySelector(".deload-apply");
   if($applyBtn) $applyBtn.addEventListener("click", async () => {
-    const day = activeDays()[current];
+    const day = activeDays()[state.current];
     day.ex.forEach((e, ei) => {
-      const ex = session.exercises[ei];
+      const ex = state.session.exercises[ei];
       const applyDeload = (sets, name, unit, machine) => {
         if(!sets) return;
         const u = unit || "kg";
@@ -2754,8 +2655,8 @@ function attachHandlers(){
         // allSessions is newest-first, so a forward scan hits the most recent
         // matching session first when the date is shared by more than one.
         let refSets = null;
-        for(let k = 0; k < allSessions.length; k++){
-          const sess = allSessions[k];
+        for(let k = 0; k < state.allSessions.length; k++){
+          const sess = state.allSessions[k];
           if(sess.date !== lastEntry.date || !sess.exercises) continue;
           for(const entry of sess.exercises){
             if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine) && entry.main) refSets = entry.main;
@@ -2779,7 +2680,7 @@ function attachHandlers(){
       if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, e.superset.unit, supMachine);
     });
     const today = formatDate(new Date());
-    lastDeloadDate = today;
+    state.lastDeloadDate = today;
     await saveDeloadDate();
     scheduleSave(); renderDay(); renderStrip();
   });
@@ -2791,16 +2692,14 @@ function attachHandlers(){
 }
 
 // ========= Substitution Modal =========
-const $subModal = document.getElementById("subModal");
-const $subModalInner = document.getElementById("subModalInner");
 $subModal.addEventListener("click", e => { if(e.target === $subModal) closeSubModal(); });
 
 function closeSubModal(){ $subModal.classList.remove("open"); }
 
 function openSubModal(exIdx, isSup=false){
-  const day = activeDays()[current];
+  const day = activeDays()[state.current];
   const planEx = day.ex[exIdx];
-  const ex = session.exercises[exIdx];
+  const ex = state.session.exercises[exIdx];
   if(isSup && !planEx.superset) return;
   const originalName = isSup ? planEx.superset.name : planEx.name;
   const originalMuscle = isSup ? ((planEx.superset && planEx.superset.muscle) || planEx.muscle) : planEx.muscle;
@@ -2916,15 +2815,13 @@ function openSubModal(exIdx, isSup=false){
 }
 
 // ========= Machine Modal =========
-const $machineModal = document.getElementById("machineModal");
-const $machineModalInner = document.getElementById("machineModalInner");
 $machineModal.addEventListener("click", e => { if(e.target === $machineModal) closeMachineModal(); });
 
 function closeMachineModal(){ $machineModal.classList.remove("open"); }
 
 function openMachineModal(exIdx, isSup){
-  const ex = session.exercises[exIdx];
-  const day = activeDays()[current];
+  const ex = state.session.exercises[exIdx];
+  const day = activeDays()[state.current];
   const planEx = day.ex[exIdx];
   const effectiveName = isSup ? (planEx.superset ? planEx.superset.name : "") : (ex.subName || planEx.name);
   const currentMachine = isSup ? ex.supMachine : ex.machine;
@@ -3027,11 +2924,11 @@ function openMachineModal(exIdx, isSup){
 
 function renderStrip(){
   $strip.innerHTML = activeDays().map((d,i) => {
-    const isToday = weekOffset === 0 && i === todayIdx;
+    const isToday = state.weekOffset === 0 && i === todayIdx;
     const isRest = d.ex.length === 0;
     return `
       <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
-              role="tab" aria-selected="${i===current}" data-i="${i}">
+              role="tab" aria-selected="${i===state.current}" data-i="${i}">
         <span class="abbr">${d.abbr}</span>
         <span class="focus">${isRest ? 'Descanso' : esc(d.tag || d.focus.split('\u00b7')[0].trim())}</span>
         <span class="today">Hoje</span>
@@ -3041,10 +2938,10 @@ function renderStrip(){
 
   $strip.querySelectorAll(".day-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
-      current = +btn.dataset.i;
+      state.current = +btn.dataset.i;
       renderStrip();
       $panel.innerHTML = skeletonPanel();
-      await loadDay(current);
+      await loadDay(state.current);
       renderStrip();
       btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
     });
@@ -3065,10 +2962,10 @@ function centerActiveDay(behavior){
 }
 
 function updateWeekLabel(){
-  if(weekOffset === 0){
+  if(state.weekOffset === 0){
     $weekLabel.textContent = "Semana atual";
   } else {
-    const mon = getWeekMonday(weekOffset);
+    const mon = getWeekMonday(state.weekOffset);
     const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
     const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
     const monDay = mon.getDate();
@@ -3081,23 +2978,23 @@ function updateWeekLabel(){
       $weekLabel.textContent = `${monDay} ${monMonth} – ${sunDay} ${sunMonth}`;
     }
   }
-  $weekNext.disabled = weekOffset >= 0;
+  $weekNext.disabled = state.weekOffset >= 0;
 }
 
 $weekPrev.addEventListener("click", async () => {
-  weekOffset--;
+  state.weekOffset--;
   renderStrip();
   $panel.innerHTML = skeletonPanel();
-  await loadDay(current);
+  await loadDay(state.current);
   renderStrip();
 });
 
 $weekNext.addEventListener("click", async () => {
-  if(weekOffset >= 0) return;
-  weekOffset++;
+  if(state.weekOffset >= 0) return;
+  state.weekOffset++;
   renderStrip();
   $panel.innerHTML = skeletonPanel();
-  await loadDay(current);
+  await loadDay(state.current);
   renderStrip();
 });
 
@@ -3115,8 +3012,8 @@ function buildExerciseList(){
     });
   });
   // Add substituted exercise names from session history
-  if(allSessions){
-    allSessions.forEach(s => {
+  if(state.allSessions){
+    state.allSessions.forEach(s => {
       if(!s.exercises) return;
       s.exercises.forEach(entry => {
         if(entry.subName && !seen.has(entry.subName)){
@@ -3130,11 +3027,11 @@ function buildExerciseList(){
   }
   return [...seen.values()];
 }
-let EXERCISES = buildExerciseList();
+state.EXERCISES = buildExerciseList();
 
 function rebuildEvoDropdown(){
   const grouped = new Map();
-  EXERCISES.forEach((x,i) => {
+  state.EXERCISES.forEach((x,i) => {
     const m = x.muscle || "outro";
     if(!grouped.has(m)) grouped.set(m, []);
     grouped.get(m).push({...x, idx:i});
@@ -3151,15 +3048,11 @@ function rebuildEvoDropdown(){
   $evoSelect.innerHTML = html;
 }
 
-let evoInitialized = false;
-let evoPendingName = null;
-let evoPendingMachine = null;
-
 // Entry point used by the Treino view to deep-link into a specific exercise chart.
 function openEvolucaoFor(name, machine){
-  evoPendingName = name || null;
-  evoPendingMachine = (machineFilterActive() && machine) ? normMachine(machine) : null;
-  const wasInit = evoInitialized;
+  state.evoPendingName = name || null;
+  state.evoPendingMachine = (machineFilterActive() && machine) ? normMachine(machine) : null;
+  const wasInit = state.evoInitialized;
   showTab("evolucao");
   window.scrollTo({top:0, behavior:"auto"});
   // showTab -> initEvolucao only renders on first init; force a re-render otherwise.
@@ -3167,8 +3060,8 @@ function openEvolucaoFor(name, machine){
 }
 
 function initEvolucao(){
-  if(evoInitialized) return;
-  evoInitialized = true;
+  if(state.evoInitialized) return;
+  state.evoInitialized = true;
   rebuildEvoDropdown();
   $evoSelect.addEventListener("change", renderEvolucao);
   $evoMachineSelect.addEventListener("change", renderEvolucao);
@@ -3186,35 +3079,35 @@ function loadMetrics(sets){
 }
 
 async function renderEvolucao(){
-  if(!user){ return; }
+  if(!state.user){ return; }
   $evoBody.innerHTML = skeletonEvo();
 
   await loadAllSessions();
   // Rebuild exercise list to include substitutes from session history
   const prevSelected = $evoSelect.value;
-  const prevName = EXERCISES[+prevSelected]?.name;
-  EXERCISES = buildExerciseList();
+  const prevName = state.EXERCISES[+prevSelected]?.name;
+  state.EXERCISES = buildExerciseList();
   rebuildEvoDropdown();
   // A pending deep-link wins over restoring the previous selection.
-  if(evoPendingName){
-    const pIdx = EXERCISES.findIndex(x => x.name === evoPendingName);
+  if(state.evoPendingName){
+    const pIdx = state.EXERCISES.findIndex(x => x.name === state.evoPendingName);
     if(pIdx >= 0) $evoSelect.value = pIdx;
     // Machine select is built further down and restores from dataset.prevNorm.
-    if(evoPendingMachine) $evoMachineSelect.dataset.prevNorm = evoPendingMachine;
-    evoPendingName = null;
-    evoPendingMachine = null;
+    if(state.evoPendingMachine) $evoMachineSelect.dataset.prevNorm = state.evoPendingMachine;
+    state.evoPendingName = null;
+    state.evoPendingMachine = null;
   } else if(prevName){
-    const newIdx = EXERCISES.findIndex(x => x.name === prevName);
+    const newIdx = state.EXERCISES.findIndex(x => x.name === prevName);
     if(newIdx >= 0) $evoSelect.value = newIdx;
   }
-  const sel = EXERCISES[+$evoSelect.value || 0];
+  const sel = state.EXERCISES[+$evoSelect.value || 0];
   const evoUnit = sel.unit || "kg";
   const featureActive = machineFilterActive();
 
   // Collect matched sets bucketed by machine variant
   // Each bucket key: normMachine(machine) ?? "__none"
   const byVariant = new Map(); // key -> Map<date, sets[]>
-  (allSessions || []).forEach(s => {
+  (state.allSessions || []).forEach(s => {
     if(!s.exercises) return;
     s.exercises.forEach(entry => {
       const effectiveName = entry.subName || entry.name;
@@ -3306,7 +3199,7 @@ async function renderEvolucao(){
 
     if(!variantData.length){
       $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
-      if(evoChart){ evoChart.destroy(); evoChart = null; }
+      if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
       return;
     }
 
@@ -3356,7 +3249,7 @@ async function renderEvolucao(){
 
     if(!points.length){
       $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
-      if(evoChart){ evoChart.destroy(); evoChart = null; }
+      if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
       return;
     }
 
@@ -3387,7 +3280,7 @@ async function renderEvolucao(){
 
 function drawChart(data, unit, multi){
   const uLabel = UNIT_ABBR[unit || "kg"];
-  if(evoChart){ evoChart.destroy(); evoChart = null; }
+  if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
   const ctx = document.getElementById("evoCanvas");
   const css = getComputedStyle(document.documentElement);
   const accent = css.getPropertyValue("--accent").trim() || "#FF5A1F";
@@ -3447,7 +3340,7 @@ function drawChart(data, unit, multi){
     ];
   }
 
-  evoChart = new Chart(ctx, {
+  state.evoChart = new Chart(ctx, {
     type: "line",
     data: { labels, datasets },
     options: {
@@ -3478,7 +3371,7 @@ function drawChart(data, unit, multi){
 
 const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
 
-function activeDays(){ return userDays || DAYS; }
+function activeDays(){ return state.userDays || DAYS; }
 
 // Build userDays from exercisesCatalog
 function rebuildUserDays(){
@@ -3493,13 +3386,13 @@ function rebuildUserDays(){
   ];
   base.forEach((d,i) => {
     d.ex = [];
-    const custom = dayCustomizations[i];
+    const custom = state.dayCustomizations[i];
     if(custom){
       if(custom.tag) d.tag = custom.tag;
       if(custom.focus) d.focus = custom.focus;
     }
   });
-  exercisesCatalog.forEach((ex, id) => {
+  state.exercisesCatalog.forEach((ex, id) => {
     if(!ex.active) return;
     (ex.days || []).forEach(dk => {
       if(dk < 0 || dk > 6) return;
@@ -3520,22 +3413,22 @@ function rebuildUserDays(){
   });
   base.forEach(d => d.ex.sort((a,b) =>
     cmpExOrder(a._order, a.name, a._id, b._order, b.name, b._id)));
-  userDays = base;
-  EXERCISES = buildExerciseList();
-  evoInitialized = false;
+  state.userDays = base;
+  state.EXERCISES = buildExerciseList();
+  state.evoInitialized = false;
 }
 
 // Load exercises from Firestore (seeds from hardcoded DAYS on first login)
 async function loadExercises(uid){
-  if(!user && !uid) return;
-  uid = uid || user.uid;
+  if(!state.user && !uid) return;
+  uid = uid || state.user.uid;
   const colRef = collection(db, "users", uid, "exercises");
   let snap;
   try { snap = await getDocs(colRef); }
   catch(e){ console.warn("loadExercises:", e.message); return; }
-  exercisesCatalog.clear();
+  state.exercisesCatalog.clear();
   if(!snap.empty){
-    snap.forEach(d => exercisesCatalog.set(d.id, d.data()));
+    snap.forEach(d => state.exercisesCatalog.set(d.id, d.data()));
     return;
   }
   // First login: seed from hardcoded DAYS, populate cache from write refs (no re-read)
@@ -3567,7 +3460,7 @@ async function loadExercises(uid){
     const writes = [];
     byName.forEach(ex => {
       const data = { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-      writes.push(addDoc(colRef, data).then(ref => exercisesCatalog.set(ref.id, data)));
+      writes.push(addDoc(colRef, data).then(ref => state.exercisesCatalog.set(ref.id, data)));
     });
     await Promise.all(writes);
   } catch(e){ console.error("seed exercises:", e); }
@@ -3575,23 +3468,23 @@ async function loadExercises(uid){
 
 // Save exercise doc
 async function saveExerciseDoc(docId, data){
-  if(!user) return null;
+  if(!state.user) return null;
   data.updatedAt = serverTimestamp();
   if(docId){
-    const ref = doc(db, "users", user.uid, "exercises", docId);
+    const ref = doc(db, "users", state.user.uid, "exercises", docId);
     await setDoc(ref, data, { merge: true });
     return docId;
   } else {
     data.createdAt = serverTimestamp();
-    const ref = await addDoc(collection(db, "users", user.uid, "exercises"), data);
+    const ref = await addDoc(collection(db, "users", state.user.uid, "exercises"), data);
     return ref.id;
   }
 }
 
 // Delete exercise doc
 async function deleteExerciseDoc(docId){
-  if(!user) return;
-  await deleteDoc(doc(db, "users", user.uid, "exercises", docId));
+  if(!state.user) return;
+  await deleteDoc(doc(db, "users", state.user.uid, "exercises", docId));
 }
 
 // ========= Day Customizations =========
@@ -3607,27 +3500,27 @@ const DAY_DEFAULTS = [
 ];
 
 async function loadDayCustomizations(){
-  if(!user) return;
-  dayCustomizations = {};
+  if(!state.user) return;
+  state.dayCustomizations = {};
   try {
-    const snap = await getDocs(collection(db, "users", user.uid, "days"));
-    snap.forEach(d => { dayCustomizations[d.id] = d.data(); });
+    const snap = await getDocs(collection(db, "users", state.user.uid, "days"));
+    snap.forEach(d => { state.dayCustomizations[d.id] = d.data(); });
   } catch(e){ console.warn("loadDayCustomizations:", e.message); }
 }
 
 async function saveDayCustomization(dayKey, tag, focus){
-  if(!user) return;
+  if(!state.user) return;
   const data = { tag, focus, updatedAt: serverTimestamp() };
-  const ref = doc(db, "users", user.uid, "days", String(dayKey));
+  const ref = doc(db, "users", state.user.uid, "days", String(dayKey));
   await setDoc(ref, data, { merge: true });
-  dayCustomizations[dayKey] = { tag, focus };
+  state.dayCustomizations[dayKey] = { tag, focus };
 }
 
 async function deleteDayCustomization(dayKey){
-  if(!user) return;
-  const ref = doc(db, "users", user.uid, "days", String(dayKey));
+  if(!state.user) return;
+  const ref = doc(db, "users", state.user.uid, "days", String(dayKey));
   await deleteDoc(ref);
-  delete dayCustomizations[dayKey];
+  delete state.dayCustomizations[dayKey];
 }
 
 function renderDayCustomSection(){
@@ -3643,10 +3536,10 @@ function renderDayCustomSection(){
 
   let html = "";
   base.forEach((d, i) => {
-    const custom = dayCustomizations[i] || {};
+    const custom = state.dayCustomizations[i] || {};
     const tagVal = custom.tag ?? DAY_DEFAULTS[i].tag;
     const focusVal = custom.focus ?? DAY_DEFAULTS[i].focus;
-    const isCustom = dayCustomizations[i] != null;
+    const isCustom = state.dayCustomizations[i] != null;
     html += `<div class="day-row" data-dk="${i}">
       <span class="day-row-abbr">${d.abbr}</span>
       <div class="day-row-info">
@@ -3668,10 +3561,10 @@ function renderDayCustomSection(){
 }
 
 function openDayEditSheet(dk, dayName){
-  const custom = dayCustomizations[dk] || {};
+  const custom = state.dayCustomizations[dk] || {};
   const tagVal = custom.tag ?? DAY_DEFAULTS[dk].tag;
   const focusVal = custom.focus ?? DAY_DEFAULTS[dk].focus;
-  const isCustom = dayCustomizations[dk] != null;
+  const isCustom = state.dayCustomizations[dk] != null;
 
   let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${esc(dayName)}</h3>`;
   html += `<div class="modal-field" style="margin-bottom:14px">
@@ -3704,7 +3597,7 @@ function openDayEditSheet(dk, dayName){
       await saveDayCustomization(dk, finalTag, finalFocus);
       rebuildUserDays();
       renderStrip();
-      if(current === dk) renderDay();
+      if(state.current === dk) renderDay();
       closeDaySheet();
       renderDayCustomSection();
     } catch(e) { console.error(e); alert("Erro ao salvar"); }
@@ -3716,7 +3609,7 @@ function openDayEditSheet(dk, dayName){
         await deleteDayCustomization(dk);
         rebuildUserDays();
         renderStrip();
-        if(current === dk) renderDay();
+        if(state.current === dk) renderDay();
         closeDaySheet();
         renderDayCustomSection();
       } catch(e) { console.error(e); alert("Erro ao restaurar"); }
@@ -3728,58 +3621,58 @@ function openDayEditSheet(dk, dayName){
 
 function renderExercicios(){
   document.querySelectorAll("#exSubTabs [data-subtab]").forEach(b =>
-    b.classList.toggle("active", b.dataset.subtab === exSubTab));
-  document.getElementById("subViewList").style.display  = exSubTab==="list"  ? "" : "none";
-  document.getElementById("subViewPlans").style.display = exSubTab==="plans" ? "" : "none";
-  document.getElementById("subViewDays").style.display  = exSubTab==="days"  ? "" : "none";
-  if(exSubTab==="list"){ renderExFilterBar(); renderExList(); }
-  else if(exSubTab==="plans"){ renderPlansSection(); }
+    b.classList.toggle("active", b.dataset.subtab === state.exSubTab));
+  document.getElementById("subViewList").style.display  = state.exSubTab==="list"  ? "" : "none";
+  document.getElementById("subViewPlans").style.display = state.exSubTab==="plans" ? "" : "none";
+  document.getElementById("subViewDays").style.display  = state.exSubTab==="days"  ? "" : "none";
+  if(state.exSubTab==="list"){ renderExFilterBar(); renderExList(); }
+  else if(state.exSubTab==="plans"){ renderPlansSection(); }
   else { renderDayCustomSection(); }
 }
 
 function renderExFilterBar(){
   const muscles = Object.entries(MUSCLE_LABEL);
   let html = `<div class="ex-toolbar">
-    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${esc(exSearchQuery)}">
+    <input type="search" class="ex-search" id="exSearchInput" placeholder="Buscar exercício…" value="${esc(state.exSearchQuery)}">
     <button class="ex-new-btn" id="exNewBtn" style="width:auto;flex:0 0 auto">+ Novo</button>
   </div>`;
   // Muscle chips
   html += `<div class="chip-scroll">`;
-  html += `<span class="filter-chip ${exFilterMuscle===null?'active':''}" data-muscle="">Todos</span>`;
+  html += `<span class="filter-chip ${state.exFilterMuscle===null?'active':''}" data-muscle="">Todos</span>`;
   muscles.forEach(([k,v]) => {
-    html += `<span class="filter-chip ${exFilterMuscle===k?'active':''}" data-muscle="${k}">${v}</span>`;
+    html += `<span class="filter-chip ${state.exFilterMuscle===k?'active':''}" data-muscle="${k}">${v}</span>`;
   });
   html += `</div>`;
   // Day chips + Inativos toggle
   html += `<div class="chip-scroll">`;
-  html += `<span class="filter-chip ${exFilterDay===null?'active':''}" data-day="">Todos</span>`;
+  html += `<span class="filter-chip ${state.exFilterDay===null?'active':''}" data-day="">Todos</span>`;
   DAY_NAMES_SHORT.forEach((d,i) => {
-    html += `<span class="filter-chip ${exFilterDay===i?'active':''}" data-day="${i}">${d}</span>`;
+    html += `<span class="filter-chip ${state.exFilterDay===i?'active':''}" data-day="${i}">${d}</span>`;
   });
-  html += `<span class="filter-chip ${exShowInactive?'active':''}" id="exInactiveChip">Inativos</span>`;
+  html += `<span class="filter-chip ${state.exShowInactive?'active':''}" id="exInactiveChip">Inativos</span>`;
   html += `</div>`;
   $exFilterBar.innerHTML = html;
 
   // search input — only re-render the list (keep focus)
   document.getElementById("exSearchInput").addEventListener("input", e => {
-    exSearchQuery = e.target.value;
+    state.exSearchQuery = e.target.value;
     renderExList();
   });
   // bind filter clicks
   $exFilterBar.querySelectorAll("[data-muscle]").forEach(el => {
     el.addEventListener("click", () => {
-      exFilterMuscle = el.dataset.muscle === "" ? null : el.dataset.muscle;
+      state.exFilterMuscle = el.dataset.muscle === "" ? null : el.dataset.muscle;
       renderExFilterBar(); renderExList();
     });
   });
   $exFilterBar.querySelectorAll("[data-day]").forEach(el => {
     el.addEventListener("click", () => {
-      exFilterDay = el.dataset.day === "" ? null : Number(el.dataset.day);
+      state.exFilterDay = el.dataset.day === "" ? null : Number(el.dataset.day);
       renderExFilterBar(); renderExList();
     });
   });
   document.getElementById("exInactiveChip").addEventListener("click", () => {
-    exShowInactive = !exShowInactive;
+    state.exShowInactive = !state.exShowInactive;
     renderExFilterBar(); renderExList();
   });
   document.getElementById("exNewBtn").addEventListener("click", () => openExEditor(null));
@@ -3816,14 +3709,14 @@ function renderExItemHtml(ex, canDrag){
 
 function renderExList(){
   let items = [];
-  exercisesCatalog.forEach((ex, id) => items.push({...ex, _id: id}));
+  state.exercisesCatalog.forEach((ex, id) => items.push({...ex, _id: id}));
 
   // filters
-  if(exFilterMuscle) items = items.filter(e => e.muscle === exFilterMuscle);
-  if(exFilterDay !== null) items = items.filter(e => (e.days||[]).includes(exFilterDay));
-  if(!exShowInactive) items = items.filter(e => e.active !== false);
-  if(exSearchQuery.trim()){
-    const q = stripDiacritics(exSearchQuery.trim());
+  if(state.exFilterMuscle) items = items.filter(e => e.muscle === state.exFilterMuscle);
+  if(state.exFilterDay !== null) items = items.filter(e => (e.days||[]).includes(state.exFilterDay));
+  if(!state.exShowInactive) items = items.filter(e => e.active !== false);
+  if(state.exSearchQuery.trim()){
+    const q = stripDiacritics(state.exSearchQuery.trim());
     items = items.filter(e => stripDiacritics(e.name).includes(q));
   }
 
@@ -3832,14 +3725,14 @@ function renderExList(){
     return;
   }
 
-  const canDrag = exFilterDay !== null && !exSearchQuery.trim();
+  const canDrag = state.exFilterDay !== null && !state.exSearchQuery.trim();
   let html = "";
 
   if(canDrag){
     // Flat list sorted by day order — drag-and-drop enabled
     items.sort((a,b) => cmpExOrder(
-      orderForDay(a, exFilterDay), a.name, a._id,
-      orderForDay(b, exFilterDay), b.name, b._id));
+      orderForDay(a, state.exFilterDay), a.name, a._id,
+      orderForDay(b, state.exFilterDay), b.name, b._id));
     items.forEach(ex => { html += renderExItemHtml(ex, true); });
   } else {
     // Grouped by weekday — no drag-and-drop
@@ -3898,7 +3791,7 @@ function renderExList(){
     btn.addEventListener("click", async e => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const ex = exercisesCatalog.get(id);
+      const ex = state.exercisesCatalog.get(id);
       if(!ex) return;
       const newActive = ex.active === false;
       await saveExerciseDoc(id, { active: newActive });
@@ -4016,8 +3909,8 @@ function initDragAndDrop(){
 }
 
 async function reorderExercise(fromId, toId, before){
-  if(exFilterDay === null) return;
-  const dk = exFilterDay;
+  if(state.exFilterDay === null) return;
+  const dk = state.exFilterDay;
 
   // get current order
   const ordered = [];
@@ -4033,7 +3926,7 @@ async function reorderExercise(fromId, toId, before){
   // update orderByDay for all affected
   const promises = [];
   ordered.forEach((id, i) => {
-    const ex = exercisesCatalog.get(id);
+    const ex = state.exercisesCatalog.get(id);
     if(!ex) return;
     if(!ex.orderByDay) ex.orderByDay = {};
     ex.orderByDay[dk] = i;
@@ -4048,31 +3941,31 @@ async function reorderExercise(fromId, toId, before){
 // ========= Plans =========
 
 async function loadPlans(){
-  if(!user) return;
-  plansCache.clear();
+  if(!state.user) return;
+  state.plansCache.clear();
   try{
-    const snap = await getDocs(collection(db, "users", user.uid, "plans"));
-    snap.forEach(d => plansCache.set(d.id, d.data()));
+    const snap = await getDocs(collection(db, "users", state.user.uid, "plans"));
+    snap.forEach(d => state.plansCache.set(d.id, d.data()));
   }catch(e){ console.warn("loadPlans:", e.message); }
 }
 
 async function savePlanDoc(docId, data){
-  if(!user) return null;
+  if(!state.user) return null;
   data.updatedAt = serverTimestamp();
   if(docId){
-    const ref = doc(db, "users", user.uid, "plans", docId);
+    const ref = doc(db, "users", state.user.uid, "plans", docId);
     await setDoc(ref, data, { merge: true });
     return docId;
   } else {
     data.createdAt = serverTimestamp();
-    const ref = await addDoc(collection(db, "users", user.uid, "plans"), data);
+    const ref = await addDoc(collection(db, "users", state.user.uid, "plans"), data);
     return ref.id;
   }
 }
 
 async function deletePlanDoc(docId){
-  if(!user) return;
-  await deleteDoc(doc(db, "users", user.uid, "plans", docId));
+  if(!state.user) return;
+  await deleteDoc(doc(db, "users", state.user.uid, "plans", docId));
 }
 
 // ========= Data export (Phase 1, item 4) =========
@@ -4095,11 +3988,11 @@ function serializeTimestamps(value){
 // a query limit), so a cache-built export could silently ship an incomplete backup.
 async function buildExportPayload(){
   const [exSnap, planSnap, sessSnap, appPrefSnap, profilePrefSnap] = await Promise.all([
-    getDocs(collection(db, "users", user.uid, "exercises")),
-    getDocs(collection(db, "users", user.uid, "plans")),
-    getDocs(collection(db, "users", user.uid, "sessions")),
-    getDoc(doc(db, "users", user.uid, "prefs", "app")),
-    getDoc(doc(db, "users", user.uid, "prefs", "profile")),
+    getDocs(collection(db, "users", state.user.uid, "exercises")),
+    getDocs(collection(db, "users", state.user.uid, "plans")),
+    getDocs(collection(db, "users", state.user.uid, "sessions")),
+    getDoc(doc(db, "users", state.user.uid, "prefs", "app")),
+    getDoc(doc(db, "users", state.user.uid, "prefs", "profile")),
   ]);
 
   const toRecord = d => ({ id: d.id, ...serializeTimestamps(d.data()) });
@@ -4115,7 +4008,7 @@ async function buildExportPayload(){
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     app: "strength-split",
-    user: { uid: user.uid, email: user.email || null, displayName: user.displayName || null },
+    user: { uid: state.user.uid, email: state.user.email || null, displayName: state.user.displayName || null },
     prefs: {
       app: appPrefSnap.exists() ? serializeTimestamps(appPrefSnap.data()) : null,
       profile: profilePrefSnap.exists() ? serializeTimestamps(profilePrefSnap.data()) : null,
@@ -4124,10 +4017,9 @@ async function buildExportPayload(){
   };
 }
 
-let exportingData = false;
 async function exportUserData(){
-  if(exportingData || !user) return;
-  exportingData = true;
+  if(state.exportingData || !state.user) return;
+  state.exportingData = true;
   const $row = document.getElementById("settingsExportRow");
   const $label = document.getElementById("settingsExportLabel");
   const originalLabel = $label.textContent;
@@ -4158,7 +4050,7 @@ async function exportUserData(){
       alert("Erro ao exportar dados: " + e.message);
     }
   } finally {
-    exportingData = false;
+    state.exportingData = false;
     $row.style.pointerEvents = "";
     $row.style.opacity = "";
     $label.textContent = originalLabel;
@@ -4168,9 +4060,9 @@ async function exportUserData(){
 function renderPlansSection(){
   let html = "";
 
-  if(currentPlanName){
+  if(state.currentPlanName){
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-      Plano ativo: <b style="color:var(--accent)">${esc(currentPlanName)}</b>
+      Plano ativo: <b style="color:var(--accent)">${esc(state.currentPlanName)}</b>
     </div>`;
   }
 
@@ -4178,7 +4070,7 @@ function renderPlansSection(){
 
   html += `<div class="ex-section-header">Predefinidos</div>`;
   PLAN_TEMPLATES.forEach(t => {
-    const isActive = currentPlanKey === t.templateKey;
+    const isActive = state.currentPlanKey === t.templateKey;
     const daysSummary = t.days.map(d => d.type).join(' \u00b7 ');
     html += `<div class="plan-card ${isActive?'active-plan':''}" data-key="${t.templateKey}">
       <div class="plan-card-body">
@@ -4194,10 +4086,10 @@ function renderPlansSection(){
     </div>`;
   });
 
-  if(plansCache.size){
+  if(state.plansCache.size){
     html += `<div class="ex-section-header">Meus planos</div>`;
-    plansCache.forEach((plan, id) => {
-      const isActive = currentPlanId === id;
+    state.plansCache.forEach((plan, id) => {
+      const isActive = state.currentPlanId === id;
       const daysSummary = (plan.days||[]).map(d => d.type).join(' \u00b7 ');
       html += `<div class="plan-card ${isActive?'active-plan':''}" data-id="${id}">
         <div class="plan-card-body">
@@ -4229,7 +4121,7 @@ function renderPlansSection(){
         const tpl = PLAN_TEMPLATES.find(t => t.templateKey === key);
         if(tpl) openApplyPlanModal(tpl, null);
       } else if(id){
-        const plan = plansCache.get(id);
+        const plan = state.plansCache.get(id);
         if(plan) openApplyPlanModal(plan, id);
       }
     });
@@ -4243,12 +4135,12 @@ function renderPlansSection(){
     btn.addEventListener("click", async e => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const plan = plansCache.get(id);
+      const plan = state.plansCache.get(id);
       if(!plan || !confirm(`Excluir plano "${plan.name}"?`)) return;
       try{
         await deletePlanDoc(id);
-        plansCache.delete(id);
-        if(currentPlanId === id){ currentPlanId = null; currentPlanName = null; savePref(); }
+        state.plansCache.delete(id);
+        if(state.currentPlanId === id){ state.currentPlanId = null; state.currentPlanName = null; savePref(); }
         renderPlansSection();
       }catch(e){ alert("Erro: " + e.message); }
     });
@@ -4344,7 +4236,7 @@ function openApplyPlanModal(plan, planDocId){
 }
 
 async function preserveCurrentAsCustomPlan(){
-  if(!user || exercisesCatalog.size === 0) return;
+  if(!state.user || state.exercisesCatalog.size === 0) return;
 
   const typeLetters = ['A','B','C','D','E','F','G'];
   const days = activeDays();
@@ -4373,27 +4265,27 @@ async function preserveCurrentAsCustomPlan(){
 
   if(!dayTypes.length) return;
 
-  const planName = currentPlanName || "Treino anterior";
+  const planName = state.currentPlanName || "Treino anterior";
   const planData = { name: planName, source: "custom", days: dayTypes };
 
   let existingId = null;
-  plansCache.forEach((p, id) => { if(p.name === planName) existingId = id; });
+  state.plansCache.forEach((p, id) => { if(p.name === planName) existingId = id; });
 
   const id = await savePlanDoc(existingId, planData);
-  plansCache.set(id, { ...planData });
+  state.plansCache.set(id, { ...planData });
 }
 
 async function applyPlan(plan, planDocId, mapping){
-  if(!user) return;
+  if(!state.user) return;
 
   // 1. Preserve current workout
   await preserveCurrentAsCustomPlan();
 
   // 2. Delete all current exercises
   const delPromises = [];
-  exercisesCatalog.forEach((_, id) => delPromises.push(deleteExerciseDoc(id)));
+  state.exercisesCatalog.forEach((_, id) => delPromises.push(deleteExerciseDoc(id)));
   await Promise.all(delPromises);
-  exercisesCatalog.clear();
+  state.exercisesCatalog.clear();
 
   // 3. Create new exercises — deduplicate by name, merge days
   const byName = new Map();
@@ -4424,12 +4316,12 @@ async function applyPlan(plan, planDocId, mapping){
     });
   });
 
-  const colRef = collection(db, "users", user.uid, "exercises");
+  const colRef = collection(db, "users", state.user.uid, "exercises");
   const addPromises = [];
   byName.forEach(exData => {
     addPromises.push(
       addDoc(colRef, { ...exData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-        .then(ref => exercisesCatalog.set(ref.id, exData))
+        .then(ref => state.exercisesCatalog.set(ref.id, exData))
     );
   });
   await Promise.all(addPromises);
@@ -4446,21 +4338,21 @@ async function applyPlan(plan, planDocId, mapping){
   }
 
   // 5. Update plan pointer
-  currentPlanName = plan.name;
+  state.currentPlanName = plan.name;
   if(planDocId){
-    currentPlanId = planDocId; currentPlanKey = null;
+    state.currentPlanId = planDocId; state.currentPlanKey = null;
   } else if(plan.templateKey){
-    currentPlanKey = plan.templateKey; currentPlanId = null;
+    state.currentPlanKey = plan.templateKey; state.currentPlanId = null;
   } else {
-    currentPlanId = null; currentPlanKey = null;
+    state.currentPlanId = null; state.currentPlanKey = null;
   }
   await savePref();
 
   // 6. Rebuild and re-render
   rebuildUserDays();
   renderStrip();
-  session = null;
-  await loadDay(current);
+  state.session = null;
+  await loadDay(state.current);
   renderPlansSection();
 }
 
@@ -4475,7 +4367,7 @@ function openPlanEditor(planDocId){
       { type: "A", label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] }
     ]};
   } else {
-    plan = JSON.parse(JSON.stringify(plansCache.get(planDocId)));
+    plan = JSON.parse(JSON.stringify(state.plansCache.get(planDocId)));
   }
 
   function renderPlanEditorContent(){
@@ -4670,7 +4562,7 @@ function openPlanEditor(planDocId){
       try{
         const data = { name: plan.name, source: "custom", days: plan.days };
         const id = await savePlanDoc(planDocId, data);
-        plansCache.set(id, { ...data });
+        state.plansCache.set(id, { ...data });
         closePlanEditor();
         renderPlansSection();
       }catch(e){
@@ -4686,8 +4578,8 @@ function openPlanEditor(planDocId){
           if(!confirm(`Excluir plano "${plan.name}"?`)) return;
           try{
             await deletePlanDoc(planDocId);
-            plansCache.delete(planDocId);
-            if(currentPlanId === planDocId){ currentPlanId = null; currentPlanName = null; savePref(); }
+            state.plansCache.delete(planDocId);
+            if(state.currentPlanId === planDocId){ state.currentPlanId = null; state.currentPlanName = null; savePref(); }
             closePlanEditor();
             renderPlansSection();
           }catch(e){ alert("Erro: " + e.message); }
@@ -4711,7 +4603,7 @@ function openExEditor(docId){
   const ex = isNew ? {
     name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
     active:true, days:[], orderByDay:{}, superset:null,
-  } : {...exercisesCatalog.get(docId)};
+  } : {...state.exercisesCatalog.get(docId)};
 
   let html = `<h3>${isNew ? 'Novo exercício' : 'Editar exercício'}</h3>`;
 
@@ -4957,12 +4849,12 @@ function openExEditor(docId){
     if(days.length < 1){ errEl.textContent = "Selecione ao menos 1 dia."; errEl.style.display = ""; return; }
 
     // compute orderByDay for new days (append to end)
-    const orderByDay = docId ? {...(exercisesCatalog.get(docId)?.orderByDay || {})} : {};
+    const orderByDay = docId ? {...(state.exercisesCatalog.get(docId)?.orderByDay || {})} : {};
     days.forEach(dk => {
       if(orderByDay[dk] == null){
         // find max order for this day
         let maxOrder = -1;
-        exercisesCatalog.forEach(ex => {
+        state.exercisesCatalog.forEach(ex => {
           if(ex.days?.includes(dk) && ex.orderByDay?.[dk] != null && ex.orderByDay[dk] > maxOrder)
             maxOrder = ex.orderByDay[dk];
         });
@@ -4978,7 +4870,7 @@ function openExEditor(docId){
 
     try {
       const id = await saveExerciseDoc(docId, data);
-      exercisesCatalog.set(id, { ...data, createdAt: exercisesCatalog.get(id)?.createdAt || null });
+      state.exercisesCatalog.set(id, { ...data, createdAt: state.exercisesCatalog.get(id)?.createdAt || null });
       rebuildUserDays();
       closeExEditor();
       renderExercicios();
@@ -4994,7 +4886,7 @@ function openExEditor(docId){
       if(!confirm(`Excluir "${ex.name}" permanentemente?`)) return;
       try {
         await deleteExerciseDoc(docId);
-        exercisesCatalog.delete(docId);
+        state.exercisesCatalog.delete(docId);
         rebuildUserDays();
         closeExEditor();
         renderExercicios();
@@ -5011,15 +4903,13 @@ function closeExEditor(){
 
 // ========= Share PDF =========
 
-const $btnSharePdf = document.getElementById("btnSharePdf");
-let sharingPdf = false;
 $btnSharePdf.addEventListener("click", buildAndSharePdf);
 
 async function buildAndSharePdf(){
-  if(sharingPdf) return;
-  sharingPdf = true;
+  if(state.sharingPdf) return;
+  state.sharingPdf = true;
   $btnSharePdf.disabled = true;
-  try { await _buildAndSharePdf(); } finally { sharingPdf = false; $btnSharePdf.disabled = false; }
+  try { await _buildAndSharePdf(); } finally { state.sharingPdf = false; $btnSharePdf.disabled = false; }
 }
 
 async function _buildAndSharePdf(){
@@ -5053,7 +4943,7 @@ async function _buildAndSharePdf(){
     return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
   }
 
-  const planName = currentPlanName || "Meu Treino";
+  const planName = state.currentPlanName || "Meu Treino";
   const today = new Date();
 
   // Header
@@ -5182,7 +5072,7 @@ async function _buildAndSharePdf(){
 
   // Share or download
   const dateStr = today.toISOString().slice(0,10);
-  const slug = (currentPlanName || "treino").toLowerCase().replace(/\s+/g, "-");
+  const slug = (state.currentPlanName || "treino").toLowerCase().replace(/\s+/g, "-");
   const filename = `strength-split-${slug}-${dateStr}.pdf`;
 
   try {

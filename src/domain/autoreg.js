@@ -1,5 +1,5 @@
 // B1 — Equipment-aware increments (kg)
-export const DUMBBELL_LADDER = [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
+const DUMBBELL_LADDER = [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
 
 // --- Auto-regulation sensitivity presets (tunable) ---
 export const AUTOREG_PRESETS = {
@@ -7,27 +7,6 @@ export const AUTOREG_PRESETS = {
   mod:   { tol: 1, fatigue: 0.025, ceilUp: false },
   agr:   { tol: 1, fatigue: 0.01,  ceilUp: true  },
 };
-
-export function snapKg(equip, value){
-  if(equip==="barra") return Math.max(2, Math.round(value/2)*2);
-  if(equip==="halter"){
-    if(value>40) return Math.round(value/2)*2;
-    let best=DUMBBELL_LADDER[0];
-    for(const v of DUMBBELL_LADDER) if(Math.abs(v-value)<Math.abs(best-value)) best=v;
-    return best;
-  }
-  return Math.round(value/2.5)*2.5;
-}
-
-export function nextKgUp(equip, w, mult){
-  if(equip==="halter"){
-    let v=w;
-    for(let k=0;k<mult;k++) v = v>=40 ? v+2 : (DUMBBELL_LADDER.find(x=>x>v) ?? v+2);
-    return v;
-  }
-  const step = equip==="barra" ? 2 : 2.5;
-  return snapKg(equip, w + step*mult);
-}
 
 // Snap a load to a real equipment increment. up=true rounds UP to the next rung.
 export function snapLoad(equip, u, step, value, up){

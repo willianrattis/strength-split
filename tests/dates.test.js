@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { formatDate, getWeekMonday, dateForDay, sessionId, shortDate } from "../src/domain/dates.js";
+import { formatDate, getWeekMonday, dateForDay, sessionId, shortDate, todayStr, fmtDateBR } from "../src/domain/dates.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -72,5 +72,29 @@ describe("shortDate", () => {
 
   it("includes a 2-digit year for a different year", () => {
     expect(shortDate("2025-03-15", new Date(2026, 0, 1))).toBe("15/03/25");
+  });
+});
+
+describe("todayStr", () => {
+  it("returns YYYY-MM-DD with zero padding, matching formatDate(new Date())", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 5, 9)); // 2026-03-05
+    expect(todayStr()).toBe("2026-03-05");
+    expect(todayStr()).toBe(formatDate(new Date()));
+  });
+});
+
+describe("fmtDateBR", () => {
+  it("rewrites an ISO date as D/M (no re-padding of its own)", () => {
+    expect(fmtDateBR("2026-08-05")).toBe("05/08");
+  });
+
+  it("passes single-digit day/month straight through, un-padded", () => {
+    expect(fmtDateBR("2026-8-5")).toBe("5/8");
+  });
+
+  it("current behaviour on malformed/empty input: \"undefined/undefined\"", () => {
+    expect(fmtDateBR("")).toBe("undefined/undefined");
+    expect(fmtDateBR("20260805")).toBe("undefined/undefined");
   });
 });

@@ -12,6 +12,3 @@ export function buildExTypeMap(catalog) {
   catalog.forEach(e => m.set(stripDiacritics(e.name), e.type));
   return m;
 }
-export function exTypeOf(map, name) {
-  return map.get(stripDiacritics(String(name || ""))) || "iso";
-}
