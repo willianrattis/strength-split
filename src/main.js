@@ -17,6 +17,12 @@ import { equipmentOf, buildExTypeMap, exTypeOf } from "./domain/equipment.js";
 import { ORDER_UNSET, orderForDay, cmpExOrder } from "./domain/order.js";
 import { lastMachineFor as domainLastMachineFor, usedMachinesRanked as domainUsedMachinesRanked, matchVariant as domainMatchVariant } from "./domain/machines.js";
 import { emptySession as domainEmptySession, reconcileSession as domainReconcileSession } from "./domain/session.js";
+import { UNIT_CYCLE, UNIT_ABBR, UNIT_BTN, UNIT_STEP } from "./domain/units.js";
+import { autoregCfg as domainAutoregCfg, projectLoad as domainProjectLoad } from "./domain/autoreg.js";
+import { profileAge as domainProfileAge } from "./domain/profile.js";
+import { prevLoadData as domainPrevLoadData, exerciseTopHistory as domainExerciseTopHistory, bestWeightEver as domainBestWeightEver } from "./domain/history.js";
+import { suggestLoads as domainSuggestLoads } from "./domain/suggestion.js";
+import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } from "./domain/deload.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCpq7zytWeXpjEhIFaiqHZKbODcM-ZYhKU",
@@ -190,17 +196,8 @@ const DAYS = [
   ]},
 ];
 const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
-const UNIT_CYCLE = ["kg","lb","placas"];
-const UNIT_ABBR  = { kg:"kg", lb:"lb", placas:"pl" };
-const UNIT_BTN   = { kg:"KG", lb:"LB", placas:"PL" };
-const UNIT_STEP  = { kg:2.5, lb:5, placas:1 };
 
 // ========= Periodization tuning =========
-const STALL_SESSIONS = 3;
-const DELOAD_WEEKS_MAX = 5;
-const STALL_RATIO = 0.5;
-const MIN_TRACKED = 3;
-const MIN_TOTAL_SESSIONS = 8;
 const DELOAD_FACTOR = 0.55;
 
 // ========= Plan Templates =========
@@ -1526,6 +1523,38 @@ const sessionOpts = dayKey => ({
 const emptySession = dayKey => domainEmptySession(dayKey, sessionOpts(dayKey));
 const reconcileSession = (prev, dayKey) => domainReconcileSession(prev, dayKey, sessionOpts(dayKey));
 
+const autoregCfg = () => domainAutoregCfg(autoregSensitivity);
+const profileAge = () => domainProfileAge(profile.birthDate);
+const projectLoad = (w, repsDone, target, equip, u, step, fatigueSteps) =>
+  domainProjectLoad(w, repsDone, target, equip, u, step, fatigueSteps, autoregCfg());
+
+const histCtx = () => ({
+  currentKey: session ? (session.date + "_" + session.dayKey) : null,
+  machineFilter: machineFilterActive(),
+  execOrder: execOrderActive(),
+  cfg: autoregCfg()
+});
+
+const prevLoadData = (name, machine) => domainPrevLoadData(allSessions, name, machine, histCtx());
+const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(allSessions, name, { ...histCtx(), since, machine });
+const bestWeightEver = (name, machine) => domainBestWeightEver(allSessions, name, machine, histCtx());
+
+const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(allSessions, name, unit, machine, {
+  ...histCtx(),
+  muscle: opts && opts.muscle,
+  profileActive: profileActive(),
+  profile
+});
+
+const isDeloadActive = () => domainIsDeloadActive(lastDeloadDate, formatDate(new Date()));
+const deloadDue = () => domainDeloadDue(allSessions, {
+  ...histCtx(),
+  lastDeloadDate,
+  today: formatDate(new Date()),
+  days: activeDays(),
+  age: profileActive() ? profileAge() : null
+});
+
 let allSessionsPromise = null;
 async function loadAllSessions(){
   if(allSessions || !user) return;
@@ -2186,55 +2215,6 @@ function setPct(){
   return total ? Math.round(done / total * 100) : 0;
 }
 
-// Pure data. Finds the most recent session (excluding the one being edited) where this
-// exercise + machine variant was logged with at least one weight.
-// perSet is INDEX-ALIGNED with the logged set rows: empty sets are preserved as null so
-// callers can map values 1:1 onto the current set rows. Returns null when there's no history.
-function prevLoadData(name, machine){
-  if(!allSessions || !allSessions.length) return null;
-  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
-  let bestDate = "";
-  let bestSets = null;
-  let bestSess = null;
-  let bestEntryIdx = -1;
-  for(const sess of allSessions){
-    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
-    if(!sess.exercises || !sess.date) continue;
-    for(let ei = 0; ei < sess.exercises.length; ei++){
-      const entry = sess.exercises[ei];
-      let sets = null;
-      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
-      if(!sets || !sets.length) continue;
-      if(!sets.some(s => s && s.weight != null && s.weight !== "")) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; bestSets = sets; bestSess = sess; bestEntryIdx = ei; }
-    }
-  }
-  if(!bestSets) return null;
-
-  const perSet = bestSets.map(s => ({
-    weight:   (s && s.weight   != null && s.weight !== "") ? s.weight   : null,
-    reps:     (s && s.reps     != null) ? s.reps     : null,
-    repsDone: (s && s.repsDone != null) ? s.repsDone : null
-  }));
-
-  // 1-based execution rank of that entry in its session, only when it ran out of plan order.
-  let execRank = null;
-  if(execOrderActive() && bestSess && bestEntryIdx >= 0){
-    const sm = execShiftMap(bestSess);
-    const shift = sm.get(bestEntryIdx);
-    if(shift != null && shift !== 0){
-      const executed = [];
-      bestSess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
-      const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
-      const r = byTime.findIndex(x => x.i === bestEntryIdx);
-      if(r >= 0) execRank = r + 1;
-    }
-  }
-
-  return { perSet, date: bestDate, execRank };
-}
-
 // Legacy single-line renderer. Output is intentionally unchanged; stage B replaces it.
 // Shared meta row + variant-1 panel. `prev` / `sug` are precomputed by renderDay so the
 // history scan and the suggestion engine each run once per exercise.
@@ -2297,184 +2277,6 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
 const profileActive = () => document.body.classList.contains("flag-profile");
 const execOrderActive = () => document.body.classList.contains("flag-exec-order");
 
-function execShiftMap(sess){
-  const map = new Map();
-  if(!sess || !sess.exercises) return map;
-  const executed = [];
-  sess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
-  if(!executed.length) return map;
-  const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
-  const execIndices = executed.map(e => e.i).sort((a, b) => a - b);
-  byTime.forEach((item, execRank) => {
-    const expectedRank = execIndices.indexOf(item.i);
-    const shift = Math.max(-3, Math.min(3, execRank - expectedRank));
-    map.set(item.i, shift);
-  });
-  return map;
-}
-
-function orderFactor(shift){
-  return Math.pow(1 - autoregCfg().fatigue, -shift);
-}
-
-function profileAge(){
-  if(!profile.birthDate) return null;
-  const [y,m,d] = profile.birthDate.split("-").map(Number);
-  if(!y || !m || !d) return null;
-  const t = new Date();
-  let a = t.getFullYear() - y;
-  if((t.getMonth()+1) < m || ((t.getMonth()+1) === m && t.getDate() < d)) a--;
-  return (a >= 10 && a <= 99) ? a : null;
-}
-
-// B1 — Equipment-aware increments (kg)
-const DUMBBELL_LADDER = [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
-function snapKg(equip, value){
-  if(equip==="barra") return Math.max(2, Math.round(value/2)*2);
-  if(equip==="halter"){
-    if(value>40) return Math.round(value/2)*2;
-    let best=DUMBBELL_LADDER[0];
-    for(const v of DUMBBELL_LADDER) if(Math.abs(v-value)<Math.abs(best-value)) best=v;
-    return best;
-  }
-  return Math.round(value/2.5)*2.5;
-}
-function nextKgUp(equip, w, mult){
-  if(equip==="halter"){
-    let v=w;
-    for(let k=0;k<mult;k++) v = v>=40 ? v+2 : (DUMBBELL_LADDER.find(x=>x>v) ?? v+2);
-    return v;
-  }
-  const step = equip==="barra" ? 2 : 2.5;
-  return snapKg(equip, w + step*mult);
-}
-
-// --- Auto-regulation sensitivity presets (tunable) ---
-const AUTOREG_PRESETS = {
-  suave: { tol: 2, fatigue: 0.04,  ceilUp: false },
-  mod:   { tol: 1, fatigue: 0.025, ceilUp: false },
-  agr:   { tol: 1, fatigue: 0.01,  ceilUp: true  },
-};
-function autoregCfg(){ return AUTOREG_PRESETS[autoregSensitivity] || AUTOREG_PRESETS.mod; }
-
-// Snap a load to a real equipment increment. up=true rounds UP to the next rung.
-function snapLoad(equip, u, step, value, up){
-  if(u === "kg"){
-    if(equip === "halter"){
-      if(value > 40) return up ? Math.ceil(value/2)*2 : Math.round(value/2)*2;
-      if(up) return DUMBBELL_LADDER.find(x => x >= value) ?? 40;
-      let best = DUMBBELL_LADDER[0];
-      for(const v of DUMBBELL_LADDER) if(Math.abs(v-value) < Math.abs(best-value)) best = v;
-      return best;
-    }
-    const kstep = equip === "barra" ? 2 : 2.5;
-    const r = up ? Math.ceil(value/kstep)*kstep : Math.round(value/kstep)*kstep;
-    return equip === "barra" ? Math.max(2, r) : r;
-  }
-  const r = up ? Math.ceil(value/step)*step : Math.round(value/step)*step;
-  return u === "placas" ? Math.max(1, Math.round(r)) : r;
-}
-
-function projectLoad(w, repsDone, target, equip, u, step, fatigueSteps){
-  if(typeof w !== "number") return null;
-  if(repsDone == null || typeof target !== "number") return w;
-  const cfg = autoregCfg();
-  if(Math.abs(repsDone - target) <= cfg.tol) return w;        // inside band -> hold
-  const base = w * (30 + repsDone) / (30 + target);           // pre-fatigue rep-equivalent load
-  let ideal = fatigueSteps ? base * Math.pow(1 - cfg.fatigue, fatigueSteps) : base;
-  // Guard: when rep math warrants an increase (base >= w), fatigue may only dampen it
-  // toward w — never below w, never flipping an increase into a decrease.
-  if(base >= w && ideal < w) ideal = w;
-  const up = ideal > w;
-  return snapLoad(equip, u, step, ideal, cfg.ceilUp && up);
-}
-
-function suggestLoads(name, unit, machine, opts){
-  if(!allSessions || !allSessions.length) return null;
-  const u = unit || "kg";
-  const step = UNIT_STEP[u] || 2.5;
-  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
-  let best = null;
-  let bestDate = "";
-  let bestShift = 0;
-  // order-aware: also track latest in-order candidate
-  let ioSets = null, ioDate = "", ioEntryIdx = -1;
-  const eoActive = execOrderActive();
-  for(const sess of allSessions){
-    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
-    if(!sess.exercises) continue;
-    const sm = eoActive ? execShiftMap(sess) : null;
-    for(let ei = 0; ei < sess.exercises.length; ei++){
-      const entry = sess.exercises[ei];
-      let sets = null;
-      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
-      if(!sets || !sets.length) continue;
-      if(!sets.some(s => typeof s.weight === "number")) continue;
-      if(sess.date > bestDate){
-        bestDate = sess.date; best = sets;
-        bestShift = (sm && sm.has(ei)) ? sm.get(ei) : 0;
-      }
-      if(eoActive && sm){
-        const s = sm.has(ei) ? sm.get(ei) : 0;
-        if(s === 0 && sess.date > ioDate){ ioDate = sess.date; ioSets = sets; }
-      }
-    }
-  }
-  if(!best) return null;
-
-  // order-aware baseline selection
-  let useNormalization = false;
-  if(eoActive && ioSets && ioDate){
-    const dLatest = new Date(bestDate), dIo = new Date(ioDate);
-    const diffDays = (dLatest - dIo) / (1000 * 60 * 60 * 24);
-    if(diffDays <= 35){ best = ioSets; bestDate = ioDate; bestShift = 0; }
-    else { useNormalization = true; }
-  } else if(eoActive && bestShift !== 0){
-    useNormalization = true;
-  }
-
-  // B3 — Injury gate
-  const muscle = opts && opts.muscle;
-  if(profileActive() && muscle && profile.injuries[muscle]){
-    const suggestions = best.map(s => typeof s.weight === "number" ? s.weight : null);
-    return { loads: suggestions, dir: "→", date: bestDate, limited: true };
-  }
-
-  const equip = equipmentOf(name);
-  const exp = profileActive() && profile.experience ? profile.experience : null;
-
-  // adv gate: freeze the whole exercise if any numeric-weight set missed target
-  let advGateKeep = false;
-  if(exp === "adv"){
-    let allHit = true;
-    for(const s of best){
-      if(typeof s.weight !== "number") continue;
-      const didReps = s.repsDone ?? (s.done ? s.reps : null);
-      if(didReps == null || didReps < s.reps){ allHit = false; break; }
-    }
-    if(!allHit) advGateKeep = true;
-  }
-
-  let hasUp = false, hasDown = false;
-  const oFactor = useNormalization ? orderFactor(bestShift) : 1;
-  const suggestions = best.map(s => {
-    const w = s.weight;
-    if(typeof w !== "number") return null;
-    if(advGateKeep) return w;
-    const baseW = useNormalization ? w * oFactor : w;
-    const didReps = s.repsDone ?? (s.done ? s.reps : null);
-    const out = projectLoad(baseW, didReps, s.reps, equip, u, step, 0);
-    let final = out;
-    if(useNormalization && final != null) final = snapLoad(equip, u, step, final, false);
-    if(final != null && final > w) hasUp = true;
-    if(final != null && final < w) hasDown = true;
-    return final;
-  });
-  const dir = (hasUp && hasDown) ? "↕" : hasUp ? "↑" : hasDown ? "↓" : "→";
-  return { loads: suggestions, dir, date: bestDate };
-}
-
 // Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
 // now lives here so the panel row, the apply button and the input placeholders agree.
 function suggestData(name, unit, isSup, exIdx){
@@ -2487,87 +2289,6 @@ function suggestData(name, unit, isSup, exIdx){
   const planEx = activeDays()[current] && activeDays()[current].ex[exIdx];
   const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
   return suggestLoads(name, unit, machine, {muscle}) || null;
-}
-
-function exerciseTopHistory(name, since=null, machine){
-  if(!allSessions || !allSessions.length) return [];
-  const map = new Map();
-  const eoActive = execOrderActive();
-  for(const sess of allSessions){
-    if(!sess.exercises || !sess.date) continue;
-    if(since && sess.date < since) continue;
-    const sm = eoActive ? execShiftMap(sess) : null;
-    for(let ei = 0; ei < sess.exercises.length; ei++){
-      const entry = sess.exercises[ei];
-      let sets = null;
-      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
-      if(!sets || !sets.length) continue;
-      const nums = sets.map(s => s.weight).filter(w => typeof w === "number");
-      if(!nums.length) continue;
-      let top = Math.max(...nums);
-      if(eoActive && sm){
-        const shift = sm.has(ei) ? sm.get(ei) : 0;
-        if(shift !== 0) top = top * orderFactor(shift);
-      }
-      const prev = map.get(sess.date);
-      if(!prev || top > prev) map.set(sess.date, top);
-    }
-  }
-  return Array.from(map, ([date, top]) => ({date, top})).sort((a, b) => a.date < b.date ? -1 : 1);
-}
-
-function isStalled(name, since=null, machine){
-  const hist = exerciseTopHistory(name, since, machine);
-  if(hist.length <= STALL_SESSIONS) return false;
-  const window = hist.slice(-STALL_SESSIONS);
-  const before = hist.slice(0, -STALL_SESSIONS);
-  const windowMax = Math.max(...window.map(h => h.top));
-  const beforeMax = Math.max(...before.map(h => h.top));
-  return windowMax <= beforeMax;
-}
-
-function isDeloadActive(){
-  if(!lastDeloadDate) return false;
-  const today = formatDate(new Date());
-  return (Date.parse(today) - Date.parse(lastDeloadDate)) < 7 * 864e5;
-}
-
-function deloadDue(){
-  if((allSessions?.length || 0) < MIN_TOTAL_SESSIONS) return { due: false };
-  const today = formatDate(new Date());
-  let earliest = today;
-  for(const s of allSessions){ if(s.date && s.date < earliest) earliest = s.date; }
-  const cycleStart = lastDeloadDate || earliest;
-  const weeksSince = Math.floor((Date.parse(today) - Date.parse(cycleStart)) / (7 * 864e5));
-
-  const entries = [];
-  const seen = new Set();
-  const days = activeDays();
-  for(const k in days){
-    const d = days[k];
-    if(!d.ex) continue;
-    d.ex.forEach(e => {
-      if(!seen.has("m:" + e.name)){ seen.add("m:" + e.name); entries.push({name: e.name, isSup: false}); }
-      if(e.superset && !seen.has("s:" + e.superset.name)){ seen.add("s:" + e.superset.name); entries.push({name: e.superset.name, isSup: true}); }
-    });
-  }
-  const tracked = entries.length;
-  let stalled = 0;
-  entries.forEach(({name, isSup}) => {
-    const machine = machineFilterActive() ? lastMachineFor(name, isSup) : undefined;
-    if(isStalled(name, cycleStart, machine)) stalled++;
-  });
-
-  const uAge = profileAge();
-  const weeksMax = (profileActive() && uAge) ? (uAge>=55 ? 3 : uAge>=40 ? 4 : DELOAD_WEEKS_MAX) : DELOAD_WEEKS_MAX;
-  if(weeksSince >= weeksMax){
-    return { due: true, reason: `${weeksSince} semanas sem descarga` };
-  }
-  if(tracked >= MIN_TRACKED && stalled / tracked >= STALL_RATIO){
-    return { due: true, reason: `${stalled} de ${tracked} exercícios estagnados` };
-  }
-  return { due: false };
 }
 
 function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
@@ -2783,29 +2504,6 @@ function fmtDur(ms, withSecs){
 }
 function fmtNum(v){ return (Math.round(v * 10) / 10).toLocaleString("pt-BR"); }
 function fmtKg(v){ return Math.round(v).toLocaleString("pt-BR"); }
-
-// All-time heaviest logged weight for this exercise + machine variant, excluding today.
-// Mirrors prevLoadData's matching rules (subName/supSubName fallback + matchVariant).
-function bestWeightEver(name, machine){
-  if(!allSessions || !allSessions.length) return null;
-  const currentKey = session ? (session.date + "_" + session.dayKey) : null;
-  let best = null;
-  for(const sess of allSessions){
-    if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
-    if(!sess.exercises) continue;
-    for(const entry of sess.exercises){
-      let sets = null;
-      if((entry.subName || entry.name) === name && matchVariant(entry.machine, machine)) sets = entry.main;
-      else if((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine)) sets = entry.sup;
-      if(!sets) continue;
-      for(const s of sets){
-        const w = (s && typeof s.weight === "number") ? s.weight : null;
-        if(w != null && (best == null || w > best)) best = w;
-      }
-    }
-  }
-  return best;
-}
 
 // Returns null when there is not enough data to say anything.
 function trainSummary(){
