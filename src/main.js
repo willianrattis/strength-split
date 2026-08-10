@@ -1,12 +1,7 @@
-import { initializeApp } from "firebase/app";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  signInWithPopup, signOut, onAuthStateChanged
 } from "firebase/auth";
-import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc, serverTimestamp, onSnapshot,
-  query, orderBy, limit
-} from "firebase/firestore";
+import { serverTimestamp } from "firebase/firestore";
 import Chart from "chart.js/auto";
 import { jsPDF } from "jspdf";
 window.jspdf = { jsPDF };
@@ -37,81 +32,21 @@ import {
   $wrappedSlides, $wrappedProgress, $wrappedYearPills, $trainBar, $trainSegs, $trainCount, $trainFocus,
   $subModal, $subModalInner, $machineModal, $machineModalInner, $btnSharePdf
 } from "./core/dom.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCpq7zytWeXpjEhIFaiqHZKbODcM-ZYhKU",
-  authDomain: "strength-split.firebaseapp.com",
-  projectId: "strength-split",
-  storageBucket: "strength-split.firebasestorage.app",
-  messagingSenderId: "188488203799",
-  appId: "1:188488203799:web:33f3ec2637257820436652",
-  measurementId: "G-HP9J5WG1FY"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
-const provider = new GoogleAuthProvider();
-
-// ========= Feature Flags =========
-const FeatureFlags = (() => {
-  let flags = {};
-  let unsub = null;
-  let initialized = false;
-  const LS_KEY = "ss_featureFlags";
-
-  function applyFlagBindings() {
-    document.querySelectorAll("[data-flag]").forEach(el => {
-      el.style.display = isFeatureEnabled(el.dataset.flag) ? "" : "none";
-    });
-  }
-
-  function isFeatureEnabled(name) {
-    return flags[name] === true;
-  }
-
-  function getAllFlags() {
-    return { ...flags };
-  }
-
-  async function initializeFeatureFlags() {
-    if (initialized) return;
-    initialized = true;
-    try {
-      const ref = doc(db, "config", "featureFlags");
-      unsub = onSnapshot(ref, snap => {
-        flags = snap.exists() ? snap.data() : {};
-        try { localStorage.setItem(LS_KEY, JSON.stringify(flags)); } catch(_) {}
-        window.dispatchEvent(new CustomEvent("flagsUpdated"));
-        applyFlagBindings();
-      }, err => {
-        console.error("FeatureFlags: onSnapshot error", err);
-        try {
-          const cached = localStorage.getItem(LS_KEY);
-          if (cached) {
-            flags = JSON.parse(cached);
-            window.dispatchEvent(new CustomEvent("flagsUpdated"));
-            applyFlagBindings();
-          }
-        } catch(_) {}
-      });
-    } catch (err) {
-      console.error("FeatureFlags: init error", err);
-    }
-  }
-
-  function teardownFeatureFlags() {
-    if (unsub) { unsub(); unsub = null; }
-    flags = {};
-    initialized = false;
-    applyFlagBindings();
-  }
-
-  return { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags };
-})();
-
-const { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } = FeatureFlags;
+import { DAYS, DAY_NAMES_SHORT } from "./data/days.js";
+import { PLAN_TEMPLATES } from "./data/plan-templates.js";
+import { EXERCISE_CATALOG } from "./data/exercise-catalog.js";
+import { SESSIONS_FETCH_LIMIT, GAP_MIN_MS, GAP_MAX_MS, DELOAD_FACTOR } from "./core/config.js";
+import { auth, provider } from "./core/firebase.js";
+import * as repo from "./core/repo.js";
+import { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } from "./core/flags.js";
+import {
+  activeDays, machineFilterActive, profileActive, execOrderActive,
+  lastMachineFor, usedMachinesRanked, matchVariant,
+  sessionOpts, emptySession, reconcileSession,
+  autoregCfg, profileAge, projectLoad,
+  histCtx, prevLoadData, exerciseTopHistory, bestWeightEver,
+  suggestLoads, isDeloadActive, deloadDue, computeWrapped
+} from "./core/adapters.js";
 
 function applyPeriodizationState(){
   const available = isFeatureEnabled("periodization");
@@ -166,592 +101,13 @@ window.addEventListener("flagsUpdated", () => {
   applyGamificationState();
 });
 
-// ========= Catálogo do treino =========
-const DAYS = [
-  { abbr:"Seg", name:"Segunda", tag:"Ombro · Costas", focus:"Ombro lateral/posterior · Costas", ex:[
-    {name:"Elevação lateral com halter", muscle:"ombro", reps:[8,8,8,8], badges:["drop"]},
-    {name:"Crucifixo invertido com halter", muscle:"ombro", reps:[12,10,10,8], note:"Apoiar o peito no banco da remada cavalinho."},
-    {name:"Remada Hammer (anilhas)", muscle:"costas", reps:[12,10,10,8], badges:["iso"]},
-    {name:"Remada unilateral com halter", muscle:"costas", reps:[8,8,8,8], note:"No banco inclinado."},
-    {name:"Pulley frente — pegada supinada", muscle:"costas", reps:[12,10,10,8]},
-  ]},
-  { abbr:"Ter", name:"Terça", tag:"Posterior", focus:"Ombro frontal · Posterior de coxa · Glúteo", ex:[
-    {name:"Elevação frontal com anilha", muscle:"ombro", reps:[8,8,8,8]},
-    {name:"Cadeira abdutora", muscle:"perna", reps:[12,10,8,8], badges:["iso"]},
-    {name:"Meio terra sumô", muscle:"perna", reps:[12,10,8,8]},
-    {name:"Flexora sentado", muscle:"perna", reps:[12,10,10,8], badges:["iso","fast"]},
-    {name:"Leg 45 unilateral", muscle:"perna", reps:[12,10,8,6]},
-    {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15]},
-  ]},
-  { abbr:"Qua", name:"Quarta", tag:"Peito", focus:"Peito · Ombro", ex:[
-    {name:"Supino vertical inclinado", muscle:"peito", reps:[12,10,8,8,8]},
-    {name:"Peck deck", muscle:"peito", reps:[15,12,10,8,8]},
-    {name:"Supino inclinado com barra", muscle:"peito", reps:[12,10,8,8,6]},
-    {name:"Elevação frontal com anilha", muscle:"ombro", reps:[6,6,6,6,6],
-      superset:{name:"Elevação lateral com halter (sentado)", muscle:"ombro", reps:[12,10,10,8,8]}},
-    {name:"Desenvolvimento máquina", muscle:"ombro", reps:[12,10,8,8,8]},
-  ]},
-  { abbr:"Qui", name:"Quinta", tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps", ex:[
-    {name:"Face pull no Cross", muscle:"ombro", reps:[12,10,10,8,8], badges:["iso"],
-      superset:{name:"Elevação lateral com halter", muscle:"ombro", reps:[8,8,8,8,8]}},
-    {name:"Tríceps pulley com barra", muscle:"tríceps", reps:[9,9,9,9],
-      superset:{name:"Rosca W", muscle:"bíceps", reps:[9,9,9,9]}},
-    {name:"Tríceps francês com halter", muscle:"tríceps", reps:[8,8,8,8],
-      superset:{name:"Rosca no Cross", muscle:"bíceps", reps:[8,8,8,8]}},
-    {name:"Tríceps corda", muscle:"tríceps", reps:[12,10,10,8], badges:["iso"],
-      superset:{name:"Martelo simultâneo com halter", muscle:"bíceps", reps:[12,10,8,8]}},
-  ]},
-  { abbr:"Sex", name:"Sexta", tag:"Pernas", focus:"Quadríceps · Adutor", ex:[
-    {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12,12], badges:["iso","fast"], note:"Por série: 6 mov. com isometria + 6 acelerando."},
-    {name:"Búlgaro com carga ipsilateral", muscle:"perna", reps:[12,10,8,8]},
-    {name:"Leg 45", muscle:"perna", reps:[12,10,8,6]},
-    {name:"Cadeira adutora", muscle:"perna", reps:[15,12,10,8]},
-    {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15]},
-  ]},
-];
 const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
-
-// ========= Periodization tuning =========
-const DELOAD_FACTOR = 0.55;
-
-// ========= Plan Templates =========
-const PLAN_TEMPLATES = [
-  { templateKey:"AB", name:"AB \u00b7 Superiores / Inferiores", days:[
-    { type:"A", label:"Superiores", exercises:[
-      {name:"Supino reto com barra", muscle:"peito", reps:[8,8,8]},
-      {name:"Remada curvada com barra", muscle:"costas", reps:[8,8,8]},
-      {name:"Desenvolvimento com halteres", muscle:"ombro", reps:[8,8,8]},
-      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
-      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10]},
-      {name:"Tr\u00edceps franc\u00eas (testa)", muscle:"tr\u00edceps", reps:[10,10,10]},
-    ]},
-    { type:"B", label:"Inferiores", exercises:[
-      {name:"Agachamento livre", muscle:"perna", reps:[8,8,8]},
-      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
-      {name:"Cadeira flexora", muscle:"perna", reps:[10,10,10]},
-      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
-      {name:"Panturrilha em p\u00e9 (m\u00e1quina)", muscle:"perna", reps:[12,12,12,12]},
-    ]},
-  ]},
-  { templateKey:"ABC", name:"ABC \u00b7 Push / Pull / Legs", days:[
-    { type:"A", label:"Push", exercises:[
-      {name:"Supino reto com barra", muscle:"peito", reps:[8,8,8]},
-      {name:"Supino inclinado com halteres", muscle:"peito", reps:[10,10,10]},
-      {name:"Desenvolvimento militar halteres", muscle:"ombro", reps:[8,8,8]},
-      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
-      {name:"Tr\u00edceps corda no crossover", muscle:"tr\u00edceps", reps:[10,10,10]},
-    ]},
-    { type:"B", label:"Pull", exercises:[
-      {name:"Barra fixa (ou puxada alta)", muscle:"costas", reps:[8,8,8]},
-      {name:"Remada sentada (tri\u00e2ngulo)", muscle:"costas", reps:[10,10,10]},
-      {name:"Face pull (corda)", muscle:"ombro", reps:[12,12,12]},
-      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10]},
-      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10]},
-    ]},
-    { type:"C", label:"Legs", exercises:[
-      {name:"Agachamento barra livre", muscle:"perna", reps:[8,8,8]},
-      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
-      {name:"Stiff (terra romeno)", muscle:"perna", reps:[10,10,10]},
-      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
-      {name:"Panturrilha sentado", muscle:"perna", reps:[12,12,12,12]},
-    ]},
-  ]},
-  { templateKey:"ABCD", name:"ABCD \u00b7 Upper/Lower com \u00eanfases", days:[
-    { type:"A", label:"Superiores A (for\u00e7a)", exercises:[
-      {name:"Supino reto com barra", muscle:"peito", reps:[6,6,6]},
-      {name:"Remada curvada barra", muscle:"costas", reps:[6,6,6]},
-      {name:"Desenvolvimento militar barra", muscle:"ombro", reps:[8,8,8]},
-      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12]},
-      {name:"Rosca direta", muscle:"b\u00edceps", reps:[10,10,10]},
-      {name:"Tr\u00edceps testa", muscle:"tr\u00edceps", reps:[10,10,10]},
-    ]},
-    { type:"B", label:"Inferiores A (quadr\u00edceps)", exercises:[
-      {name:"Agachamento livre", muscle:"perna", reps:[8,8,8]},
-      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10]},
-      {name:"Afundo com halteres", muscle:"perna", reps:[10,10,10], note:"cada perna"},
-      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
-      {name:"Panturrilha em p\u00e9", muscle:"perna", reps:[12,12,12,12]},
-    ]},
-    { type:"C", label:"Superiores B (volume)", exercises:[
-      {name:"Supino inclinado halteres", muscle:"peito", reps:[8,8,8]},
-      {name:"Barra fixa supinada", muscle:"costas", reps:[8,8,8]},
-      {name:"Eleva\u00e7\u00e3o lateral na polia", muscle:"ombro", reps:[12,12,12]},
-      {name:"Crucifixo reto (m\u00e1quina)", muscle:"peito", reps:[12,12,12]},
-      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10]},
-      {name:"Tr\u00edceps franc\u00eas unilateral", muscle:"tr\u00edceps", reps:[10,10,10]},
-    ]},
-    { type:"D", label:"Inferiores B (posterior/gl\u00fateo)", exercises:[
-      {name:"Levantamento terra romeno", muscle:"perna", reps:[8,8,8]},
-      {name:"Cadeira flexora", muscle:"perna", reps:[10,10,10]},
-      {name:"Gl\u00fateo na polia (coice)", muscle:"perna", reps:[12,12,12]},
-      {name:"Cadeira abdutora", muscle:"perna", reps:[12,12,12]},
-      {name:"Panturrilha sentado", muscle:"perna", reps:[12,12,12,12]},
-    ]},
-  ]},
-  { templateKey:"ABCDE", name:"ABCDE \u00b7 Divis\u00e3o por grupo (5\u00d7/sem)", days:[
-    { type:"A", label:"Peito", exercises:[
-      {name:"Supino reto barra", muscle:"peito", reps:[8,8,8,8]},
-      {name:"Supino inclinado halteres", muscle:"peito", reps:[10,10,10,10]},
-      {name:"Crucifixo m\u00e1quina", muscle:"peito", reps:[12,12,12]},
-      {name:"Crossover polia alta", muscle:"peito", reps:[12,12,12]},
-    ]},
-    { type:"B", label:"Costas", exercises:[
-      {name:"Barra fixa (ou puxada alta)", muscle:"costas", reps:[8,8,8,8]},
-      {name:"Remada cavalinho (barra T)", muscle:"costas", reps:[8,8,8,8]},
-      {name:"Puxada aberta (pulley frente)", muscle:"costas", reps:[10,10,10]},
-      {name:"Face pull", muscle:"ombro", reps:[12,12,12]},
-      {name:"Remada baixa (cord\u00e3o)", muscle:"costas", reps:[12,12,12]},
-    ]},
-    { type:"C", label:"Pernas", exercises:[
-      {name:"Agachamento barra livre", muscle:"perna", reps:[8,8,8,8]},
-      {name:"Leg press 45\u00b0", muscle:"perna", reps:[10,10,10,10]},
-      {name:"Stiff", muscle:"perna", reps:[10,10,10,10]},
-      {name:"Cadeira extensora", muscle:"perna", reps:[12,12,12]},
-      {name:"Cadeira flexora", muscle:"perna", reps:[12,12,12]},
-      {name:"Panturrilha sentado", muscle:"perna", reps:[15,15,15,15]},
-    ]},
-    { type:"D", label:"Ombros", exercises:[
-      {name:"Desenvolvimento militar barra", muscle:"ombro", reps:[8,8,8,8]},
-      {name:"Eleva\u00e7\u00e3o lateral", muscle:"ombro", reps:[12,12,12,12]},
-      {name:"Crucifixo invertido", muscle:"ombro", reps:[12,12,12]},
-      {name:"Encolhimento", muscle:"ombro", reps:[10,10,10]},
-    ]},
-    { type:"E", label:"Bra\u00e7os", exercises:[
-      {name:"Rosca direta barra W", muscle:"b\u00edceps", reps:[10,10,10,10]},
-      {name:"Rosca martelo", muscle:"b\u00edceps", reps:[10,10,10,10]},
-      {name:"Tr\u00edceps testa (barra EZ)", muscle:"tr\u00edceps", reps:[10,10,10,10]},
-      {name:"Tr\u00edceps corda no crossover", muscle:"tr\u00edceps", reps:[12,12,12]},
-      {name:"Rosca punho (antebra\u00e7o)", muscle:"b\u00edceps", reps:[15,15,15], note:"opcional"},
-    ]},
-  ]},
-];
-
-// ========= Catálogo canônico de exercícios (autocomplete) =========
-const EXERCISE_CATALOG = [
-  // — Peito —
-  {name:"Supino reto com barra",muscle:"peito",type:"comp"},
-  {name:"Supino reto com halter",muscle:"peito",type:"comp"},
-  {name:"Supino inclinado com barra",muscle:"peito",type:"comp"},
-  {name:"Supino inclinado com halter",muscle:"peito",type:"comp"},
-  {name:"Supino declinado com barra",muscle:"peito",type:"comp"},
-  {name:"Supino declinado com halter",muscle:"peito",type:"comp"},
-  {name:"Supino vertical inclinado",muscle:"peito",type:"comp"},
-  {name:"Supino máquina",muscle:"peito",type:"comp"},
-  {name:"Crucifixo reto com halter",muscle:"peito",type:"iso"},
-  {name:"Crucifixo inclinado com halter",muscle:"peito",type:"iso"},
-  {name:"Crucifixo no cabo (crossover)",muscle:"peito",type:"iso"},
-  {name:"Crossover alto",muscle:"peito",type:"iso"},
-  {name:"Crossover baixo",muscle:"peito",type:"iso"},
-  {name:"Peck deck",muscle:"peito",type:"iso"},
-  {name:"Flexão de braço",muscle:"peito",type:"comp"},
-  {name:"Flexão com apoio",muscle:"peito",type:"comp"},
-  {name:"Pullover com halter",muscle:"peito",type:"iso"},
-  {name:"Pullover na máquina",muscle:"peito",type:"iso"},
-  {name:"Chest press máquina",muscle:"peito",type:"comp"},
-  {name:"Mergulho no paralelas (peito)",muscle:"peito",type:"comp"},
-  {name:"Supino inclinado com halteres",muscle:"peito",type:"comp"},
-  {name:"Supino inclinado halteres",muscle:"peito",type:"comp"},
-  {name:"Supino reto barra",muscle:"peito",type:"comp"},
-  {name:"Crucifixo máquina",muscle:"peito",type:"iso"},
-  {name:"Crossover polia alta",muscle:"peito",type:"iso"},
-  {name:"Crucifixo reto (máquina)",muscle:"peito",type:"iso"},
-  {name:"Supino reto no Smith",muscle:"peito",type:"comp"},
-  {name:"Supino inclinado no Smith",muscle:"peito",type:"comp"},
-  {name:"Supino declinado na máquina",muscle:"peito",type:"comp"},
-  {name:"Supino reto pegada fechada",muscle:"peito",type:"comp"},
-  {name:"Crucifixo declinado com halter",muscle:"peito",type:"iso"},
-  {name:"Flexão declinada (pés elevados)",muscle:"peito",type:"comp"},
-  {name:"Flexão diamante",muscle:"peito",type:"comp"},
-  {name:"Supino unilateral com halter",muscle:"peito",type:"comp"},
-  {name:"Crucifixo unilateral no cabo",muscle:"peito",type:"iso"},
-  {name:"Pullover na polia alta",muscle:"peito",type:"iso"},
-  {name:"Supino inclinado na máquina",muscle:"peito",type:"comp"},
-  {name:"Supino reto com kettlebell",muscle:"peito",type:"comp"},
-  {name:"Chest press unilateral na máquina",muscle:"peito",type:"comp"},
-  {name:"Crucifixo na máquina unilateral",muscle:"peito",type:"iso"},
-  {name:"Flexão com halteres (peito)",muscle:"peito",type:"comp"},
-  {name:"Supino declinado no Smith",muscle:"peito",type:"comp"},
-  {name:"Crucifixo declinado no cabo",muscle:"peito",type:"iso"},
-  {name:"Supino máquina unilateral",muscle:"peito",type:"comp"},
-  {name:"Peck deck unilateral",muscle:"peito",type:"iso"},
-  {name:"Mergulho entre bancos (peito)",muscle:"peito",type:"comp"},
-  {name:"Flexão hindu",muscle:"peito",type:"comp"},
-  {name:"Crossover baixo unilateral",muscle:"peito",type:"iso"},
-  {name:"Supino reto unilateral no Smith",muscle:"peito",type:"comp"},
-  // — Costas —
-  {name:"Puxada frontal aberta",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal fechada",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal triângulo",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal supinada",muscle:"costas",type:"comp"},
-  {name:"Pulley frente — pegada supinada",muscle:"costas",type:"comp"},
-  {name:"Pulley frente — pegada pronada",muscle:"costas",type:"comp"},
-  {name:"Pulley frente — triângulo",muscle:"costas",type:"comp"},
-  {name:"Remada curvada com barra",muscle:"costas",type:"comp"},
-  {name:"Remada curvada com halter",muscle:"costas",type:"comp"},
-  {name:"Remada unilateral com halter",muscle:"costas",type:"comp"},
-  {name:"Remada cavalinho",muscle:"costas",type:"comp"},
-  {name:"Remada Hammer (anilhas)",muscle:"costas",type:"comp"},
-  {name:"Remada baixa no cabo",muscle:"costas",type:"comp"},
-  {name:"Remada alta com barra",muscle:"costas",type:"comp"},
-  {name:"Remada na máquina",muscle:"costas",type:"comp"},
-  {name:"Remada T-bar",muscle:"costas",type:"comp"},
-  {name:"Barra fixa (pull-up)",muscle:"costas",type:"comp"},
-  {name:"Barra fixa supinada (chin-up)",muscle:"costas",type:"comp"},
-  {name:"Pulldown reto no cabo",muscle:"costas",type:"iso"},
-  {name:"Serrátil no cabo",muscle:"costas",type:"iso"},
-  {name:"Levantamento terra convencional",muscle:"costas",type:"comp"},
-  {name:"Levantamento terra romeno",muscle:"costas",type:"comp"},
-  {name:"Hiperextensão lombar",muscle:"costas",type:"iso"},
-  {name:"Good morning",muscle:"costas",type:"comp"},
-  {name:"Barra fixa (ou puxada alta)",muscle:"costas",type:"comp"},
-  {name:"Remada sentada (triângulo)",muscle:"costas",type:"comp"},
-  {name:"Remada curvada barra",muscle:"costas",type:"comp"},
-  {name:"Barra fixa supinada",muscle:"costas",type:"comp"},
-  {name:"Remada cavalinho (barra T)",muscle:"costas",type:"comp"},
-  {name:"Puxada aberta (pulley frente)",muscle:"costas",type:"comp"},
-  {name:"Remada baixa (cordão)",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal pegada neutra",muscle:"costas",type:"comp"},
-  {name:"Remada unilateral no cabo",muscle:"costas",type:"comp"},
-  {name:"Levantamento terra sumô",muscle:"costas",type:"comp"},
-  {name:"Puxada unilateral no pulley",muscle:"costas",type:"comp"},
-  {name:"Barra fixa neutra",muscle:"costas",type:"comp"},
-  {name:"Remada cavalinho pegada supinada",muscle:"costas",type:"comp"},
-  {name:"Hiperextensão no banco 45°",muscle:"costas",type:"iso"},
-  {name:"Remada curvada pegada supinada",muscle:"costas",type:"comp"},
-  {name:"Remada Pendlay com barra",muscle:"costas",type:"comp"},
-  {name:"Remada Yates com barra",muscle:"costas",type:"comp"},
-  {name:"Levantamento terra trap bar",muscle:"costas",type:"comp"},
-  {name:"Remada cavalinho unilateral",muscle:"costas",type:"comp"},
-  {name:"Remada no crossover unilateral",muscle:"costas",type:"comp"},
-  {name:"Barra fixa com peso",muscle:"costas",type:"comp"},
-  {name:"Remada curvada pegada pronada",muscle:"costas",type:"comp"},
-  {name:"Levantamento terra déficit",muscle:"costas",type:"comp"},
-  {name:"Remada máquina unilateral",muscle:"costas",type:"comp"},
-  {name:"Hiperextensão com peso (anilha)",muscle:"costas",type:"iso"},
-  {name:"Remada T-bar unilateral",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal com barra reta",muscle:"costas",type:"comp"},
-  {name:"Good morning com halter",muscle:"costas",type:"comp"},
-  {name:"Barra fixa assistida na máquina",muscle:"costas",type:"comp"},
-  {name:"Puxada frontal unilateral na máquina",muscle:"costas",type:"comp"},
-  {name:"Barra fixa com elástico (assistida)",muscle:"costas",type:"comp"},
-  // — Ombro —
-  {name:"Desenvolvimento com barra",muscle:"ombro",type:"comp"},
-  {name:"Desenvolvimento com halter",muscle:"ombro",type:"comp"},
-  {name:"Desenvolvimento máquina",muscle:"ombro",type:"comp"},
-  {name:"Desenvolvimento Arnold",muscle:"ombro",type:"comp"},
-  {name:"Elevação lateral com halter",muscle:"ombro",type:"iso"},
-  {name:"Elevação lateral com halter (sentado)",muscle:"ombro",type:"iso"},
-  {name:"Elevação lateral no cabo",muscle:"ombro",type:"iso"},
-  {name:"Elevação lateral na máquina",muscle:"ombro",type:"iso"},
-  {name:"Elevação frontal com halter",muscle:"ombro",type:"iso"},
-  {name:"Elevação frontal com barra",muscle:"ombro",type:"iso"},
-  {name:"Elevação frontal com anilha",muscle:"ombro",type:"iso"},
-  {name:"Elevação frontal no cabo",muscle:"ombro",type:"iso"},
-  {name:"Crucifixo invertido com halter",muscle:"ombro",type:"iso"},
-  {name:"Crucifixo invertido na máquina",muscle:"ombro",type:"iso"},
-  {name:"Crucifixo invertido no cabo",muscle:"ombro",type:"iso"},
-  {name:"Face pull no Cross",muscle:"ombro",type:"iso"},
-  {name:"Face pull com corda",muscle:"ombro",type:"iso"},
-  {name:"Press militar com barra",muscle:"ombro",type:"comp"},
-  {name:"Remada alta com halter",muscle:"ombro",type:"comp"},
-  {name:"Ombro máquina lateral",muscle:"ombro",type:"iso"},
-  {name:"Desenvolvimento com halteres",muscle:"ombro",type:"comp"},
-  {name:"Elevação lateral",muscle:"ombro",type:"iso"},
-  {name:"Desenvolvimento militar halteres",muscle:"ombro",type:"comp"},
-  {name:"Face pull (corda)",muscle:"ombro",type:"iso"},
-  {name:"Desenvolvimento militar barra",muscle:"ombro",type:"comp"},
-  {name:"Elevação lateral na polia",muscle:"ombro",type:"iso"},
-  {name:"Face pull",muscle:"ombro",type:"iso"},
-  {name:"Crucifixo invertido",muscle:"ombro",type:"iso"},
-  {name:"Encolhimento",muscle:"ombro",type:"iso"},
-  {name:"Elevação lateral unilateral no cabo",muscle:"ombro",type:"iso"},
-  {name:"Elevação lateral inclinada (lean-away)",muscle:"ombro",type:"iso"},
-  {name:"Press militar no Smith",muscle:"ombro",type:"comp"},
-  {name:"Crucifixo invertido no banco 45°",muscle:"ombro",type:"iso"},
-  {name:"Remada alta no cabo",muscle:"ombro",type:"comp"},
-  {name:"Manguito rotador com elástico",muscle:"ombro",type:"iso"},
-  {name:"Rotação externa no cabo",muscle:"ombro",type:"iso"},
-  {name:"Desenvolvimento com kettlebell",muscle:"ombro",type:"comp"},
-  {name:"Desenvolvimento unilateral com halter",muscle:"ombro",type:"comp"},
-  {name:"Elevação lateral com elástico",muscle:"ombro",type:"iso"},
-  {name:"Press militar com kettlebell",muscle:"ombro",type:"comp"},
-  {name:"Remada alta com kettlebell",muscle:"ombro",type:"comp"},
-  {name:"Desenvolvimento sentado com barra",muscle:"ombro",type:"comp"},
-  {name:"Elevação lateral deitado",muscle:"ombro",type:"iso"},
-  {name:"Face pull unilateral no cabo",muscle:"ombro",type:"iso"},
-  {name:"Crucifixo invertido unilateral no cabo",muscle:"ombro",type:"iso"},
-  {name:"Remada alta na máquina",muscle:"ombro",type:"comp"},
-  {name:"Elevação frontal com kettlebell",muscle:"ombro",type:"iso"},
-  {name:"Desenvolvimento na máquina unilateral",muscle:"ombro",type:"comp"},
-  {name:"Rotação interna no cabo",muscle:"ombro",type:"iso"},
-  {name:"Elevação frontal na máquina",muscle:"ombro",type:"iso"},
-  // — Trapézio —
-  {name:"Encolhimento com halter",muscle:"trapézio",type:"iso"},
-  {name:"Encolhimento com barra",muscle:"trapézio",type:"iso"},
-  {name:"Encolhimento na máquina Smith",muscle:"trapézio",type:"iso"},
-  {name:"Remada alta com barra (trapézio)",muscle:"trapézio",type:"comp"},
-  {name:"Encolhimento com halter inclinado",muscle:"trapézio",type:"iso"},
-  {name:"Face pull (trapézio)",muscle:"trapézio",type:"iso"},
-  {name:"Encolhimento no cabo",muscle:"trapézio",type:"iso"},
-  {name:"Encolhimento com barra atrás do corpo",muscle:"trapézio",type:"iso"},
-  {name:"Encolhimento unilateral com halter",muscle:"trapézio",type:"iso"},
-  {name:"Remada alta com halteres (trapézio)",muscle:"trapézio",type:"comp"},
-  {name:"Encolhimento com kettlebell",muscle:"trapézio",type:"iso"},
-  {name:"Remada alta no Smith (trapézio)",muscle:"trapézio",type:"comp"},
-  {name:"Encolhimento unilateral no cabo",muscle:"trapézio",type:"iso"},
-  // — Bíceps —
-  {name:"Rosca direta com barra",muscle:"bíceps",type:"iso"},
-  {name:"Rosca direta com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca alternada com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca W (barra EZ)",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott com barra",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott na máquina",muscle:"bíceps",type:"iso"},
-  {name:"Rosca concentrada",muscle:"bíceps",type:"iso"},
-  {name:"Rosca martelo com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca martelo simultâneo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca no cabo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca no Cross",muscle:"bíceps",type:"iso"},
-  {name:"Rosca inclinada com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca 21 (barra EZ)",muscle:"bíceps",type:"iso"},
-  {name:"Rosca spider com barra EZ",muscle:"bíceps",type:"iso"},
-  {name:"Martelo simultâneo com halter",muscle:"bíceps",type:"iso"},
-  {name:"Martelo no cabo com corda",muscle:"bíceps",type:"iso"},
-  {name:"Rosca W",muscle:"bíceps",type:"iso"},
-  {name:"Rosca direta barra W",muscle:"bíceps",type:"iso"},
-  {name:"Rosca martelo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca direta",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott unilateral com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca inclinada unilateral com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca com elástico",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Zottman",muscle:"bíceps",type:"iso"},
-  {name:"Rosca drag com barra",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott no cabo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca martelo no banco inclinado",muscle:"bíceps",type:"iso"},
-  {name:"Rosca no Cross unilateral",muscle:"bíceps",type:"iso"},
-  {name:"Rosca Scott unilateral no cabo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca martelo unilateral no cabo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca 21 com halter",muscle:"bíceps",type:"iso"},
-  {name:"Rosca direta na máquina",muscle:"bíceps",type:"iso"},
-  {name:"Rosca concentrada no cabo",muscle:"bíceps",type:"iso"},
-  {name:"Rosca com kettlebell",muscle:"bíceps",type:"iso"},
-  {name:"Rosca inversa com barra",muscle:"bíceps",type:"iso"},
-  {name:"Rosca inversa com barra EZ",muscle:"bíceps",type:"iso"},
-  {name:"Rosca bayesiana no cabo",muscle:"bíceps",type:"iso"},
-  // — Tríceps —
-  {name:"Tríceps pulley com barra",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps corda",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps corda no crossover",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês com barra EZ",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa (barra EZ)",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps banco",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps coice com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps coice no cabo",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps mergulho no paralelas",muscle:"tríceps",type:"comp"},
-  {name:"Tríceps overhead com corda",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps overhead com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps supino fechado",muscle:"tríceps",type:"comp"},
-  {name:"Tríceps máquina",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps pulley inverso",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês (testa)",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês unilateral",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês no cabo com corda",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês na máquina",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês unilateral com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa na máquina",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa unilateral com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês sentado com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps supino fechado no Smith",muscle:"tríceps",type:"comp"},
-  {name:"Tríceps mergulho no banco",muscle:"tríceps",type:"comp"},
-  {name:"Tríceps corda unilateral",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês deitado com halter",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps pulley unilateral",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps testa no banco declinado",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês com kettlebell",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps coice na máquina",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês no crossover unilateral",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps pulley unilateral com corda",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps mergulho assistido na máquina",muscle:"tríceps",type:"comp"},
-  {name:"Tríceps pulley com barra V",muscle:"tríceps",type:"iso"},
-  {name:"Tríceps francês unilateral na máquina",muscle:"tríceps",type:"iso"},
-  // — Antebraço —
-  {name:"Rosca punho com barra",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho com halter",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho invertida com barra",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho invertida com halter",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho (antebraço)",muscle:"antebraço",type:"iso"},
-  {name:"Farmer's walk",muscle:"antebraço",type:"comp"},
-  {name:"Wrist roller",muscle:"antebraço",type:"iso"},
-  {name:"Martelo braquiorradial",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho no cabo",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho invertida no cabo",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho unilateral com halter",muscle:"antebraço",type:"iso"},
-  {name:"Extensor de punho com elástico",muscle:"antebraço",type:"iso"},
-  {name:"Rosca punho com kettlebell",muscle:"antebraço",type:"iso"},
-  {name:"Farmer's walk unilateral",muscle:"antebraço",type:"comp"},
-  {name:"Rosca punho na máquina",muscle:"antebraço",type:"iso"},
-  {name:"Pinça com anilha",muscle:"antebraço",type:"iso"},
-  // — Perna (quadríceps / posterior / adutores) —
-  {name:"Agachamento livre com barra",muscle:"perna",type:"comp"},
-  {name:"Agachamento frontal",muscle:"perna",type:"comp"},
-  {name:"Agachamento no Smith",muscle:"perna",type:"comp"},
-  {name:"Agachamento sumô",muscle:"perna",type:"comp"},
-  {name:"Agachamento hack",muscle:"perna",type:"comp"},
-  {name:"Agachamento goblet",muscle:"perna",type:"comp"},
-  {name:"Agachamento búlgaro",muscle:"perna",type:"comp"},
-  {name:"Leg press 45",muscle:"perna",type:"comp"},
-  {name:"Leg press horizontal",muscle:"perna",type:"comp"},
-  {name:"Leg 45",muscle:"perna",type:"comp"},
-  {name:"Leg 45 unilateral",muscle:"perna",type:"comp"},
-  {name:"Cadeira extensora",muscle:"perna",type:"iso"},
-  {name:"Flexora deitado",muscle:"perna",type:"iso"},
-  {name:"Flexora sentado",muscle:"perna",type:"iso"},
-  {name:"Mesa flexora",muscle:"perna",type:"iso"},
-  {name:"Stiff com barra",muscle:"perna",type:"comp"},
-  {name:"Stiff com halter",muscle:"perna",type:"comp"},
-  {name:"Meio terra sumô",muscle:"perna",type:"comp"},
-  {name:"Avanço com halter",muscle:"perna",type:"comp"},
-  {name:"Avanço no Smith",muscle:"perna",type:"comp"},
-  {name:"Passada com halter",muscle:"perna",type:"comp"},
-  {name:"Búlgaro com carga ipsilateral",muscle:"perna",type:"comp"},
-  {name:"Búlgaro com halter",muscle:"perna",type:"comp"},
-  {name:"Cadeira adutora",muscle:"perna",type:"iso"},
-  {name:"Cadeira abdutora",muscle:"perna",type:"iso"},
-  {name:"Sissy squat",muscle:"perna",type:"iso"},
-  {name:"Hack squat invertido",muscle:"perna",type:"comp"},
-  {name:"Afundo no Smith",muscle:"perna",type:"comp"},
-  {name:"Prensa unilateral",muscle:"perna",type:"comp"},
-  {name:"Agachamento livre",muscle:"perna",type:"comp"},
-  {name:"Leg press 45°",muscle:"perna",type:"comp"},
-  {name:"Cadeira flexora",muscle:"perna",type:"iso"},
-  {name:"Panturrilha em pé (máquina)",muscle:"perna",type:"iso"},
-  {name:"Agachamento barra livre",muscle:"perna",type:"comp"},
-  {name:"Stiff (terra romeno)",muscle:"perna",type:"comp"},
-  {name:"Afundo com halteres",muscle:"perna",type:"comp"},
-  {name:"Panturrilha em pé",muscle:"perna",type:"iso"},
-  {name:"Glúteo na polia (coice)",muscle:"perna",type:"iso"},
-  {name:"Stiff",muscle:"perna",type:"comp"},
-  {name:"Agachamento pistol (unilateral)",muscle:"perna",type:"comp"},
-  {name:"Leg press horizontal unilateral",muscle:"perna",type:"comp"},
-  {name:"Cadeira extensora unilateral",muscle:"perna",type:"iso"},
-  {name:"Flexora unilateral sentado",muscle:"perna",type:"iso"},
-  {name:"Flexora em pé",muscle:"perna",type:"iso"},
-  {name:"Stiff com kettlebell",muscle:"perna",type:"comp"},
-  {name:"Levantamento terra romeno unilateral com halter",muscle:"perna",type:"comp"},
-  {name:"Avanço reverso com halter",muscle:"perna",type:"comp"},
-  {name:"Avanço caminhando com halter",muscle:"perna",type:"comp"},
-  {name:"Passada no Smith",muscle:"perna",type:"comp"},
-  {name:"Passada com barra",muscle:"perna",type:"comp"},
-  {name:"Búlgaro no Smith",muscle:"perna",type:"comp"},
-  {name:"Adutora no cabo",muscle:"perna",type:"iso"},
-  {name:"Abdutora no cabo",muscle:"perna",type:"iso"},
-  {name:"Agachamento Zercher",muscle:"perna",type:"comp"},
-  {name:"Agachamento sumô no Smith",muscle:"perna",type:"comp"},
-  {name:"Leg press 45 unilateral",muscle:"perna",type:"comp"},
-  {name:"Cadeira adutora unilateral",muscle:"perna",type:"iso"},
-  {name:"Stiff no Smith",muscle:"perna",type:"comp"},
-  {name:"Agachamento hack unilateral",muscle:"perna",type:"comp"},
-  {name:"Leg press vertical",muscle:"perna",type:"comp"},
-  {name:"Afundo com barra",muscle:"perna",type:"comp"},
-  {name:"Passada com kettlebell",muscle:"perna",type:"comp"},
-  {name:"Leg press 45 com pés altos",muscle:"perna",type:"comp"},
-  {name:"Flexora deitado unilateral",muscle:"perna",type:"iso"},
-  {name:"Agachamento sumô com halter",muscle:"perna",type:"comp"},
-  {name:"Agachamento Smith unilateral",muscle:"perna",type:"comp"},
-  {name:"Agachamento frontal com kettlebell",muscle:"perna",type:"comp"},
-  {name:"Stiff unilateral no cabo",muscle:"perna",type:"comp"},
-  {name:"Leg press vertical unilateral",muscle:"perna",type:"comp"},
-  {name:"Levantamento terra romeno unilateral no cabo",muscle:"perna",type:"comp"},
-  {name:"Passada lateral com halter",muscle:"perna",type:"comp"},
-  // — Glúteo —
-  {name:"Hip thrust com barra",muscle:"glúteo",type:"comp"},
-  {name:"Hip thrust na máquina",muscle:"glúteo",type:"comp"},
-  {name:"Elevação pélvica no solo",muscle:"glúteo",type:"iso"},
-  {name:"Glúteo na máquina",muscle:"glúteo",type:"iso"},
-  {name:"Glúteo no cabo (kickback)",muscle:"glúteo",type:"iso"},
-  {name:"Coice no cabo",muscle:"glúteo",type:"iso"},
-  {name:"Abdução no cabo",muscle:"glúteo",type:"iso"},
-  {name:"Abdução com faixa elástica",muscle:"glúteo",type:"iso"},
-  {name:"Step-up com halter",muscle:"glúteo",type:"comp"},
-  {name:"Ponte glútea unilateral",muscle:"glúteo",type:"iso"},
-  {name:"Glúteo quatro apoios",muscle:"glúteo",type:"iso"},
-  {name:"Hip thrust unilateral",muscle:"glúteo",type:"iso"},
-  {name:"Elevação pélvica no banco",muscle:"glúteo",type:"iso"},
-  {name:"Hip thrust no Smith",muscle:"glúteo",type:"comp"},
-  {name:"Coice na máquina",muscle:"glúteo",type:"iso"},
-  {name:"Abdução na máquina",muscle:"glúteo",type:"iso"},
-  {name:"Step-up no banco (peso corporal)",muscle:"glúteo",type:"comp"},
-  {name:"Glúteo quatro apoios no cabo",muscle:"glúteo",type:"iso"},
-  {name:"Hip thrust com kettlebell",muscle:"glúteo",type:"comp"},
-  {name:"Ponte glútea com barra",muscle:"glúteo",type:"iso"},
-  {name:"Elevação pélvica unilateral no banco",muscle:"glúteo",type:"iso"},
-  {name:"Abdução deitado (peso corporal)",muscle:"glúteo",type:"iso"},
-  {name:"Ponte glútea com halter",muscle:"glúteo",type:"iso"},
-  {name:"Step-up lateral com halter",muscle:"glúteo",type:"comp"},
-  {name:"Abdução com halter (deitado)",muscle:"glúteo",type:"iso"},
-  // — Panturrilha —
-  {name:"Panturrilha sentado",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha em pé na máquina",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha no leg press",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha no Smith",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha unilateral com halter",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha no hack",muscle:"panturrilha",type:"iso"},
-  {name:"Gêmeos em pé (donkey calf)",muscle:"panturrilha",type:"iso"},
-  {name:"Sóleo sentado",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha no cabo",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha unilateral no step (peso corporal)",muscle:"panturrilha",type:"iso"},
-  {name:"Sóleo no leg press",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha com kettlebell em pé",muscle:"panturrilha",type:"iso"},
-  {name:"Sóleo no Smith",muscle:"panturrilha",type:"iso"},
-  {name:"Panturrilha unilateral no leg press",muscle:"panturrilha",type:"iso"},
-  // — Abdômen —
-  {name:"Abdominal crunch",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal infra",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal na máquina",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal no cabo (rope crunch)",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal bicicleta",muscle:"abdômen",type:"iso"},
-  {name:"Prancha frontal",muscle:"abdômen",type:"iso"},
-  {name:"Prancha lateral",muscle:"abdômen",type:"iso"},
-  {name:"Elevação de pernas suspenso",muscle:"abdômen",type:"iso"},
-  {name:"Elevação de pernas no banco",muscle:"abdômen",type:"iso"},
-  {name:"Russian twist",muscle:"abdômen",type:"iso"},
-  {name:"Oblíquo no cabo",muscle:"abdômen",type:"iso"},
-  {name:"Roda abdominal (ab wheel)",muscle:"abdômen",type:"iso"},
-  {name:"Leg raise na barra fixa",muscle:"abdômen",type:"iso"},
-  {name:"Mountain climber",muscle:"abdômen",type:"iso"},
-  {name:"Pallof press no cabo",muscle:"abdômen",type:"iso"},
-  {name:"Woodchop no cabo",muscle:"abdômen",type:"iso"},
-  {name:"Crunch invertido",muscle:"abdômen",type:"iso"},
-  {name:"Sit-up",muscle:"abdômen",type:"iso"},
-  {name:"Dragon flag",muscle:"abdômen",type:"iso"},
-  {name:"Hollow hold",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal supra no banco declinado",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal com carga (anilha)",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal canivete (V-up)",muscle:"abdômen",type:"iso"},
-  {name:"Elevação de pernas deitado no solo",muscle:"abdômen",type:"iso"},
-  {name:"Flexão lateral de tronco (side bend) com halter",muscle:"abdômen",type:"iso"},
-  {name:"Rotação de tronco na máquina",muscle:"abdômen",type:"iso"},
-  {name:"Prancha frontal com carga",muscle:"abdômen",type:"iso"},
-  {name:"Abdominal oblíquo no banco (side crunch)",muscle:"abdômen",type:"iso"},
-  {name:"Elevação de joelhos no banco romano",muscle:"abdômen",type:"iso"},
-  {name:"Rotação de tronco com halter",muscle:"abdômen",type:"iso"},
-  {name:"Elevação de pernas no cabo",muscle:"abdômen",type:"iso"},
-  {name:"Sit-up com anilha",muscle:"abdômen",type:"iso"},
-  {name:"Prancha lateral com carga",muscle:"abdômen",type:"iso"},
-];
 
 const _exTypeMap = buildExTypeMap(EXERCISE_CATALOG);
 
 const MACHINE_CATALOG = ["Hammer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
 
 // ========= Estado em memória =========
-// Palliative cap on the session cache. ~750 sessions is several years of
-// training; raising it is cheaper than the Phase 5 aggregate work if a real
-// user ever hits it. Phase 5 replaces this with aggregates + pagination.
-const SESSIONS_FETCH_LIMIT = 750;
 
 const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
 state.current = todayIdx;
@@ -1339,10 +695,8 @@ function renderInitError(){
 async function loadPref(){
   if(!state.user) return;
   try{
-    const ref = doc(db, "users", state.user.uid, "prefs", "app");
-    const snap = await getDoc(ref);
-    if(snap.exists()){
-      const d = snap.data();
+    const d = await repo.getPrefs(state.user.uid);
+    if(d){
       if(d.viewMode) state.viewMode = d.viewMode;
       if(d.theme === "dark" || d.theme === "light") state.theme = d.theme;
       if(d.currentPlanName) state.currentPlanName = d.currentPlanName;
@@ -1364,10 +718,8 @@ async function loadPref(){
   if(state.gamificationEnabled && !state.gamifStartDate){ state.gamifStartDate = todayStr(); savePref(); }
   // load profile doc
   try{
-    const pRef = doc(db, "users", state.user.uid, "prefs", "profile");
-    const pSnap = await getDoc(pRef);
-    if(pSnap.exists()){
-      const p = pSnap.data();
+    const p = await repo.getProfileDoc(state.user.uid);
+    if(p){
       state.profile.birthDate = (typeof p.birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.birthDate)) ? p.birthDate : null;
       if(p.sex === "m" || p.sex === "f") state.profile.sex = p.sex; else state.profile.sex = null;
       if(typeof p.bodyweight === "number" && p.bodyweight > 0) state.profile.bodyweight = p.bodyweight; else state.profile.bodyweight = null;
@@ -1391,8 +743,7 @@ async function loadPref(){
 async function savePref(){
   if(!state.user) return;
   try{
-    const ref = doc(db, "users", state.user.uid, "prefs", "app");
-    await setDoc(ref, {
+    await repo.setPrefs(state.user.uid, {
       viewMode: state.viewMode, theme: state.theme || null,
       currentPlanName: state.currentPlanName || null,
       currentPlanId: state.currentPlanId || null,
@@ -1406,14 +757,13 @@ async function savePref(){
       execOrderEnabled: state.execOrderEnabled,
       gamificationEnabled: state.gamificationEnabled,
       gamifStartDate: state.gamifStartDate || null,
-    }, { merge: true });
+    });
   }catch(e){ console.warn("savePref:", e.message); }
 }
 async function saveDeloadDate(){
   if(!state.user) return;
   try{
-    const ref = doc(db, "users", state.user.uid, "prefs", "app");
-    await setDoc(ref, { lastDeloadDate: state.lastDeloadDate }, { merge: true });
+    await repo.setPrefs(state.user.uid, { lastDeloadDate: state.lastDeloadDate });
   }catch(e){ console.warn("saveDeloadDate:", e.message); }
 }
 function scheduleProfileSave(){
@@ -1423,84 +773,18 @@ function scheduleProfileSave(){
 async function saveProfileDoc(){
   if(!state.user) return;
   try{
-    const ref = doc(db, "users", state.user.uid, "prefs", "profile");
-    await setDoc(ref, { ...state.profile, updatedAt: serverTimestamp() }, { merge: true });
+    await repo.setProfileDoc(state.user.uid, { ...state.profile, updatedAt: serverTimestamp() });
   }catch(e){ console.warn("saveProfileDoc:", e.message); }
 }
-
-const machineFilterActive = () => document.body.classList.contains("flag-machines");
-
-const lastMachineFor = (name, isSup = false) => domainLastMachineFor(state.allSessions, name, isSup);
-const usedMachinesRanked = () => domainUsedMachinesRanked(state.allSessions);
-const matchVariant = (entryMachine, machine) => domainMatchVariant(entryMachine, machine, machineFilterActive());
-
-const sessionOpts = dayKey => ({
-  day: activeDays()[dayKey],
-  date: dateForDay(dayKey, state.weekOffset),
-  sessions: state.allSessions,
-  machinesActive: document.body.classList.contains("flag-machines")
-});
-const emptySession = dayKey => domainEmptySession(dayKey, sessionOpts(dayKey));
-const reconcileSession = (prev, dayKey) => domainReconcileSession(prev, dayKey, sessionOpts(dayKey));
-
-const autoregCfg = () => domainAutoregCfg(state.autoregSensitivity);
-const profileAge = () => domainProfileAge(state.profile.birthDate);
-const projectLoad = (w, repsDone, target, equip, u, step, fatigueSteps) =>
-  domainProjectLoad(w, repsDone, target, equip, u, step, fatigueSteps, autoregCfg());
-
-const histCtx = () => ({
-  currentKey: state.session ? (state.session.date + "_" + state.session.dayKey) : null,
-  machineFilter: machineFilterActive(),
-  execOrder: execOrderActive(),
-  cfg: autoregCfg()
-});
-
-const prevLoadData = (name, machine) => domainPrevLoadData(state.allSessions, name, machine, histCtx());
-const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(state.allSessions, name, { ...histCtx(), since, machine });
-const bestWeightEver = (name, machine) => domainBestWeightEver(state.allSessions, name, machine, histCtx());
-
-const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(state.allSessions, name, unit, machine, {
-  ...histCtx(),
-  muscle: opts && opts.muscle,
-  profileActive: profileActive(),
-  profile: state.profile
-});
-
-const isDeloadActive = () => domainIsDeloadActive(state.lastDeloadDate, formatDate(new Date()));
-const deloadDue = () => domainDeloadDue(state.allSessions, {
-  ...histCtx(),
-  lastDeloadDate: state.lastDeloadDate,
-  today: formatDate(new Date()),
-  days: activeDays(),
-  age: profileActive() ? profileAge() : null
-});
-
-const computeWrapped = (sessions, year) => domainComputeWrapped(sessions, year, domainBuildMuscleIndex({
-  plans: state.plansCache ? [...state.plansCache.values()] : [],
-  days: DAYS,
-  templates: PLAN_TEMPLATES,
-  catalog: EXERCISE_CATALOG
-}));
 
 async function loadAllSessions(){
   if(state.allSessions || !state.user) return;
   if(state.allSessionsPromise) return state.allSessionsPromise;
   state.allSessionsPromise = (async () => {
     try{
-      // Ordered by the `date` field, not documentId(): Firestore's automatic
-      // single-field index covers normal fields in both directions, but the
-      // automatic __name__ index is ascending only, so desc on documentId()
-      // demands an explicitly created index. A single orderBy with no where
-      // clause needs no composite index.
-      const q = query(
-        collection(db, "users", state.user.uid, "sessions"),
-        orderBy("date", "desc"),
-        limit(SESSIONS_FETCH_LIMIT)
-      );
-      const snap = await getDocs(q);
-      state.allSessions = [];
-      snap.forEach(d => state.allSessions.push(d.data()));
-      state.allSessionsTruncated = snap.size >= SESSIONS_FETCH_LIMIT;
+      const { sessions, truncated } = await repo.fetchSessions(state.user.uid, SESSIONS_FETCH_LIMIT);
+      state.allSessions = sessions;
+      state.allSessionsTruncated = truncated;
       state.allSessionsError = false;
       if(state.allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
     }catch(e){
@@ -1526,11 +810,10 @@ async function loadDay(dayKey){
   if(!state.user) return;
   const token = ++state.loadDayToken;
   const date = dateForDay(dayKey, state.weekOffset);
-  const ref = doc(db, "users", state.user.uid, "sessions", sessionId(date, dayKey));
   try{
-    const snap = await getDoc(ref);
+    const data = await repo.getSessionDoc(state.user.uid, sessionId(date, dayKey));
     if(token !== state.loadDayToken) return;
-    state.session = reconcileSession(snap.exists() ? snap.data() : null, dayKey);
+    state.session = reconcileSession(data, dayKey);
   }catch(e){
     if(token !== state.loadDayToken) return;
     console.warn("loadDay:", e);
@@ -1554,9 +837,8 @@ function scheduleSave(){
 }
 async function saveNow(){
   if(!state.user || !state.session) return;
-  const ref = doc(db, "users", state.user.uid, "sessions", sessionId(state.session.date, state.session.dayKey));
   try{
-    await setDoc(ref, { ...state.session, updatedAt: serverTimestamp() }, { merge: true });
+    await repo.putSessionDoc(state.user.uid, sessionId(state.session.date, state.session.dayKey), { ...state.session, updatedAt: serverTimestamp() });
     setSync(navigator.onLine ? "live" : "offline", navigator.onLine ? "sincronizado" : "offline — salvando local");
     if(state.allSessions){
       const idx = state.allSessions.findIndex(s => s.date === state.session.date && s.dayKey === state.session.dayKey);
@@ -1906,9 +1188,6 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
   return html;
 }
 
-const profileActive = () => document.body.classList.contains("flag-profile");
-const execOrderActive = () => document.body.classList.contains("flag-exec-order");
-
 // Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
 // now lives here so the panel row, the apply button and the input placeholders agree.
 function suggestData(name, unit, isSup, exIdx){
@@ -2120,8 +1399,6 @@ function goToTrainIdx(i){
 
 // ========= Session summary (pure; derived from firstSetAt + per-set doneAt) =========
 const LB_TO_KG = 0.45359237;
-const GAP_MIN_MS = 20 * 1000;      // below this the user is marking retroactively
-const GAP_MAX_MS = 8 * 60 * 1000;  // above this the phone was abandoned
 
 function fmtDur(ms, withSecs){
   const t = Math.max(0, Math.round(ms / 1000));
@@ -3369,10 +2646,6 @@ function drawChart(data, unit, multi){
 
 // ========= Exercise CRUD (Firestore) =========
 
-const DAY_NAMES_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-
-function activeDays(){ return state.userDays || DAYS; }
-
 // Build userDays from exercisesCatalog
 function rebuildUserDays(){
   const base = [
@@ -3422,13 +2695,12 @@ function rebuildUserDays(){
 async function loadExercises(uid){
   if(!state.user && !uid) return;
   uid = uid || state.user.uid;
-  const colRef = collection(db, "users", uid, "exercises");
-  let snap;
-  try { snap = await getDocs(colRef); }
+  let docs;
+  try { docs = await repo.fetchExercises(uid); }
   catch(e){ console.warn("loadExercises:", e.message); return; }
   state.exercisesCatalog.clear();
-  if(!snap.empty){
-    snap.forEach(d => state.exercisesCatalog.set(d.id, d.data()));
+  if(docs.length){
+    docs.forEach(({id, data}) => state.exercisesCatalog.set(id, data));
     return;
   }
   // First login: seed from hardcoded DAYS, populate cache from write refs (no re-read)
@@ -3460,7 +2732,7 @@ async function loadExercises(uid){
     const writes = [];
     byName.forEach(ex => {
       const data = { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-      writes.push(addDoc(colRef, data).then(ref => state.exercisesCatalog.set(ref.id, data)));
+      writes.push(repo.addExercise(uid, data).then(id => state.exercisesCatalog.set(id, data)));
     });
     await Promise.all(writes);
   } catch(e){ console.error("seed exercises:", e); }
@@ -3471,20 +2743,18 @@ async function saveExerciseDoc(docId, data){
   if(!state.user) return null;
   data.updatedAt = serverTimestamp();
   if(docId){
-    const ref = doc(db, "users", state.user.uid, "exercises", docId);
-    await setDoc(ref, data, { merge: true });
+    await repo.putExercise(state.user.uid, docId, data);
     return docId;
   } else {
     data.createdAt = serverTimestamp();
-    const ref = await addDoc(collection(db, "users", state.user.uid, "exercises"), data);
-    return ref.id;
+    return await repo.addExercise(state.user.uid, data);
   }
 }
 
 // Delete exercise doc
 async function deleteExerciseDoc(docId){
   if(!state.user) return;
-  await deleteDoc(doc(db, "users", state.user.uid, "exercises", docId));
+  await repo.deleteExercise(state.user.uid, docId);
 }
 
 // ========= Day Customizations =========
@@ -3503,23 +2773,21 @@ async function loadDayCustomizations(){
   if(!state.user) return;
   state.dayCustomizations = {};
   try {
-    const snap = await getDocs(collection(db, "users", state.user.uid, "days"));
-    snap.forEach(d => { state.dayCustomizations[d.id] = d.data(); });
+    const docs = await repo.fetchDayCustomizations(state.user.uid);
+    docs.forEach(({id, data}) => { state.dayCustomizations[id] = data; });
   } catch(e){ console.warn("loadDayCustomizations:", e.message); }
 }
 
 async function saveDayCustomization(dayKey, tag, focus){
   if(!state.user) return;
   const data = { tag, focus, updatedAt: serverTimestamp() };
-  const ref = doc(db, "users", state.user.uid, "days", String(dayKey));
-  await setDoc(ref, data, { merge: true });
+  await repo.putDayCustomization(state.user.uid, dayKey, data);
   state.dayCustomizations[dayKey] = { tag, focus };
 }
 
 async function deleteDayCustomization(dayKey){
   if(!state.user) return;
-  const ref = doc(db, "users", state.user.uid, "days", String(dayKey));
-  await deleteDoc(ref);
+  await repo.deleteDayCustomization(state.user.uid, dayKey);
   delete state.dayCustomizations[dayKey];
 }
 
@@ -3944,8 +3212,8 @@ async function loadPlans(){
   if(!state.user) return;
   state.plansCache.clear();
   try{
-    const snap = await getDocs(collection(db, "users", state.user.uid, "plans"));
-    snap.forEach(d => state.plansCache.set(d.id, d.data()));
+    const docs = await repo.fetchPlans(state.user.uid);
+    docs.forEach(({id, data}) => state.plansCache.set(id, data));
   }catch(e){ console.warn("loadPlans:", e.message); }
 }
 
@@ -3953,19 +3221,17 @@ async function savePlanDoc(docId, data){
   if(!state.user) return null;
   data.updatedAt = serverTimestamp();
   if(docId){
-    const ref = doc(db, "users", state.user.uid, "plans", docId);
-    await setDoc(ref, data, { merge: true });
+    await repo.putPlan(state.user.uid, docId, data);
     return docId;
   } else {
     data.createdAt = serverTimestamp();
-    const ref = await addDoc(collection(db, "users", state.user.uid, "plans"), data);
-    return ref.id;
+    return await repo.addPlan(state.user.uid, data);
   }
 }
 
 async function deletePlanDoc(docId){
   if(!state.user) return;
-  await deleteDoc(doc(db, "users", state.user.uid, "plans", docId));
+  await repo.deletePlan(state.user.uid, docId);
 }
 
 // ========= Data export (Phase 1, item 4) =========
@@ -3987,21 +3253,19 @@ function serializeTimestamps(value){
 // exercisesCatalog, plansCache) — those are partial by design (and about to gain
 // a query limit), so a cache-built export could silently ship an incomplete backup.
 async function buildExportPayload(){
-  const [exSnap, planSnap, sessSnap, appPrefSnap, profilePrefSnap] = await Promise.all([
-    getDocs(collection(db, "users", state.user.uid, "exercises")),
-    getDocs(collection(db, "users", state.user.uid, "plans")),
-    getDocs(collection(db, "users", state.user.uid, "sessions")),
-    getDoc(doc(db, "users", state.user.uid, "prefs", "app")),
-    getDoc(doc(db, "users", state.user.uid, "prefs", "profile")),
+  const uid = state.user.uid;
+  const [exercisesRaw, plansRaw, sessionsRaw, appPrefs, profilePrefs] = await Promise.all([
+    repo.fetchExercises(uid),
+    repo.fetchPlans(uid),
+    repo.fetchAllSessionsRaw(uid),
+    repo.getPrefs(uid),
+    repo.getProfileDoc(uid),
   ]);
 
-  const toRecord = d => ({ id: d.id, ...serializeTimestamps(d.data()) });
-  const exercises = [];
-  exSnap.forEach(d => exercises.push(toRecord(d)));
-  const plans = [];
-  planSnap.forEach(d => plans.push(toRecord(d)));
-  const sessions = [];
-  sessSnap.forEach(d => sessions.push(toRecord(d)));
+  const toRecord = ({id, data}) => ({ id, ...serializeTimestamps(data) });
+  const exercises = exercisesRaw.map(toRecord);
+  const plans = plansRaw.map(toRecord);
+  const sessions = sessionsRaw.map(toRecord);
   sessions.sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")));
 
   return {
@@ -4010,8 +3274,8 @@ async function buildExportPayload(){
     app: "strength-split",
     user: { uid: state.user.uid, email: state.user.email || null, displayName: state.user.displayName || null },
     prefs: {
-      app: appPrefSnap.exists() ? serializeTimestamps(appPrefSnap.data()) : null,
-      profile: profilePrefSnap.exists() ? serializeTimestamps(profilePrefSnap.data()) : null,
+      app: appPrefs ? serializeTimestamps(appPrefs) : null,
+      profile: profilePrefs ? serializeTimestamps(profilePrefs) : null,
     },
     exercises, plans, sessions,
   };
@@ -4316,12 +3580,11 @@ async function applyPlan(plan, planDocId, mapping){
     });
   });
 
-  const colRef = collection(db, "users", state.user.uid, "exercises");
   const addPromises = [];
   byName.forEach(exData => {
     addPromises.push(
-      addDoc(colRef, { ...exData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-        .then(ref => state.exercisesCatalog.set(ref.id, exData))
+      repo.addExercise(state.user.uid, { ...exData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+        .then(id => state.exercisesCatalog.set(id, exData))
     );
   });
   await Promise.all(addPromises);
