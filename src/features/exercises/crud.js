@@ -2,19 +2,12 @@ import { serverTimestamp } from "firebase/firestore";
 import { orderForDay, cmpExOrder } from "../../domain/order.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
+import { WEEKDAYS } from "../../data/days.js";
 import { buildExerciseList } from "../evolution.js";
 
 // Build userDays from exercisesCatalog
 export function rebuildUserDays(){
-  const base = [
-    {abbr:"Seg",name:"Segunda",tag:"Ombro · Costas",focus:"Ombro lateral/posterior · Costas"},
-    {abbr:"Ter",name:"Terça",tag:"Posterior",focus:"Ombro frontal · Posterior de coxa · Glúteo"},
-    {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
-    {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
-    {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
-    {abbr:"Sáb",name:"Sábado",tag:"Livre",focus:"Livre"},
-    {abbr:"Dom",name:"Domingo",tag:"Livre",focus:"Livre"},
-  ];
+  const base = WEEKDAYS.map(d => ({...d, tag:"", focus:""}));
   base.forEach((d,i) => {
     d.ex = [];
     const custom = state.dayCustomizations[i];

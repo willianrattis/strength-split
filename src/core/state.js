@@ -22,7 +22,7 @@ export const state = {
   allSessionsTruncated: false,
   allSessionsError: false,
   exercisesCatalog: new Map(), // docId -> exercise doc
-  userDays: null, // replaces DAYS when loaded from Firestore
+  userDays: null, // built by rebuildUserDays() from the user's exercise catalog
   dayCustomizations: {}, // {0: {tag, focus}, 1: ...} from Firestore
   weekOffset: 0, // 0 = current week, -1 = last week, etc.
   plansCache: new Map(), // planId -> plan doc (custom plans from Firestore)

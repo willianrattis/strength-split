@@ -19,7 +19,7 @@ export function buildMuscleIndex({ plans = [], days = [], templates = [], catalo
       }
     }
   }
-  // b. DAYS (built-in active plan)
+  // b. days (user's active plan, state.userDays)
   for(const day of days){
     if(!day.ex) continue;
     for(const e of day.ex){

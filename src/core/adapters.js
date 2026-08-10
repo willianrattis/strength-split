@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { DAYS } from "../data/days.js";
+import { WEEKDAYS } from "../data/days.js";
 import { PLAN_TEMPLATES } from "../data/plan-templates.js";
 import { EXERCISE_CATALOG } from "../data/exercise-catalog.js";
 import { formatDate, dateForDay } from "../domain/dates.js";
@@ -19,7 +19,9 @@ import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } 
 import { buildMuscleIndex as domainBuildMuscleIndex } from "../domain/muscles.js";
 import { computeWrapped as domainComputeWrapped } from "../domain/wrapped.js";
 
-export function activeDays(){ return state.userDays || DAYS; }
+// Fallback before rebuildUserDays has ever run — neutral scaffold, no author content.
+function neutralDays(){ return WEEKDAYS.map(d => ({...d, tag:"", focus:"", ex:[]})); }
+export function activeDays(){ return state.userDays || neutralDays(); }
 
 export const machineFilterActive = () => document.body.classList.contains("flag-machines");
 export const profileActive = () => document.body.classList.contains("flag-profile");
@@ -72,7 +74,7 @@ export const deloadDue = () => domainDeloadDue(state.allSessions, {
 
 export const computeWrapped = (sessions, year) => domainComputeWrapped(sessions, year, domainBuildMuscleIndex({
   plans: state.plansCache ? [...state.plansCache.values()] : [],
-  days: DAYS,
+  days: state.userDays || [],
   templates: PLAN_TEMPLATES,
   catalog: EXERCISE_CATALOG
 }));
