@@ -47,6 +47,16 @@ async function buildExportPayload(){
   };
 }
 
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function exportUserData(){
   if(state.exportingData || !state.user) return;
   state.exportingData = true;
@@ -64,15 +74,18 @@ export async function exportUserData(){
     const filename = `strength-split-backup-${todayStr()}.json`;
     const file = new File([blob], filename, { type: "application/json" });
     if(navigator.canShare && navigator.canShare({ files: [file] })){
-      await navigator.share({ files: [file], title: "Backup Strength Split" });
+      // buildExportPayload's awaits above can outlast the click's transient user
+      // activation, so share() itself gets its own try/catch: a stale-activation
+      // NotAllowedError (or any other share failure) falls back to a download
+      // instead of surfacing as an export error.
+      try {
+        await navigator.share({ files: [file], title: "Backup Strength Split" });
+      } catch(shareErr){
+        if(shareErr.name === "AbortError") return;
+        triggerDownload(blob, filename);
+      }
     } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      triggerDownload(blob, filename);
     }
   } catch(e){
     if(e.name !== "AbortError"){

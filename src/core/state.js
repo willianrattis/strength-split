@@ -11,6 +11,9 @@ export const state = {
   trainMode: false,
   trainIdx: 0,
   _trainScrollT: null,
+  // Set when a brand-new account's exercise catalog is empty, to show the onboarding
+  // picker. Ephemeral UI state — NEVER persisted (not in savePref/loadPref).
+  needsOnboarding: false,
   theme: (function(){
     try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
     catch(_){ return null; }

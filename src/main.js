@@ -24,6 +24,7 @@ import * as machineModal from "./features/day/machine-modal.js";
 import * as train from "./features/train/index.js";
 import * as exercisesList from "./features/exercises/list.js";
 import * as flagState from "./features/flag-state.js";
+import { initOnboarding } from "./features/onboarding.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
 
 // ========= Auth (loginBtn/logout/online-offline wiring + initApp/initWithTimeout/renderInitError live in features/auth.js) =========
@@ -86,6 +87,7 @@ machineModal.init();
 train.init();
 exercisesList.init();
 flagState.init();
+initOnboarding();
 
 applyTheme();
 applyModeButtons();
