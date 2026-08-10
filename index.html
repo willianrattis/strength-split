@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0E0F12">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem("ss_theme");
+    var eff = (t === "dark" || t === "light")
+      ? t
+      : (window.matchMedia && matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", eff);
+    var m = document.querySelector('meta[name="theme-color"]');
+    if(m) m.setAttribute("content", eff === "dark" ? "#0E0F12" : "#F4F5F7");
+  }catch(_){}
+})();
+</script>
+<title>Strength Split · Treino da Semana</title>
+<meta name="description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
+
+<!--  Open Graph -->
+<meta property="og:title" content="Strength Split · Treino da Semana">
+<meta property="og:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta property="og:image" content="https://willianrattis.com/strength-split/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://willianrattis.com/strength-split/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Strength Split · Treino da Semana">
+<meta name="twitter:description" content="Split semanal — Seg a Dom. Marque exercícios, acompanhe o progresso e a carga por dia.">
+<meta name="twitter:image" content="https://willianrattis.com/strength-split/preview.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/styles/app.css">
+</head>
+<body>
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="splash-half splash-top">
+    <div class="splash-stage">
+      <div class="splash-core">
+        <span class="splash-kicker">Programa semanal</span>
+        <h1 class="splash-word"><span>Treino</span><span>da Semana</span></h1>
+      </div>
+      <svg class="splash-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+      <svg class="splash-crack" viewBox="0 0 400 64" preserveAspectRatio="none"><path d="M0 34 L38 26 L76 40 L112 24 L150 38 L188 22 L226 36 L264 25 L302 39 L340 27 L400 35"/><path d="M150 38 L162 52"/><path d="M226 36 L214 14"/></svg>
+      <div class="splash-ring"></div>
+    </div>
+  </div>
+  <div class="splash-half splash-bottom">
+    <div class="splash-stage">
+      <div class="splash-core">
+        <span class="splash-kicker">Programa semanal</span>
+        <h1 class="splash-word"><span>Treino</span><span>da Semana</span></h1>
+      </div>
+      <svg class="splash-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+      <svg class="splash-crack" viewBox="0 0 400 64" preserveAspectRatio="none"><path d="M0 34 L38 26 L76 40 L112 24 L150 38 L188 22 L226 36 L264 25 L302 39 L340 27 L400 35"/><path d="M150 38 L162 52"/><path d="M226 36 L214 14"/></svg>
+      <div class="splash-ring"></div>
+    </div>
+  </div>
+</div>
+<script>
+window.SSSplash = (function(){
+  var el = document.getElementById("splash");
+  if(!el) return { ready:function(){} };
+  var rm = window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches;
+  var quick = false;
+  try{
+    var last = parseInt(sessionStorage.getItem("ss_splashAt") || "0", 10);
+    quick = last > 0 && (Date.now() - last) < 300000;
+    sessionStorage.setItem("ss_splashAt", String(Date.now()));
+  }catch(_){}
+  var sd = (rm || quick) ? 0.3 : 1;
+  el.style.setProperty("--sd", sd);
+  document.documentElement.classList.add("splash-lock");
+  var meta = document.querySelector('meta[name="theme-color"]');
+  var accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  if(meta && accent) meta.setAttribute("content", accent);
+  var t0 = Date.now(), ready = false, impacted = false, cracked = false, done = false;
+  var IMPACT = Math.round(1180 * sd), HOLD = Math.round(220 * sd), CAP = 5000;
+  function at(ms, fn){ setTimeout(fn, Math.max(0, ms - (Date.now() - t0))); }
+  function impact(){
+    if(impacted || done) return;
+    impacted = true;
+    el.classList.add("impact");
+    at(IMPACT + HOLD, crack);
+  }
+  function crack(){
+    if(cracked || done) return;
+    if(!ready && (Date.now() - t0) < CAP) return;
+    cracked = true;
+    el.classList.add("cracked");
+    setTimeout(finish, Math.round(620 * sd) + 80);
+  }
+  function finish(){
+    if(done) return;
+    done = true;
+    el.classList.add("gone");
+    document.documentElement.classList.remove("splash-lock");
+    var t = document.documentElement.getAttribute("data-theme");
+    if(meta) meta.setAttribute("content", t === "light" ? "#F4F5F7" : "#0E0F12");
+    setTimeout(function(){ if(el && el.parentNode) el.parentNode.removeChild(el); }, 420);
+  }
+  at(IMPACT, impact);
+  setTimeout(function(){ ready = true; crack(); }, CAP);
+  return { ready:function(){ ready = true; if((Date.now() - t0) >= IMPACT + HOLD) crack(); } };
+})();
+</script>
+<div class="wrap">
+  <header class="top">
+    <div class="top-text">
+      <span class="kicker">Programa semanal</span>
+      <h1>Treino<br>da Semana</h1>
+      <div class="top-status">
+        <div class="identity">
+          <span class="identity-name" id="authBox"></span>
+          <span class="identity-sep">·</span>
+          <div class="gamif-chip" id="gamifChip" role="button" tabindex="0" aria-label="Ver progresso">
+            <span class="gamif-chip-label" id="gamifChipLabel"></span>
+            <div class="gamif-chip-bar"><div class="gamif-chip-fill" id="gamifChipFill"></div></div>
+          </div>
+        </div>
+        <div id="syncStatus" class="sync-status"><span class="dot"></span><span class="txt">aguardando login</span></div>
+      </div>
+    </div>
+    <div id="sharePdfWrap" class="share-top" data-flag="sharePdf" style="display:none">
+      <button class="icon-btn" id="btnSharePdf" type="button" aria-label="Compartilhar treino como PDF" title="Compartilhar treino como PDF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+    </div>
+  </header>
+</div>
+
+<div id="appContent" style="display:none">
+  <div class="wrap">
+    <div class="main-tabs" role="tablist">
+      <button class="main-tab active" id="tabTreino" type="button" role="tab">Treino</button>
+      <button class="main-tab" id="tabExercicios" type="button" role="tab">Exercícios</button>
+      <button class="main-tab" id="tabEvolucao" type="button" role="tab">Evolução</button>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema" style="margin-left:auto"></button>
+      <button class="theme-btn" id="settingsBtnDesktop" type="button" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg></button>
+    </div>
+  </div>
+
+  <!-- VIEW: TREINO -->
+  <div id="viewTreino">
+    <nav class="days" aria-label="Dias da semana">
+      <div class="wrap" style="padding-bottom:0">
+        <div class="week-nav" id="weekNav">
+          <button class="week-nav-btn" id="weekPrev" aria-label="Semana anterior">&#8592;</button>
+          <span class="week-nav-label" id="weekLabel">Semana atual</span>
+          <button class="week-nav-btn" id="weekNext" aria-label="Próxima semana" disabled>&#8594;</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="days-inner" id="dayStrip" role="tablist"></div>
+      </div>
+      <div class="wrap days-toolbar">
+        <span class="days-toolbar-label">Visualização</span>
+        <div class="mode-toggle" role="group" aria-label="Modo de visualização">
+          <button id="modeCompact" type="button">Compacto</button>
+          <button id="modeLoad" type="button">Carga</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="day-progress" id="dayProgress" aria-hidden="true">
+          <div class="day-progress-track"><span id="dayProgressFill" style="width:0%"></span></div>
+          <span class="day-progress-pct" id="dayProgressPct">0%</span>
+        </div>
+      </div>
+    </nav>
+    <div class="train-bar" id="trainBar">
+      <div class="train-bar-row">
+        <button class="train-exit" id="trainExit" type="button" aria-label="Sair do modo treino">&#10005;</button>
+        <span class="train-focus" id="trainFocus"></span>
+        <span class="train-count" id="trainCount">1/1</span>
+      </div>
+      <div class="train-segs" id="trainSegs" aria-label="Exercícios do treino"></div>
+    </div>
+    <main class="wrap">
+      <section id="panel" role="tabpanel" aria-live="polite"></section>
+      <footer>
+        <div class="notes">
+          <h3>Notas gerais</h3>
+          <ul>
+            <li><span class="k">⏲</span><div><b>Descanso:</b> 1 a 1min30 entre as séries.</div></li>
+            <li><span class="k">▤</span><div><b>Prancha:</b> 3× por semana — 4 séries até a falha.</div></li>
+            <li><span class="k">⏱</span><div><b>Isometria 2s:</b> contrair 2 segundos em cada pico de contração.</div></li>
+            <li><span class="k">⚡</span><div><b>Acelerar na fadiga:</b> aumentar a velocidade do movimento ao fadigar.</div></li>
+          </ul>
+        </div>
+        <p class="sig">12 · 10 · 8 — pirâmide descendente de carga</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- VIEW: EXERCÍCIOS -->
+  <div id="viewExercicios" style="display:none">
+    <main class="wrap">
+      <div class="sub-tabs" id="exSubTabs" role="tablist">
+        <button class="active" data-subtab="list" role="tab">Exercícios</button>
+        <button data-subtab="plans" role="tab">Planos</button>
+        <button data-subtab="days" role="tab">Dias</button>
+      </div>
+      <div id="subViewList">
+        <div id="exFilterBar"></div>
+        <div id="exList"></div>
+        <div class="ex-list-footer"></div>
+      </div>
+      <div id="subViewPlans" style="display:none"><div id="plansSection"></div></div>
+      <div id="subViewDays" style="display:none"><div id="dayCustomSection" class="days-section"></div></div>
+    </main>
+  </div>
+
+  <!-- VIEW: EVOLUÇÃO -->
+  <div id="viewEvolucao" style="display:none">
+    <main class="wrap">
+      <div class="evo-controls">
+        <label class="evo-label" for="evoSelect">Exercício</label>
+        <select class="evo-select" id="evoSelect"></select>
+        <select class="evo-select evo-machine-select" id="evoMachineSelect" style="display:none;margin-top:8px"></select>
+      </div>
+      <div id="evoBody"></div>
+    </main>
+  </div>
+
+  <!-- MODAL: Editor de exercício -->
+  <div class="modal-overlay" id="exModal">
+    <div class="modal" id="exModalInner"></div>
+  </div>
+  <!-- MODAL: Editor de plano -->
+  <div class="modal-overlay" id="planModal">
+    <div class="modal" id="planModalInner"></div>
+  </div>
+  <!-- MODAL: Aplicar plano (mapeamento de dias) -->
+  <div class="modal-overlay" id="applyPlanModal">
+    <div class="modal" id="applyPlanModalInner"></div>
+  </div>
+  <!-- MODAL: Editar dia da semana -->
+  <div class="modal-overlay" id="dayEditModal"><div class="modal" id="dayEditModalBody"></div></div>
+  <!-- MODAL: Trocar exercício (só hoje) -->
+  <div class="modal-overlay" id="subModal">
+    <div class="modal modal-tall" id="subModalInner"></div>
+  </div>
+  <!-- MODAL: Configurações (mobile) -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal" id="settingsModalInner">
+      <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Configurações</h3>
+      <button class="modal-btn" id="settingsThemeToggle" type="button" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:48px;margin-bottom:10px"></button>
+      <div class="sub-tabs" id="settingsSubTabs" role="tablist">
+        <button class="active" data-settingstab="treino" role="tab">Treino</button>
+        <button data-settingstab="sugestoes" role="tab">Sugestões</button>
+      </div>
+      <div id="settingsPanels">
+      <div data-settingspanel="treino" class="active">
+      <div id="settingsPrevLayoutRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Histórico na tela de treino</span>
+          <span class="setting-desc">Como a carga anterior e a sugestão aparecem em cada exercício.</span>
+        </div>
+        <div class="mode-toggle" id="prevLayoutToggle" role="group" aria-label="Layout do histórico">
+          <button type="button" data-prevlayout="column">Coluna</button>
+          <button type="button" data-prevlayout="panel">Painel</button>
+        </div>
+      </div>
+      <div id="settingsPeriodizationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Periodização</span>
+          <span class="setting-desc">Ativa metas de reps, registro de feitas e sugestões de carga.</span>
+        </div>
+        <div class="mode-toggle" id="periodToggle" role="group" aria-label="Periodização">
+          <button type="button" data-period="on">Ligada</button>
+          <button type="button" data-period="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsMachinesRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Máquinas por exercício</span>
+          <span class="setting-desc">Separa histórico e sugestões por equipamento usado.</span>
+        </div>
+        <div class="mode-toggle" id="machinesToggle" role="group" aria-label="Máquinas">
+          <button type="button" data-mach="on">Ligada</button>
+          <button type="button" data-mach="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsProfileRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Perfil de treino</span>
+          <span class="setting-desc">Usa sua experiência e restrições para calibrar as sugestões.</span>
+        </div>
+        <div class="mode-toggle" id="profileToggle" role="group" aria-label="Perfil">
+          <button type="button" data-prof="on">Ligada</button>
+          <button type="button" data-prof="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsGamificationRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Gamificação</span>
+          <span class="setting-desc">Exibe nível e XP baseados na consistência dos treinos.</span>
+        </div>
+        <div class="mode-toggle" id="gamificationToggle" role="group" aria-label="Gamificação">
+          <button type="button" data-gamif="on">Ligada</button>
+          <button type="button" data-gamif="off">Desligada</button>
+        </div>
+      </div>
+      </div>
+      <div data-settingspanel="sugestoes">
+      <div id="settingsAutoregRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Sugestão automática de carga</span>
+          <span class="setting-desc">Ajusta a carga em tempo real conforme você registra as séries.</span>
+        </div>
+        <div class="mode-toggle" id="autoregToggle" role="group" aria-label="Sugestão automática de carga">
+          <button type="button" data-autoreg="on">Ligada</button>
+          <button type="button" data-autoreg="off">Desligada</button>
+        </div>
+      </div>
+      <div id="settingsAutoregSensRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Sensibilidade</span>
+          <span class="setting-desc" id="autoregSensDesc"></span>
+        </div>
+        <div class="mode-toggle" id="autoregSensToggle" role="group" aria-label="Sensibilidade da sugestão">
+          <button type="button" data-sens="suave">Suave</button>
+          <button type="button" data-sens="mod">Padrão</button>
+          <button type="button" data-sens="agr">Agressivo</button>
+        </div>
+      </div>
+      <div id="settingsExecOrderRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Ordem de execução</span>
+          <span class="setting-desc">Ajusta sugestões quando você treina fora da ordem do plano.</span>
+        </div>
+        <div class="mode-toggle" id="execOrderToggle" role="group" aria-label="Ordem de execução">
+          <button type="button" data-execorder="on">Ligada</button>
+          <button type="button" data-execorder="off">Desligada</button>
+        </div>
+      </div>
+      </div>
+      </div>
+      <div id="settingsExportRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+        <div class="setting-text">
+          <span class="period-label" id="settingsExportLabel">Exportar meus dados</span>
+          <span class="setting-desc">Baixa um arquivo com todo o seu histórico, exercícios e planos.</span>
+        </div>
+      </div>
+      <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <span style="font-weight:600;font-size:13px">Editar perfil</span>
+      </div>
+      <button class="modal-btn danger" id="settingsLogoutBtn" type="button" style="width:100%;min-height:48px">Sair</button>
+    </div>
+  </div>
+  <!-- MODAL: Perfil de treino -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal" id="profileModalInner"></div>
+  </div>
+  <!-- MODAL: Máquina por exercício -->
+  <div class="modal-overlay" id="machineModal">
+    <div class="modal modal-tall" id="machineModalInner"></div>
+  </div>
+  <!-- MODAL: Progresso (gamificação) -->
+  <div class="modal-overlay" id="gamifModal">
+    <div class="modal">
+      <h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">Progresso</h3>
+      <div class="gamif-modal-body">
+        <div class="gamif-level-big" id="gamifLevelBig"></div>
+        <div class="gamif-title-big" id="gamifTitleBig"></div>
+        <div class="gamif-xp-bar"><div class="gamif-xp-fill" id="gamifXpFill"></div></div>
+        <div class="gamif-xp-text" id="gamifXpText"></div>
+        <div class="gamif-stats">
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifTotalXp"></span><span class="gamif-stat-lbl">XP total</span></div>
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifTrained"></span><span class="gamif-stat-lbl">Dias treinados</span></div>
+          <div class="gamif-stat"><span class="gamif-stat-val" id="gamifMissed"></span><span class="gamif-stat-lbl">Dias sem treino</span></div>
+        </div>
+        <!-- Placeholder for Task B: badges -->
+        <div id="gamifBadgesSection" style="display:none"></div>
+        <button type="button" class="wrapped-retro-btn" id="wrappedOpenBtn"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>Retrospectiva</button>
+      </div>
+    </div>
+  </div>
+  <!-- OVERLAY: Retrospectiva (Wrapped) -->
+  <div id="wrappedOverlay">
+    <button type="button" class="wrapped-close" id="wrappedCloseBtn">✕</button>
+    <div class="wrapped-year-pills" id="wrappedYearPills"></div>
+    <div class="wrapped-progress" id="wrappedProgress"></div>
+    <div class="wrapped-slides" id="wrappedSlides"></div>
+  </div>
+
+  <!-- Bottom navigation (mobile only) -->
+  <nav class="bottom-nav" id="bottomNav" role="tablist">
+    <div class="bottom-nav-inner">
+      <button class="bottom-nav-btn" id="bnTreino" type="button" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>
+        <span>Treino</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnExercicios" type="button" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Exercícios</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnEvolucao" type="button" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Evolução</span>
+      </button>
+      <button class="bottom-nav-btn" id="bnConfig" type="button" aria-label="Ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg>
+        <span>Ajustes</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<main class="wrap" id="gateWrap">
+  <div class="gate">
+    <h2>Entre para começar</h2>
+    <p>Faça login com sua conta Google para salvar séries e carga em nuvem, acessível de qualquer dispositivo.</p>
+    <button class="auth-btn" id="loginBtn">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.3 0-9.7-3.3-11.3-8L6.1 32.6C9.5 39.4 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.6l6.2 5.2c-.4.4 6.5-4.8 6.5-14.8 0-1.3-.1-2.3-.4-3.5z"/></svg>
+      Entrar com Google
+    </button>
+  </div>
+</main>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

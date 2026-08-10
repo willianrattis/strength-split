@@ -1,0 +1,92 @@
+import { onAuthStateChanged } from "firebase/auth";
+
+import { state } from "./core/state.js";
+import { $authBox, $appContent, $gateWrap, $strip, $panel } from "./core/dom.js";
+import { auth } from "./core/firebase.js";
+import { teardownFeatureFlags } from "./core/flags.js";
+import * as modal from "./core/ui/modal.js";
+import * as stickyHeader from "./core/ui/sticky-header.js";
+import * as authModule from "./features/auth.js";
+import { initWithTimeout, renderInitError } from "./features/auth.js";
+import { applyTheme, applyModeButtons, setSync } from "./features/shell.js";
+import * as shell from "./features/shell.js";
+import * as settings from "./features/settings.js";
+import * as profileModal from "./features/profile-modal.js";
+import * as gamification from "./features/gamification.js";
+import * as wrapped from "./features/wrapped.js";
+import * as evolution from "./features/evolution.js";
+import * as exportData from "./features/export.js";
+import * as sharePdf from "./features/share-pdf.js";
+import { renderStrip, skeletonStrip, skeletonPanel } from "./features/day/render.js";
+import * as dayRender from "./features/day/render.js";
+import * as substitutionModal from "./features/day/substitution-modal.js";
+import * as machineModal from "./features/day/machine-modal.js";
+import * as train from "./features/train/index.js";
+import * as exercisesList from "./features/exercises/list.js";
+import * as flagState from "./features/flag-state.js";
+import { setGamifChipLoading } from "./features/flag-state.js";
+
+// ========= Auth (loginBtn/logout/online-offline wiring + initApp/initWithTimeout/renderInitError live in features/auth.js) =========
+onAuthStateChanged(auth, async u => {
+  state.user = u;
+  state.allSessions = null;
+  state.allSessionsTruncated = false;
+  state.allSessionsError = false;
+  state.allSessionsPromise = null;
+  state.gamification = null;
+  state.gamificationEnabled = false;
+  state.gamifStartDate = null;
+  setGamifChipLoading(true);
+  if(u){
+    $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
+    $gateWrap.style.display = "none";
+    $appContent.style.display = "";
+    $strip.innerHTML = skeletonStrip();
+    $panel.innerHTML = skeletonPanel();
+    setSync("live", "sincronizado");
+    if(window.SSSplash) window.SSSplash.ready();
+    try {
+      await initWithTimeout(u);
+    } catch(e) {
+      console.error("init:", e);
+      renderInitError();
+    }
+  } else {
+    $authBox.textContent = "";
+    $gateWrap.style.display = "block";
+    $appContent.style.display = "none";
+    setSync("", "aguardando login");
+    if(window.SSSplash) window.SSSplash.ready();
+    state.exercisesCatalog.clear();
+    state.userDays = null;
+    state.dayCustomizations = {};
+    state.plansCache.clear();
+    state.currentPlanName = null;
+    state.currentPlanId = null;
+    state.currentPlanKey = null;
+    teardownFeatureFlags();
+  }
+});
+
+// ========= Bootstrap =========
+modal.init();
+stickyHeader.init();
+authModule.init();
+shell.init();
+settings.init();
+profileModal.init();
+gamification.init();
+wrapped.init();
+evolution.init();
+exportData.init();
+sharePdf.init();
+dayRender.init();
+substitutionModal.init();
+machineModal.init();
+train.init();
+exercisesList.init();
+flagState.init();
+
+applyTheme();
+applyModeButtons();
+renderStrip();

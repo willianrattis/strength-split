@@ -1,0 +1,123 @@
+import { serverTimestamp } from "firebase/firestore";
+import { orderForDay, cmpExOrder } from "../../domain/order.js";
+import { state } from "../../core/state.js";
+import * as repo from "../../core/repo.js";
+import { DAYS } from "../../data/days.js";
+import { buildExerciseList } from "../evolution.js";
+
+// Build userDays from exercisesCatalog
+export function rebuildUserDays(){
+  const base = [
+    {abbr:"Seg",name:"Segunda",tag:"Ombro · Costas",focus:"Ombro lateral/posterior · Costas"},
+    {abbr:"Ter",name:"Terça",tag:"Posterior",focus:"Ombro frontal · Posterior de coxa · Glúteo"},
+    {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
+    {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
+    {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
+    {abbr:"Sáb",name:"Sábado",tag:"Livre",focus:"Livre"},
+    {abbr:"Dom",name:"Domingo",tag:"Livre",focus:"Livre"},
+  ];
+  base.forEach((d,i) => {
+    d.ex = [];
+    const custom = state.dayCustomizations[i];
+    if(custom){
+      if(custom.tag) d.tag = custom.tag;
+      if(custom.focus) d.focus = custom.focus;
+    }
+  });
+  state.exercisesCatalog.forEach((ex, id) => {
+    if(!ex.active) return;
+    (ex.days || []).forEach(dk => {
+      if(dk < 0 || dk > 6) return;
+      const order = orderForDay(ex, dk);
+      const sup = ex.superset ? {...ex.superset, unit: ex.superset.unit || "kg"} : null;
+      base[dk].ex.push({
+        _id: id,
+        _order: order,
+        name: ex.name,
+        muscle: ex.muscle,
+        reps: ex.reps || [12,10,8],
+        badges: ex.badges || [],
+        note: ex.note || null,
+        unit: ex.unit || "kg",
+        superset: sup,
+      });
+    });
+  });
+  base.forEach(d => d.ex.sort((a,b) =>
+    cmpExOrder(a._order, a.name, a._id, b._order, b.name, b._id)));
+  state.userDays = base;
+  state.EXERCISES = buildExerciseList();
+  state.evoInitialized = false;
+}
+// Exposed so features/day/render.js's unit-toggle handler can rebuild the plan after an
+// exercise-doc edit without importing this exercises-cluster code — day/render.js isn't
+// touched in this phase, so the window hook mechanism from 0.d-3a/3b stays.
+window._rebuildUserDays = rebuildUserDays;
+
+// Load exercises from Firestore (seeds from hardcoded DAYS on first login)
+export async function loadExercises(uid){
+  if(!state.user && !uid) return;
+  uid = uid || state.user.uid;
+  let docs;
+  try { docs = await repo.fetchExercises(uid); }
+  catch(e){ console.warn("loadExercises:", e.message); return; }
+  state.exercisesCatalog.clear();
+  if(docs.length){
+    docs.forEach(({id, data}) => state.exercisesCatalog.set(id, data));
+    return;
+  }
+  // First login: seed from hardcoded DAYS, populate cache from write refs (no re-read)
+  const byName = new Map();
+  DAYS.forEach((d, dk) => {
+    d.ex.forEach((e, ei) => {
+      if(!byName.has(e.name)){
+        byName.set(e.name, {
+          name: e.name, muscle: e.muscle,
+          reps: [...e.reps], badges: [...(e.badges||[])],
+          note: e.note || null, active: true,
+          days: [dk], orderByDay: {[dk]: ei},
+          superset: e.superset ? {
+            name: e.superset.name, muscle: e.superset.muscle || e.muscle,
+            reps: [...e.superset.reps], badges: [...(e.superset.badges||[])],
+            note: e.superset.note || null
+          } : null,
+        });
+      } else {
+        const existing = byName.get(e.name);
+        if(!existing.days.includes(dk)){
+          existing.days.push(dk);
+          existing.orderByDay[dk] = ei;
+        }
+      }
+    });
+  });
+  try {
+    const writes = [];
+    byName.forEach(ex => {
+      const data = { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+      writes.push(repo.addExercise(uid, data).then(id => state.exercisesCatalog.set(id, data)));
+    });
+    await Promise.all(writes);
+  } catch(e){ console.error("seed exercises:", e); }
+}
+
+// Save exercise doc
+export async function saveExerciseDoc(docId, data){
+  if(!state.user) return null;
+  data.updatedAt = serverTimestamp();
+  if(docId){
+    await repo.putExercise(state.user.uid, docId, data);
+    return docId;
+  } else {
+    data.createdAt = serverTimestamp();
+    return await repo.addExercise(state.user.uid, data);
+  }
+}
+// Exposed for the same reason as window._rebuildUserDays above.
+window._saveExerciseDoc = saveExerciseDoc;
+
+// Delete exercise doc
+export async function deleteExerciseDoc(docId){
+  if(!state.user) return;
+  await repo.deleteExercise(state.user.uid, docId);
+}
