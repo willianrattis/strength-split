@@ -24,7 +24,7 @@ export function dateForDay(dayKey, offset = 0){
 export function sessionId(date, dayKey){ return `${date}_${dayKey}`; }
 
 export function fmtDateBR(iso){
-  const [y,m,d] = iso.split("-");
+  const [, m, d] = iso.split("-");
   return `${d}/${m}`;
 }
 

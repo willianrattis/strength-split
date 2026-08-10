@@ -7,6 +7,7 @@ import {
   $modeCompact, $modeLoad, $sync,
 } from "../core/dom.js";
 import { renderEvolucao, initEvolucao } from "./evolution.js";
+import { renderDay } from "./day/render.js";
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
@@ -66,6 +67,13 @@ export function applyModeButtons(){
   $modeLoad.classList.toggle("active", state.viewMode === "load");
 }
 
+export function setMode(m){
+  state.viewMode = m;
+  applyModeButtons();
+  renderDay();
+  savePref();
+}
+
 export function setSync(status, txt){
   $sync.className = "sync-status " + status;
   $sync.querySelector(".txt").textContent = txt;
@@ -102,4 +110,7 @@ export function init(){
   $bnTreino.addEventListener("click", () => showTab("treino"));
   $bnExercicios.addEventListener("click", () => showTab("exercicios"));
   $bnEvolucao.addEventListener("click", () => showTab("evolucao"));
+
+  $modeCompact.addEventListener("click", () => setMode("compact"));
+  $modeLoad.addEventListener("click", () => setMode("load"));
 }

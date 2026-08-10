@@ -6,10 +6,8 @@ import { MUSCLE_ORDER, MUSCLE_LABEL } from "../data/labels.js";
 import { state } from "../core/state.js";
 import { $evoSelect, $evoMachineSelect, $evoBody } from "../core/dom.js";
 import { activeDays, machineFilterActive } from "../core/adapters.js";
-import * as repo from "../core/repo.js";
-import { SESSIONS_FETCH_LIMIT } from "../core/config.js";
 import { showTab } from "./shell.js";
-import { refreshGamification } from "./gamification.js";
+import { loadAllSessions } from "./day/session-io.js";
 
 function skeletonEvo(){
   let stats = `<div class="evo-stats">`;
@@ -24,30 +22,6 @@ function skeletonEvo(){
     <div class="skeleton" style="width:100%;height:100%"></div>
   </div></div>`;
   return stats;
-}
-
-// Loads (and caches) the user's full session history. Called both from the
-// day view (main.js, loadDay) and from renderEvolucao below.
-export async function loadAllSessions(){
-  if(state.allSessions || !state.user) return;
-  if(state.allSessionsPromise) return state.allSessionsPromise;
-  state.allSessionsPromise = (async () => {
-    try{
-      const { sessions, truncated } = await repo.fetchSessions(state.user.uid, SESSIONS_FETCH_LIMIT);
-      state.allSessions = sessions;
-      state.allSessionsTruncated = truncated;
-      state.allSessionsError = false;
-      if(state.allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
-    }catch(e){
-      console.error("loadAllSessions failed:", e);
-      state.allSessionsError = true;
-      state.allSessions = null;   // leave unset so the next navigation retries
-    } finally {
-      state.allSessionsPromise = null;
-      refreshGamification();
-    }
-  })();
-  return state.allSessionsPromise;
 }
 
 export function buildExerciseList(){
