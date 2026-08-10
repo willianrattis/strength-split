@@ -23,6 +23,9 @@ import { profileAge as domainProfileAge } from "./domain/profile.js";
 import { prevLoadData as domainPrevLoadData, exerciseTopHistory as domainExerciseTopHistory, bestWeightEver as domainBestWeightEver } from "./domain/history.js";
 import { suggestLoads as domainSuggestLoads } from "./domain/suggestion.js";
 import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } from "./domain/deload.js";
+import { computeGamification } from "./domain/gamification.js";
+import { buildMuscleIndex as domainBuildMuscleIndex } from "./domain/muscles.js";
+import { computeWrapped as domainComputeWrapped } from "./domain/wrapped.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCpq7zytWeXpjEhIFaiqHZKbODcM-ZYhKU",
@@ -1555,6 +1558,13 @@ const deloadDue = () => domainDeloadDue(allSessions, {
   age: profileActive() ? profileAge() : null
 });
 
+const computeWrapped = (sessions, year) => domainComputeWrapped(sessions, year, domainBuildMuscleIndex({
+  plans: plansCache ? [...plansCache.values()] : [],
+  days: DAYS,
+  templates: PLAN_TEMPLATES,
+  catalog: EXERCISE_CATALOG
+}));
+
 let allSessionsPromise = null;
 async function loadAllSessions(){
   if(allSessions || !user) return;
@@ -1646,11 +1656,7 @@ async function saveNow(){
 }
 
 // ========= Gamificação (XP + Levels + Badges) =========
-const GAMIF_TITLES = [
-  [1,"Novato"],[6,"Iniciante"],[11,"Praticante"],[16,"Dedicado"],
-  [21,"Consistente"],[26,"Avançado"],[31,"Veterano"],[36,"Mestre"],
-  [41,"Lenda"],[46,"Elite"]
-];
+// Presentation for BADGE_IDS in src/domain/gamification.js — ids and order must match.
 const BADGES = [
   { id:"consistencia", name:"Consistência", desc:"Treinou 7 dias seguidos",
     icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>' },
@@ -1659,286 +1665,6 @@ const BADGES = [
   { id:"madrugador", name:"Madrugador", desc:"Treinou antes das 6h",
     icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="5"/></svg>' }
 ];
-function gamifTitle(level){
-  let t = "Novato";
-  for(const [min, name] of GAMIF_TITLES){ if(level >= min) t = name; }
-  return t;
-}
-function gamifXpForLevel(n){ return Math.round(100 * Math.pow(n, 1.5)); }
-
-function computeGamification(sessions, startDate){
-  const emptyBadges = BADGES.map(b => ({ id:b.id, earned:false, earnedDate:null }));
-  if(!sessions || !sessions.length) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
-  // Build date→{done,total,volume,earliestHour} map (O(N) over sessions)
-  const dateMap = {};
-  let earliest = null;
-  for(const s of sessions){
-    if(!s.date || !s.exercises) continue;
-    if(!earliest || s.date < earliest) earliest = s.date;
-    if(!dateMap[s.date]) dateMap[s.date] = { done:0, total:0, volume:0, earliestHour:24 };
-    const entry = dateMap[s.date];
-    for(const ex of s.exercises){
-      // firstSetAt → earliestHour
-      if(ex.firstSetAt){
-        const d = new Date(ex.firstSetAt);
-        if(!isNaN(d.getTime())){ const h = d.getHours(); if(h < entry.earliestHour) entry.earliestHour = h; }
-      }
-      const countSets = (sets) => {
-        if(!sets) return;
-        for(const set of sets){
-          entry.total++;
-          if(set.done){
-            entry.done++;
-            if(set.weight != null && set.weight !== ""){
-              const w = Number(set.weight);
-              if(!isNaN(w)){
-                const r = set.repsDone != null ? set.repsDone : set.reps;
-                if(typeof r === "number" && r > 0) entry.volume += w * r;
-              }
-            }
-          }
-        }
-      };
-      countSets(ex.main);
-      countSets(ex.sup);
-    }
-  }
-  if(!earliest) return { totalXP:0, level:1, title:"Novato", xpIntoLevel:0, xpForNextLevel:gamifXpForLevel(2), trainedDays:0, missedDays:0, badges:emptyBadges };
-  // Walk date range from earliest to today
-  const today = new Date(); today.setHours(0,0,0,0);
-  const validStart = (typeof startDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) ? startDate : earliest;
-  const cur = new Date(validStart + "T00:00:00"); cur.setHours(0,0,0,0);
-  let totalXP = 0, trainedDays = 0, missedDays = 0;
-  let streak = 0;
-  let badgeConsistencia = { earned:false, earnedDate:null };
-  let badgeLevantador = { earned:false, earnedDate:null };
-  let badgeMadrugador = { earned:false, earnedDate:null };
-  while(cur <= today){
-    const key = cur.getFullYear() + "-" + String(cur.getMonth()+1).padStart(2,"0") + "-" + String(cur.getDate()).padStart(2,"0");
-    const entry = dateMap[key];
-    if(entry && entry.total > 0){
-      const ratio = entry.done / entry.total;
-      if(ratio > 0){
-        totalXP += Math.round(100 * Math.min(ratio, 1)) + (ratio >= 1 ? 25 : 0);
-        trainedDays++;
-        streak++;
-        if(!badgeConsistencia.earned && streak >= 7){ badgeConsistencia = { earned:true, earnedDate:key }; }
-        if(!badgeLevantador.earned && entry.volume >= 1000){ badgeLevantador = { earned:true, earnedDate:key }; }
-        if(!badgeMadrugador.earned && entry.earliestHour < 6){ badgeMadrugador = { earned:true, earnedDate:key }; }
-      } else {
-        totalXP = Math.max(0, totalXP - 20);
-        missedDays++;
-        streak = 0;
-      }
-    } else {
-      totalXP = Math.max(0, totalXP - 20);
-      missedDays++;
-      streak = 0;
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  // Determine level (cap 50)
-  let level = 1;
-  for(let n = 2; n <= 50; n++){
-    if(totalXP >= gamifXpForLevel(n)) level = n;
-    else break;
-  }
-  const xpIntoLevel = totalXP - gamifXpForLevel(level);
-  const xpForNextLevel = level < 50 ? gamifXpForLevel(level + 1) - gamifXpForLevel(level) : 0;
-  const badges = [
-    { id:"consistencia", ...badgeConsistencia },
-    { id:"levantador", ...badgeLevantador },
-    { id:"madrugador", ...badgeMadrugador }
-  ];
-  return { totalXP, level, title:gamifTitle(level), xpIntoLevel, xpForNextLevel, trainedDays, missedDays, badges };
-}
-
-// ========= Retrospectiva (Wrapped) =========
-
-// Layered muscle index: plans → DAYS → PLAN_TEMPLATES → EXERCISE_CATALOG (first write wins)
-function buildMuscleIndex(){
-  const idx = new Map();
-  const add = (name, muscle) => {
-    if(!name || !muscle) return;
-    const k = stripDiacritics(String(name));
-    if(!idx.has(k)) idx.set(k, muscle);
-  };
-  // a. Custom plans (plansCache)
-  if(plansCache && plansCache.size){
-    for(const plan of plansCache.values()){
-      if(!plan.days) continue;
-      for(const day of plan.days){
-        if(!day.exercises) continue;
-        for(const e of day.exercises){
-          add(e.name, e.muscle);
-          if(e.superset) add(e.superset.name, e.superset.muscle);
-        }
-      }
-    }
-  }
-  // b. DAYS (built-in active plan)
-  for(const day of DAYS){
-    if(!day.ex) continue;
-    for(const e of day.ex){
-      add(e.name, e.muscle);
-      if(e.superset) add(e.superset.name, e.superset.muscle);
-    }
-  }
-  // c. PLAN_TEMPLATES
-  for(const tpl of PLAN_TEMPLATES){
-    if(!tpl.days) continue;
-    for(const day of tpl.days){
-      if(!day.exercises) continue;
-      for(const e of day.exercises){
-        add(e.name, e.muscle);
-        if(e.superset) add(e.superset.name, e.superset.muscle);
-      }
-    }
-  }
-  // d. EXERCISE_CATALOG
-  for(const e of EXERCISE_CATALOG){ add(e.name, e.muscle); }
-  return idx;
-}
-
-// Keyword heuristic fallback for muscle resolution
-function muscleHeuristic(normName){
-  const n = normName;
-  if(n.includes("panturrilha")) return "panturrilha";
-  // antebraço before bíceps (rosca punho)
-  if(n.includes("rosca punho") || n.includes("antebraco")) return "antebraço";
-  if(n.includes("gluteo") || n.includes("coice") || n.includes("abdutora") || n.includes("adutora") || n.includes("elevacao pelvica")) return "glúteo";
-  if(n.includes("triceps") || n.includes("frances") || n.includes("testa") || n.includes("mergulho") || n.includes("paralela")) return "tríceps";
-  if(n.includes("rosca") || n.includes("biceps") || n.includes("martelo")) return "bíceps";
-  if(n.includes("encolhimento") || n.includes("trapezio")) return "trapézio";
-  if(n.includes("abdominal") || n.includes("prancha") || n.includes("abdomen") || n.includes("infra") || n.includes("supra")) return "abdômen";
-  if(n.includes("desenvolvimento") || n.includes("elevacao lateral") || n.includes("elevacao frontal") || n.includes("face pull") || n.includes("arnold") || n.includes("ombro")) return "ombro";
-  // costas — exclude "terra romeno" and "stiff" which are perna
-  if(n.includes("terra") && !n.includes("romeno") && !n.includes("stiff")) { /* fall through to costas check below */ }
-  if(n.includes("remada") || n.includes("puxada") || n.includes("pulley") || n.includes("barra fixa") || n.includes("pull") || n.includes("serrote") || n.includes("costas")) return "costas";
-  if(n.includes("terra") && !n.includes("romeno") && !n.includes("stiff")) return "costas";
-  if(n.includes("supino") || n.includes("crucifixo") || n.includes("crossover") || n.includes("peck") || n.includes("flexao de braco") || n.includes("flexao com apoio") || n.includes("pullover") || n.includes("chest") || n.includes("peito")) return "peito";
-  if(n.includes("agachamento") || n.includes("leg") || n.includes("afundo") || n.includes("stiff") || n.includes("romeno") || n.includes("flexora") || n.includes("extensora") || n.includes("cadeira") || n.includes("hack") || n.includes("bulgaro") || n.includes("passada") || n.includes("perna")) return "perna";
-  return null;
-}
-
-function computeWrapped(sessions, year){
-  if(!sessions || !sessions.length) return null;
-  const yStr = String(year);
-  // Build layered muscle index once per call
-  const muscleIdx = buildMuscleIndex();
-  const resolveMuscle = (name) => {
-    const k = stripDiacritics(String(name||""));
-    return muscleIdx.get(k) || muscleHeuristic(k) || "outro";
-  };
-
-  let sessionsCount = 0;
-  const trainedDates = new Set();
-  let totalReps = 0, totalVolume = 0, totalSets = 0;
-  const byMuscle = {};   // muscle -> {sets, reps}
-  const byExercise = {}; // normKey -> {display, reps, maxWeight, maxWeightDate, firstTop, lastTop}
-
-  for(const s of sessions){
-    if(!s.date || !s.date.startsWith(yStr) || !s.exercises) continue;
-    let sessionHasDone = false;
-
-    const processEntry = (performedName, muscle, sets, sDate) => {
-      if(!sets) return;
-      const m = muscle || "outro";
-      const normKey = stripDiacritics(String(performedName||""));
-      if(!normKey) return;
-      for(const set of sets){
-        if(!set.done) continue;
-        sessionHasDone = true;
-        const reps = set.repsDone != null ? Number(set.repsDone) : Number(set.reps);
-        const r = (!isNaN(reps) && reps > 0) ? reps : 0;
-        const wRaw = set.weight;
-        const w = (wRaw != null && wRaw !== "") ? Number(wRaw) : NaN;
-        const validW = !isNaN(w);
-
-        totalSets++;
-        totalReps += r;
-        if(validW && r > 0) totalVolume += w * r;
-
-        // byMuscle
-        if(!byMuscle[m]) byMuscle[m] = {sets:0, reps:0};
-        byMuscle[m].sets++;
-        byMuscle[m].reps += r;
-
-        // byExercise
-        if(!byExercise[normKey]) byExercise[normKey] = {display:performedName, reps:0, maxWeight:-Infinity, maxWeightDate:null, firstTop:null, lastTop:null};
-        const be = byExercise[normKey];
-        be.reps += r;
-        if(validW){
-          if(w > be.maxWeight){ be.maxWeight = w; be.maxWeightDate = sDate; }
-          if(!be.firstTop || sDate < be.firstTop.date){ be.firstTop = {date:sDate, weight:w}; }
-          else if(sDate === be.firstTop.date && w > be.firstTop.weight){ be.firstTop.weight = w; }
-          if(!be.lastTop || sDate > be.lastTop.date){ be.lastTop = {date:sDate, weight:w}; }
-          else if(sDate === be.lastTop.date && w > be.lastTop.weight){ be.lastTop.weight = w; }
-        }
-      }
-    };
-
-    for(const ex of s.exercises){
-      const mainName = ex.subName || ex.name;
-      const mainMuscle = ex.subMuscle || resolveMuscle(mainName);
-      processEntry(mainName, mainMuscle, ex.main, s.date);
-      if(ex.sup && (ex.supSubName || ex.supName)){
-        const supEffName = ex.supSubName || ex.supName;
-        const supMuscle = ex.supSubMuscle || resolveMuscle(supEffName);
-        processEntry(supEffName, supMuscle, ex.sup, s.date);
-      }
-    }
-    if(sessionHasDone){ sessionsCount++; trainedDates.add(s.date); }
-  }
-
-  if(trainedDates.size === 0) return null;
-
-  // Derive topMuscle
-  let topMuscle = null, topMuscleSets = -1, topMuscleReps = -1;
-  for(const [m, v] of Object.entries(byMuscle)){
-    if(v.sets > topMuscleSets || (v.sets === topMuscleSets && v.reps > topMuscleReps)){
-      topMuscle = m; topMuscleSets = v.sets; topMuscleReps = v.reps;
-    }
-  }
-
-  // Derive heaviest
-  let heaviest = null;
-  for(const be of Object.values(byExercise)){
-    if(be.maxWeight > -Infinity){
-      if(!heaviest || be.maxWeight > heaviest.weight){
-        heaviest = {exercise:be.display, weight:be.maxWeight, date:be.maxWeightDate};
-      }
-    }
-  }
-
-  // Derive mostProgressed
-  let mostProgressed = null;
-  for(const be of Object.values(byExercise)){
-    if(be.firstTop && be.lastTop && be.firstTop.date !== be.lastTop.date){
-      const delta = be.lastTop.weight - be.firstTop.weight;
-      if(delta > 0 && (!mostProgressed || delta > mostProgressed.delta)){
-        mostProgressed = {exercise:be.display, from:be.firstTop.weight, to:be.lastTop.weight, delta};
-      }
-    }
-  }
-
-  // repsByMuscle sorted desc by reps
-  const repsByMuscle = Object.entries(byMuscle)
-    .map(([m, v]) => ({muscle:m, reps:v.reps, sets:v.sets}))
-    .sort((a,b) => b.reps - a.reps);
-
-  // topExercisesByReps top 3
-  const topExercisesByReps = Object.values(byExercise)
-    .map(be => ({name:be.display, reps:be.reps}))
-    .sort((a,b) => b.reps - a.reps)
-    .slice(0,3);
-
-  return {
-    sessionsCount, trainedDates: trainedDates.size, totalReps, totalVolume, totalSets,
-    topMuscle, topMuscleSets, topMuscleReps,
-    heaviest, mostProgressed, repsByMuscle, topExercisesByReps
-  };
-}
 
 let _gamifToastTimer = null;
 function showGamifToast(name){
