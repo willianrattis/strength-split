@@ -1,52 +1,55 @@
-import {
-  signInWithPopup, signOut, onAuthStateChanged
-} from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { serverTimestamp } from "firebase/firestore";
-import Chart from "chart.js/auto";
-import { jsPDF } from "jspdf";
-window.jspdf = { jsPDF };
 
-import { stripDiacritics, esc, normMachine, sameMachine } from "./domain/text.js";
-import { formatDate, todayStr, getWeekMonday, dateForDay, sessionId, fmtDateBR, shortDate } from "./domain/dates.js";
-import { equipmentOf, buildExTypeMap } from "./domain/equipment.js";
-import { ORDER_UNSET, orderForDay, cmpExOrder } from "./domain/order.js";
-import { lastMachineFor as domainLastMachineFor, usedMachinesRanked as domainUsedMachinesRanked, matchVariant as domainMatchVariant } from "./domain/machines.js";
-import { emptySession as domainEmptySession, reconcileSession as domainReconcileSession } from "./domain/session.js";
+import { stripDiacritics, esc, normMachine } from "./domain/text.js";
+import { formatDate, todayStr, getWeekMonday, dateForDay, sessionId, shortDate } from "./domain/dates.js";
+import { equipmentOf } from "./domain/equipment.js";
+import { orderForDay, cmpExOrder } from "./domain/order.js";
 import { UNIT_CYCLE, UNIT_ABBR, UNIT_BTN, UNIT_STEP } from "./domain/units.js";
-import { autoregCfg as domainAutoregCfg, projectLoad as domainProjectLoad } from "./domain/autoreg.js";
-import { profileAge as domainProfileAge } from "./domain/profile.js";
-import { prevLoadData as domainPrevLoadData, exerciseTopHistory as domainExerciseTopHistory, bestWeightEver as domainBestWeightEver } from "./domain/history.js";
-import { suggestLoads as domainSuggestLoads } from "./domain/suggestion.js";
-import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } from "./domain/deload.js";
-import { computeGamification } from "./domain/gamification.js";
-import { buildMuscleIndex as domainBuildMuscleIndex } from "./domain/muscles.js";
-import { computeWrapped as domainComputeWrapped } from "./domain/wrapped.js";
 import { state } from "./core/state.js";
 import {
-  $authBox, $loginBtn, $appContent, $gateWrap, $strip, $panel, $sync, $weekPrev, $weekNext, $weekLabel,
-  $modeCompact, $modeLoad, $themeBtn, $tabTreino, $tabExercicios, $tabEvolucao, $viewTreino, $viewExercicios,
-  $viewEvolucao, $dayCustomSection, $exFilterBar, $exList, $exModal, $exModalInner, $plansSection, $planModal,
-  $planModalInner, $applyPlanModal, $applyPlanModalInner, $dayEditModal, $dayEditModalBody, $evoSelect,
-  $evoMachineSelect, $evoBody, $settingsModal, $settingsThemeToggle, $settingsLogoutBtn, $bnTreino,
-  $bnExercicios, $bnEvolucao, $bnConfig, $profileModal, $profileModalInner, $gamifModal, $wrappedOverlay,
-  $wrappedSlides, $wrappedProgress, $wrappedYearPills, $trainBar, $trainSegs, $trainCount, $trainFocus,
-  $subModal, $subModalInner, $machineModal, $machineModalInner, $btnSharePdf
+  $authBox, $appContent, $gateWrap, $strip, $panel, $weekPrev, $weekNext, $weekLabel,
+  $modeCompact, $modeLoad, $viewTreino,
+  $dayCustomSection, $exFilterBar, $exList, $exModal, $exModalInner, $plansSection, $planModal,
+  $planModalInner, $applyPlanModal, $applyPlanModalInner, $dayEditModal, $dayEditModalBody,
+  $trainSegs, $trainCount, $trainFocus,
+  $subModal, $subModalInner, $machineModal, $machineModalInner,
 } from "./core/dom.js";
 import { DAYS, DAY_NAMES_SHORT } from "./data/days.js";
 import { PLAN_TEMPLATES } from "./data/plan-templates.js";
 import { EXERCISE_CATALOG } from "./data/exercise-catalog.js";
-import { SESSIONS_FETCH_LIMIT, GAP_MIN_MS, GAP_MAX_MS, DELOAD_FACTOR } from "./core/config.js";
-import { auth, provider } from "./core/firebase.js";
+import { MUSCLE_ORDER, MUSCLE_LABEL, BADGE_LABEL } from "./data/labels.js";
+import { GAP_MIN_MS, GAP_MAX_MS, DELOAD_FACTOR } from "./core/config.js";
+import { auth } from "./core/firebase.js";
 import * as repo from "./core/repo.js";
-import { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled, getAllFlags } from "./core/flags.js";
+import { initializeFeatureFlags, teardownFeatureFlags, isFeatureEnabled } from "./core/flags.js";
 import {
-  activeDays, machineFilterActive, profileActive, execOrderActive,
-  lastMachineFor, usedMachinesRanked, matchVariant,
-  sessionOpts, emptySession, reconcileSession,
-  autoregCfg, profileAge, projectLoad,
-  histCtx, prevLoadData, exerciseTopHistory, bestWeightEver,
-  suggestLoads, isDeloadActive, deloadDue, computeWrapped
+  activeDays, machineFilterActive,
+  usedMachinesRanked, matchVariant,
+  emptySession, reconcileSession,
+  projectLoad,
+  prevLoadData, exerciseTopHistory, bestWeightEver,
+  suggestLoads, isDeloadActive, deloadDue,
 } from "./core/adapters.js";
+import { centerActiveDay } from "./core/ui/sticky-header.js";
+import * as modal from "./core/ui/modal.js";
+import * as stickyHeader from "./core/ui/sticky-header.js";
+import * as authModule from "./core/auth.js";
+import { applyTheme, applyModeButtons, savePref, setSync } from "./features/shell.js";
+import * as shell from "./features/shell.js";
+import {
+  applyPrevLayoutState, syncPrevLayoutToggle, syncPeriodToggle, syncMachinesToggle,
+  syncProfileToggle, syncAutoregToggle, syncExecOrderToggle, syncGamificationToggle, syncAutoregSensToggle,
+} from "./features/settings.js";
+import * as settings from "./features/settings.js";
+import * as profileModal from "./features/profile-modal.js";
+import { renderGamifChip, refreshGamification } from "./features/gamification.js";
+import * as gamification from "./features/gamification.js";
+import * as wrapped from "./features/wrapped.js";
+import { loadAllSessions, openEvolucaoFor, buildExerciseList } from "./features/evolution.js";
+import * as evolution from "./features/evolution.js";
+import * as exportData from "./features/export.js";
+import * as sharePdf from "./features/share-pdf.js";
 
 function applyPeriodizationState(){
   const available = isFeatureEnabled("periodization");
@@ -92,18 +95,16 @@ function applyGamificationState(){
     else setGamifChipLoading(true);
   }
 }
-window.addEventListener("flagsUpdated", () => {
-  applyPeriodizationState();
-  applyMachinesState();
-  applyProfileState();
-  applyAutoregState();
-  applyExecOrderState();
-  applyGamificationState();
-});
-
-const BADGE_LABEL = {drop:"Drop-set em todas", iso:"Isometria 2s", fast:"Acelerar na fadiga"};
-
-const _exTypeMap = buildExTypeMap(EXERCISE_CATALOG);
+function bindFlagsUpdatedListener(){
+  window.addEventListener("flagsUpdated", () => {
+    applyPeriodizationState();
+    applyMachinesState();
+    applyProfileState();
+    applyAutoregState();
+    applyExecOrderState();
+    applyGamificationState();
+  });
+}
 
 const MACHINE_CATALOG = ["Hammer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
 
@@ -113,145 +114,17 @@ const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
 state.current = todayIdx;
 
 // ========= DOM =========
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-
-const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
-const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
 const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
-function effectiveTheme(){
-  return state.theme || (prefersDark.matches ? "dark" : "light");
-}
-function applyTheme(){
-  const t = effectiveTheme();
-  document.documentElement.setAttribute("data-theme", t);
-  $themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
-  $themeBtn.title = t === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro";
-  if($settingsThemeToggle){
-    $settingsThemeToggle.innerHTML = (t === "dark" ? ICON_SUN : ICON_MOON) +
-      `<span>${t === "dark" ? "Tema claro" : "Tema escuro"}</span>`;
-  }
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute("content", t === "dark" ? "#0E0F12" : "#F4F5F7");
-  try{
-    if(state.theme) localStorage.setItem("ss_theme", state.theme);
-    else localStorage.removeItem("ss_theme");
-  }catch(_){}
-}
-
-function toggleTheme(){
-  state.theme = effectiveTheme() === "dark" ? "light" : "dark";
-  applyTheme();
-  savePref();
-  if(state.evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
-}
-
-$themeBtn.addEventListener("click", toggleTheme);
-prefersDark.addEventListener("change", () => { if(!state.theme) applyTheme(); });
-
-// ========= Abas principais =========
-function showTab(which){
-  if(which !== "treino" && state.trainMode) exitTrainMode();
-  $tabTreino.classList.toggle("active", which === "treino");
-  $tabExercicios.classList.toggle("active", which === "exercicios");
-  $tabEvolucao.classList.toggle("active", which === "evolucao");
-  $viewTreino.style.display = which === "treino" ? "" : "none";
-  $viewExercicios.style.display = which === "exercicios" ? "" : "none";
-  $viewEvolucao.style.display = which === "evolucao" ? "" : "none";
-  syncBottomNav(which);
-  if(window._updateCondensed) window._updateCondensed();
-  if(which === "evolucao") initEvolucao();
-  if(which === "exercicios") renderExercicios();
-}
-$tabTreino.addEventListener("click", () => showTab("treino"));
-$tabExercicios.addEventListener("click", () => showTab("exercicios"));
-$tabEvolucao.addEventListener("click", () => showTab("evolucao"));
+// ========= Abas principais (shell.js owns showTab; kept here: exercises subtab wiring) =========
 document.getElementById("exSubTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-subtab]"); if(!b) return;
   state.exSubTab = b.dataset.subtab; renderExercicios();
 });
 
-// ========= Bottom nav (mobile) =========
-function syncBottomNav(which){
-  $bnTreino.setAttribute("aria-selected", which === "treino");
-  $bnExercicios.setAttribute("aria-selected", which === "exercicios");
-  $bnEvolucao.setAttribute("aria-selected", which === "evolucao");
-}
-$bnTreino.addEventListener("click", () => showTab("treino"));
-$bnExercicios.addEventListener("click", () => showTab("exercicios"));
-$bnEvolucao.addEventListener("click", () => showTab("evolucao"));
-
-// ========= Settings bottom-sheet (mobile) =========
-function applyPrevLayoutState(){
-  document.body.classList.toggle("layout-prev-column", state.prevLayout === "column" && !state.trainMode);
-}
-function syncPrevLayoutToggle(){
-  document.querySelectorAll('#prevLayoutToggle [data-prevlayout]').forEach(b =>
-    b.classList.toggle("active", b.dataset.prevlayout === state.prevLayout));
-}
-applyPrevLayoutState(); // default before any prefs load
-
-function syncPeriodToggle(){
-  const $on = document.querySelector('#periodToggle [data-period="on"]');
-  const $off = document.querySelector('#periodToggle [data-period="off"]');
-  $on.classList.toggle("active", state.periodizationEnabled);
-  $off.classList.toggle("active", !state.periodizationEnabled);
-}
-function syncMachinesToggle(){
-  const $on = document.querySelector('#machinesToggle [data-mach="on"]');
-  const $off = document.querySelector('#machinesToggle [data-mach="off"]');
-  $on.classList.toggle("active", state.machinesEnabled);
-  $off.classList.toggle("active", !state.machinesEnabled);
-}
-function syncProfileToggle(){
-  const $on = document.querySelector('#profileToggle [data-prof="on"]');
-  const $off = document.querySelector('#profileToggle [data-prof="off"]');
-  $on.classList.toggle("active", state.profileEnabled);
-  $off.classList.toggle("active", !state.profileEnabled);
-}
-function syncAutoregToggle(){
-  const $on = document.querySelector('#autoregToggle [data-autoreg="on"]');
-  const $off = document.querySelector('#autoregToggle [data-autoreg="off"]');
-  $on.classList.toggle("active", state.autoregEnabled);
-  $off.classList.toggle("active", !state.autoregEnabled);
-}
-function syncExecOrderToggle(){
-  const $on = document.querySelector('#execOrderToggle [data-execorder="on"]');
-  const $off = document.querySelector('#execOrderToggle [data-execorder="off"]');
-  $on.classList.toggle("active", state.execOrderEnabled);
-  $off.classList.toggle("active", !state.execOrderEnabled);
-}
-function syncGamificationToggle(){
-  const $on = document.querySelector('#gamificationToggle [data-gamif="on"]');
-  const $off = document.querySelector('#gamificationToggle [data-gamif="off"]');
-  $on.classList.toggle("active", state.gamificationEnabled);
-  $off.classList.toggle("active", !state.gamificationEnabled);
-}
-function syncAutoregSensToggle(){
-  document.querySelectorAll('#autoregSensToggle [data-sens]').forEach(b =>
-    b.classList.toggle("active", b.dataset.sens === state.autoregSensitivity));
-  const desc = document.getElementById("autoregSensDesc");
-  if(desc) desc.textContent = ({
-    suave: "Só sugere mudança em desvios grandes; prioriza estabilidade.",
-    mod:   "Equilíbrio entre reagir ao desempenho e respeitar a fadiga.",
-    agr:   "Sobe a carga assim que você supera a meta, mesmo cansado.",
-  })[state.autoregSensitivity] || "";
-}
-function openSettings(){
-  syncPrevLayoutToggle();
-  syncPeriodToggle();
-  syncMachinesToggle();
-  syncProfileToggle();
-  syncAutoregToggle();
-  syncAutoregSensToggle();
-  syncExecOrderToggle();
-  syncGamificationToggle();
-  $settingsModal.classList.add("open");
-}
-function closeSettings(){ $settingsModal.classList.remove("open"); }
-$bnConfig.addEventListener("click", openSettings);
-$settingsModal.addEventListener("click", e => { if(e.target === $settingsModal) closeSettings(); });
-$settingsThemeToggle.addEventListener("click", toggleTheme);
+// ========= Settings bottom-sheet (mobile): flag toggles that need renderDay/apply*State, still resident here =========
+// settings.js owns openSettings/closeSettings/the sync*Toggle definitions and the
+// listeners that don't need renderDay or the apply*State functions below.
 document.getElementById("prevLayoutToggle").addEventListener("click", e => {
   const btn = e.target.closest("[data-prevlayout]");
   if(!btn) return;
@@ -324,277 +197,12 @@ document.getElementById("gamificationToggle").addEventListener("click", e => {
   refreshGamification();
   applyGamificationState();
 });
-document.getElementById("settingsSubTabs").addEventListener("click", e => {
-  const b = e.target.closest("[data-settingstab]"); if(!b) return;
-  const tab = b.dataset.settingstab;
-  document.querySelectorAll("#settingsSubTabs [data-settingstab]").forEach(x =>
-    x.classList.toggle("active", x.dataset.settingstab === tab));
-  document.querySelectorAll('#settingsModalInner [data-settingspanel]').forEach(p =>
-    p.classList.toggle("active", p.dataset.settingspanel === tab));
-});
-document.getElementById("settingsProfileEditRow").addEventListener("click", () => {
-  closeSettings();
-  openProfileModal();
-});
-document.getElementById("settingsExportRow").addEventListener("click", exportUserData);
-$settingsLogoutBtn.addEventListener("click", () => signOut(auth));
-document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
+// ========= Profile modal — moved to features/profile-modal.js =========
+// ========= Sticky header — moved to core/ui/sticky-header.js =========
+// ========= Modal scroll lock + drag-to-dismiss — moved to core/ui/modal.js =========
 
-// ========= Profile modal =========
-$profileModal.addEventListener("click", e => { if(e.target === $profileModal) closeProfileModal(); });
-function closeProfileModal(){ $profileModal.classList.remove("open"); }
-function openProfileModal(){
-  const SEX_OPTS = [{val:"m",label:"M"},{val:"f",label:"F"},{val:null,label:"Prefiro não dizer"}];
-  const EXP_OPTS = [{val:"beg",label:"Iniciante · 0–1a"},{val:"int",label:"Intermediário · 1–3a"},{val:"adv",label:"Avançado · +3a"}];
-
-  let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 6px">Perfil de treino</h3>`;
-  html += `<p style="font-size:12px;color:var(--muted);margin:0 0 18px;line-height:1.4">Opcional. Melhora a precisão das sugestões de carga. Deixe em branco o que não quiser informar.</p>`;
-
-  // Data de nascimento
-  const todayISO = new Date().toISOString().slice(0,10);
-  const ageHint = profileAge();
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Data de nascimento</label>`;
-  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
-  html += `<span id="profAgeHint" style="font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
-
-  // Sexo
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
-  html += `<div id="profSex" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
-  SEX_OPTS.forEach(o => {
-    const active = state.profile.sex === o.val;
-    html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
-  });
-  html += `</div>`;
-
-  // Peso corporal
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Peso corporal (kg)</label>`;
-  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
-
-  // Experiência
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Experiência</label>`;
-  html += `<div id="profExp" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
-  EXP_OPTS.forEach(o => {
-    const active = state.profile.experience === o.val;
-    html += `<button type="button" class="sub-chip${active?" active":""}" data-val="${o.val}" style="padding:6px 14px;font-size:12px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${o.label}</button>`;
-  });
-  html += `</div>`;
-
-  // Lesões/limitações
-  html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Lesões / limitações</label>`;
-  html += `<p style="font-size:11px;color:var(--muted);margin:0 0 8px;line-height:1.3">O app evita sugerir aumento de carga nos grupos marcados.</p>`;
-  html += `<div id="profInjuries" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
-  MUSCLE_ORDER.forEach(k => {
-    const active = !!state.profile.injuries[k];
-    html += `<button type="button" class="sub-chip${active?" active":""}" data-muscle="${k}" style="padding:5px 12px;font-size:11px;border-radius:20px;border:1px solid ${active?"var(--accent)":"var(--border)"};background:${active?"var(--accent-soft)":"var(--surface-2)"};color:${active?"var(--accent)":"var(--text)"};cursor:pointer;font-family:var(--body);font-weight:500">${MUSCLE_LABEL[k]}</button>`;
-  });
-  html += `</div>`;
-
-  $profileModalInner.innerHTML = html;
-  $profileModal.classList.add("open");
-
-  // — Bind listeners —
-  // Birth date
-  document.getElementById("profBirth").addEventListener("change", e => {
-    const v = e.target.value;
-    if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
-      const yr = parseInt(v.slice(0,4),10);
-      if(yr >= 1920 && v <= new Date().toISOString().slice(0,10)){
-        state.profile.birthDate = v;
-      } else { state.profile.birthDate = null; }
-    } else { state.profile.birthDate = null; }
-    const hint = document.getElementById("profAgeHint");
-    const a = profileAge();
-    if(hint) hint.textContent = a != null ? "("+a+" anos)" : "";
-    scheduleProfileSave();
-  });
-
-  // Sex chips
-  document.getElementById("profSex").addEventListener("click", e => {
-    const btn = e.target.closest("[data-val]");
-    if(!btn) return;
-    const val = btn.dataset.val === "null" ? null : btn.dataset.val;
-    state.profile.sex = val;
-    btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
-      const isActive = c === btn;
-      c.classList.toggle("active", isActive);
-      c.style.borderColor = isActive ? "var(--accent)" : "var(--border)";
-      c.style.background = isActive ? "var(--accent-soft)" : "var(--surface-2)";
-      c.style.color = isActive ? "var(--accent)" : "var(--text)";
-    });
-    scheduleProfileSave();
-  });
-
-  // Weight
-  document.getElementById("profWeight").addEventListener("input", e => {
-    const v = e.target.value.replace(/[^0-9.,]/g,"").replace(",",".");
-    e.target.value = v;
-    const n = parseFloat(v);
-    state.profile.bodyweight = (n > 0 && isFinite(n)) ? Math.round(n * 10) / 10 : null;
-    scheduleProfileSave();
-  });
-
-  // Experience chips (tap active to deselect)
-  document.getElementById("profExp").addEventListener("click", e => {
-    const btn = e.target.closest("[data-val]");
-    if(!btn) return;
-    const val = btn.dataset.val;
-    const wasActive = btn.classList.contains("active");
-    state.profile.experience = wasActive ? null : val;
-    btn.parentNode.querySelectorAll(".sub-chip").forEach(c => {
-      const isActive = !wasActive && c === btn;
-      c.classList.toggle("active", isActive);
-      c.style.borderColor = isActive ? "var(--accent)" : "var(--border)";
-      c.style.background = isActive ? "var(--accent-soft)" : "var(--surface-2)";
-      c.style.color = isActive ? "var(--accent)" : "var(--text)";
-    });
-    scheduleProfileSave();
-  });
-
-  // Injury chips (multi-toggle)
-  document.getElementById("profInjuries").addEventListener("click", e => {
-    const btn = e.target.closest("[data-muscle]");
-    if(!btn) return;
-    const k = btn.dataset.muscle;
-    if(state.profile.injuries[k]){ delete state.profile.injuries[k]; } else { state.profile.injuries[k] = true; }
-    const active = !!state.profile.injuries[k];
-    btn.classList.toggle("active", active);
-    btn.style.borderColor = active ? "var(--accent)" : "var(--border)";
-    btn.style.background = active ? "var(--accent-soft)" : "var(--surface-2)";
-    btn.style.color = active ? "var(--accent)" : "var(--text)";
-    scheduleProfileSave();
-  });
-}
-
-// ========= Collapse-on-scroll sticky header =========
-{
-  const $days = document.querySelector("nav.days");
-  const mql = window.matchMedia("(max-width:600px)");
-  let ticking = false;
-
-  function updateCondensed(){
-    if(!mql.matches || $viewTreino.style.display === "none"){
-      $days.classList.remove("condensed");
-      return;
-    }
-    const sy = window.scrollY;
-    if(sy > 48 && !$days.classList.contains("condensed")){
-      $days.classList.add("condensed");
-      centerActiveDay();
-    } else if(sy < 16 && $days.classList.contains("condensed")){
-      $days.classList.remove("condensed");
-      centerActiveDay();
-    }
-  }
-
-  window.addEventListener("scroll", () => {
-    if(!ticking){
-      ticking = true;
-      requestAnimationFrame(() => { updateCondensed(); ticking = false; });
-    }
-  }, { passive: true });
-
-  // Reset on media query change
-  mql.addEventListener("change", () => updateCondensed());
-
-  // Expose for showTab to call
-  window._updateCondensed = updateCondensed;
-}
-
-// ========= Modal scroll lock + drag-to-dismiss =========
-function lockBodyScroll(){
-  state._modalScrollY = window.scrollY;
-  document.body.style.overflow = "hidden";
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${state._modalScrollY}px`;
-  document.body.style.left = "0";
-  document.body.style.right = "0";
-}
-function unlockBodyScroll(){
-  document.body.style.overflow = "";
-  document.body.style.position = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
-  document.body.style.right = "";
-  window.scrollTo(0, state._modalScrollY);
-}
-
-// Observe all modal overlays for .open class changes
-const _allOverlays = document.querySelectorAll(".modal-overlay");
-const _modalObserver = new MutationObserver(mutations => {
-  for(const m of mutations){
-    if(m.attributeName !== "class") continue;
-    const el = m.target;
-    if(el.classList.contains("open")) lockBodyScroll();
-    else unlockBodyScroll();
-  }
-});
-_allOverlays.forEach(ov => _modalObserver.observe(ov, { attributes:true }));
-
-// Drag-to-dismiss on .modal elements
-_allOverlays.forEach(overlay => {
-  const modal = overlay.querySelector(".modal");
-  if(!modal) return;
-  let startY = 0, currentY = 0, dragging = false;
-  const THRESHOLD = 100;
-
-  function findCloseAction(){
-    // close the modal using the same path as overlay click
-    overlay.classList.remove("open");
-  }
-
-  modal.addEventListener("touchstart", e => {
-    const t = e.touches[0];
-    // Only start drag on the grab handle zone (top 28px) OR when scrolled to top
-    const rect = modal.getBoundingClientRect();
-    const touchInHandle = (t.clientY - rect.top) < 28;
-    if(!touchInHandle && modal.scrollTop > 0) return;
-    startY = t.clientY;
-    currentY = startY;
-    dragging = true;
-    modal.style.transition = "none";
-  }, { passive: true });
-
-  modal.addEventListener("touchmove", e => {
-    if(!dragging) return;
-    currentY = e.touches[0].clientY;
-    const dy = currentY - startY;
-    if(dy < 0){ // dragging up — ignore
-      modal.style.transform = "";
-      return;
-    }
-    // If user started scrolling content, abort drag
-    if(modal.scrollTop > 0){
-      dragging = false;
-      modal.style.transform = "";
-      modal.style.transition = "";
-      return;
-    }
-    modal.style.transform = `translateY(${dy}px)`;
-  }, { passive: true });
-
-  modal.addEventListener("touchend", () => {
-    if(!dragging) return;
-    dragging = false;
-    const dy = currentY - startY;
-    modal.style.transition = "transform .25s ease";
-    if(dy > THRESHOLD){
-      modal.style.transform = "translateY(100%)";
-      setTimeout(() => {
-        findCloseAction();
-        modal.style.transform = "";
-        modal.style.transition = "";
-      }, 250);
-    } else {
-      modal.style.transform = "";
-      setTimeout(() => { modal.style.transition = ""; }, 250);
-    }
-  }, { passive: true });
-});
-
-function applyModeButtons(){
-  $modeCompact.classList.toggle("active", state.viewMode === "compact");
-  $modeLoad.classList.toggle("active", state.viewMode === "load");
-}
+// mode buttons: applyModeButtons lives in shell.js; setMode stays here because it
+// calls renderDay(), which is day-view code not extracted in this phase.
 function setMode(m){
   state.viewMode = m;
   applyModeButtons();
@@ -604,18 +212,7 @@ function setMode(m){
 $modeCompact.addEventListener("click", () => setMode("compact"));
 $modeLoad.addEventListener("click", () => setMode("load"));
 
-function setSync(status, txt){
-  $sync.className = "sync-status " + status;
-  $sync.querySelector(".txt").textContent = txt;
-}
-
-// ========= Auth =========
-$loginBtn.addEventListener("click", () => {
-  signInWithPopup(auth, provider).catch(err => {
-    alert("Erro no login: " + err.message);
-  });
-});
-
+// ========= Auth (loginBtn/logout/online-offline wiring lives in core/auth.js) =========
 onAuthStateChanged(auth, async u => {
   state.user = u;
   state.allSessions = null;
@@ -656,9 +253,6 @@ onAuthStateChanged(auth, async u => {
     teardownFeatureFlags();
   }
 });
-
-window.addEventListener("online", ()=>{ if(state.user) setSync("live","sincronizado"); });
-window.addEventListener("offline", ()=>{ setSync("offline","offline — salvando local"); });
 
 async function initApp(u){
   await Promise.all([
@@ -740,63 +334,13 @@ async function loadPref(){
   applyExecOrderState();
   applyGamificationState();
 }
-async function savePref(){
-  if(!state.user) return;
-  try{
-    await repo.setPrefs(state.user.uid, {
-      viewMode: state.viewMode, theme: state.theme || null,
-      currentPlanName: state.currentPlanName || null,
-      currentPlanId: state.currentPlanId || null,
-      currentPlanKey: state.currentPlanKey || null,
-      prevLayout: state.prevLayout,
-      periodizationEnabled: state.periodizationEnabled,
-      machinesEnabled: state.machinesEnabled,
-      profileEnabled: state.profileEnabled,
-      autoregEnabled: state.autoregEnabled,
-      autoregSensitivity: state.autoregSensitivity,
-      execOrderEnabled: state.execOrderEnabled,
-      gamificationEnabled: state.gamificationEnabled,
-      gamifStartDate: state.gamifStartDate || null,
-    });
-  }catch(e){ console.warn("savePref:", e.message); }
-}
+// savePref lives in shell.js; scheduleProfileSave/saveProfileDoc live in profile-modal.js;
+// loadAllSessions lives in evolution.js (imported above).
 async function saveDeloadDate(){
   if(!state.user) return;
   try{
     await repo.setPrefs(state.user.uid, { lastDeloadDate: state.lastDeloadDate });
   }catch(e){ console.warn("saveDeloadDate:", e.message); }
-}
-function scheduleProfileSave(){
-  clearTimeout(state._profileSaveTimer);
-  state._profileSaveTimer = setTimeout(saveProfileDoc, 500);
-}
-async function saveProfileDoc(){
-  if(!state.user) return;
-  try{
-    await repo.setProfileDoc(state.user.uid, { ...state.profile, updatedAt: serverTimestamp() });
-  }catch(e){ console.warn("saveProfileDoc:", e.message); }
-}
-
-async function loadAllSessions(){
-  if(state.allSessions || !state.user) return;
-  if(state.allSessionsPromise) return state.allSessionsPromise;
-  state.allSessionsPromise = (async () => {
-    try{
-      const { sessions, truncated } = await repo.fetchSessions(state.user.uid, SESSIONS_FETCH_LIMIT);
-      state.allSessions = sessions;
-      state.allSessionsTruncated = truncated;
-      state.allSessionsError = false;
-      if(state.allSessionsTruncated) console.warn("allSessions truncated at", SESSIONS_FETCH_LIMIT);
-    }catch(e){
-      console.error("loadAllSessions failed:", e);
-      state.allSessionsError = true;
-      state.allSessions = null;   // leave unset so the next navigation retries
-    } finally {
-      state.allSessionsPromise = null;
-      refreshGamification();
-    }
-  })();
-  return state.allSessionsPromise;
 }
 
 function findPrevSession(dayKey, beforeDate){
@@ -852,264 +396,8 @@ async function saveNow(){
   }
 }
 
-// ========= Gamificação (XP + Levels + Badges) =========
-// Presentation for BADGE_IDS in src/domain/gamification.js — ids and order must match.
-const BADGES = [
-  { id:"consistencia", name:"Consistência", desc:"Treinou 7 dias seguidos",
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>' },
-  { id:"levantador", name:"Levantador", desc:"1.000 kg de volume em um dia",
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 5v14"/><path d="M2 8h4"/><path d="M2 16h4"/><path d="M18 8h4"/><path d="M18 16h4"/><path d="M6 12h12"/></svg>' },
-  { id:"madrugador", name:"Madrugador", desc:"Treinou antes das 6h",
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="5"/></svg>' }
-];
-
-function showGamifToast(name){
-  if(!document.body.classList.contains("flag-gamification")) return;
-  let $t = document.getElementById("gamifToast");
-  if(!$t){
-    $t = document.createElement("div");
-    $t.id = "gamifToast";
-    $t.className = "gamif-toast";
-    document.body.appendChild($t);
-  }
-  $t.textContent = `\u{1F3C6} Conquista: ${name}`;
-  $t.classList.remove("show");
-  void $t.offsetWidth; // reflow
-  $t.classList.add("show");
-  clearTimeout(state._gamifToastTimer);
-  state._gamifToastTimer = setTimeout(() => $t.classList.remove("show"), 3500);
-}
-
-function refreshGamification(){
-  const prevEarned = state.gamification && state.gamification.badges
-    ? new Set(state.gamification.badges.filter(b => b.earned).map(b => b.id))
-    : null;
-  state.gamification = computeGamification(state.allSessions, state.gamifStartDate);
-  renderGamifChip();
-  // Detect newly earned badges (only if we had a previous snapshot, i.e. not initial load)
-  if(prevEarned && state.gamification.badges){
-    for(const b of state.gamification.badges){
-      if(b.earned && !prevEarned.has(b.id)){
-        const def = BADGES.find(d => d.id === b.id);
-        if(def) showGamifToast(def.name);
-      }
-    }
-  }
-}
-
-function renderGamifChip(){
-  if(!state.gamification) return;
-  const $label = document.getElementById("gamifChipLabel");
-  const $fill = document.getElementById("gamifChipFill");
-  if(!$label || !$fill) return;
-  $label.textContent = `Nv ${state.gamification.level} · ${state.gamification.title}`;
-  const pct = state.gamification.xpForNextLevel > 0 ? Math.min(100, Math.round(state.gamification.xpIntoLevel / state.gamification.xpForNextLevel * 100)) : 100;
-  $fill.style.width = pct + "%";
-  const $chip = document.getElementById("gamifChip");
-  if($chip && $chip.classList.contains("loading")){
-    $chip.classList.remove("loading");
-    $chip.classList.add("revealed");
-    setTimeout(() => $chip.classList.remove("revealed"), 320);
-  }
-}
-
-function renderGamifModal(){
-  if(!state.gamification) return;
-  const g = state.gamification;
-  document.getElementById("gamifLevelBig").textContent = g.level;
-  document.getElementById("gamifTitleBig").textContent = g.title;
-  const pct = g.xpForNextLevel > 0 ? Math.min(100, Math.round(g.xpIntoLevel / g.xpForNextLevel * 100)) : 100;
-  document.getElementById("gamifXpFill").style.width = pct + "%";
-  document.getElementById("gamifXpText").textContent = g.level < 50
-    ? `${g.xpIntoLevel} / ${g.xpForNextLevel} XP para o próximo nível`
-    : `Nível máximo alcançado!`;
-  document.getElementById("gamifTotalXp").textContent = g.totalXP.toLocaleString("pt-BR");
-  document.getElementById("gamifTrained").textContent = g.trainedDays;
-  document.getElementById("gamifMissed").textContent = g.missedDays;
-  // Badges
-  const $sec = document.getElementById("gamifBadgesSection");
-  if(!g.badges){ $sec.style.display = "none"; return; }
-  let html = '<div class="gamif-badges-label">Conquistas</div><div class="gamif-badges-grid">';
-  for(const b of g.badges){
-    const def = BADGES.find(d => d.id === b.id);
-    if(!def) continue;
-    const locked = !b.earned;
-    let dateStr = "";
-    if(b.earnedDate){
-      const [y,m,d] = b.earnedDate.split("-");
-      dateStr = `em ${d}/${m}/${y}`;
-    }
-    html += `<div class="gamif-badge${locked ? " locked" : ""}">
-      <div class="gamif-badge-icon">${def.icon}</div>
-      <div class="gamif-badge-name">${esc(def.name)}</div>
-      ${locked ? `<div class="gamif-badge-desc">${esc(def.desc)}</div>` : `<div class="gamif-badge-date">${dateStr}</div>`}
-    </div>`;
-  }
-  html += '</div>';
-  $sec.innerHTML = html;
-  $sec.style.display = "";
-}
-
-// Chip click → open modal
-document.getElementById("gamifChip").addEventListener("click", () => {
-  renderGamifModal();
-  $gamifModal.classList.add("open");
-});
-$gamifModal.addEventListener("click", e => { if(e.target === $gamifModal) $gamifModal.classList.remove("open"); });
-
-// ========= Wrapped overlay logic =========
-function wrappedCapitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
-
-function getWrappedYears(){
-  if(!state.allSessions || !state.allSessions.length) return [];
-  const years = new Set();
-  for(const s of state.allSessions){ if(s.date) years.add(s.date.slice(0,4)); }
-  return [...years].sort().reverse();
-}
-
-function buildWrappedSlides(data){
-  if(!data){
-    $wrappedSlides.innerHTML = '<div class="wrapped-card active"><div class="wrapped-empty">Nenhum treino registrado neste ano.</div></div>';
-    state._wrappedTotal = 1; state._wrappedCurrent = 0;
-    $wrappedProgress.innerHTML = '<div class="wrapped-progress-seg filled"></div>';
-    return;
-  }
-  const slides = [];
-
-  // S1: Seu ano de treino
-  slides.push(`<div class="wrapped-card">
-    <div class="wrapped-big-label">Seu ano de treino</div>
-    <div class="wrapped-stat-row">
-      <div class="wrapped-stat"><span class="wrapped-stat-val">${data.sessionsCount.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Treinos</span></div>
-      <div class="wrapped-stat"><span class="wrapped-stat-val">${data.trainedDates.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Dias</span></div>
-    </div>
-    <div class="wrapped-stat-row">
-      <div class="wrapped-stat"><span class="wrapped-stat-val">${data.totalVolume.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">kg levantados</span></div>
-    </div>
-    <div class="wrapped-stat-row">
-      <div class="wrapped-stat"><span class="wrapped-stat-val">${data.totalSets.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Séries</span></div>
-      <div class="wrapped-stat"><span class="wrapped-stat-val">${data.totalReps.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Repetições</span></div>
-    </div>
-  </div>`);
-
-  // S2: Grupo mais treinado
-  if(data.topMuscle){
-    slides.push(`<div class="wrapped-card">
-      <div class="wrapped-big-label">Grupo mais treinado</div>
-      <div class="wrapped-big-num" style="font-size:36px">${esc(wrappedCapitalize(data.topMuscle))}</div>
-      <div class="wrapped-stat-row" style="margin-top:16px">
-        <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleSets.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Séries</span></div>
-        <div class="wrapped-stat"><span class="wrapped-stat-val">${data.topMuscleReps.toLocaleString("pt-BR")}</span><span class="wrapped-stat-lbl">Repetições</span></div>
-      </div>
-    </div>`);
-  }
-
-  // S3: Maior carga do ano (skip if no valid weight)
-  if(data.heaviest){
-    slides.push(`<div class="wrapped-card">
-      <div class="wrapped-big-label">Maior carga do ano</div>
-      <div class="wrapped-big-num">${data.heaviest.weight.toLocaleString("pt-BR")} kg</div>
-      <div class="wrapped-detail"><strong>${esc(data.heaviest.exercise)}</strong></div>
-      <div class="wrapped-detail">${fmtDateBR(data.heaviest.date)}</div>
-    </div>`);
-  }
-
-  // S4: Maior evolução (skip if null)
-  if(data.mostProgressed){
-    const mp = data.mostProgressed;
-    slides.push(`<div class="wrapped-card">
-      <div class="wrapped-big-label">Maior evolução</div>
-      <div class="wrapped-detail" style="font-size:16px;margin-bottom:12px"><strong>${esc(mp.exercise)}</strong></div>
-      <div class="wrapped-detail" style="font-size:18px">de <strong>${mp.from.toLocaleString("pt-BR")} kg</strong> → <strong>${mp.to.toLocaleString("pt-BR")} kg</strong></div>
-      <div class="wrapped-big-num" style="font-size:48px;margin-top:8px">+${mp.delta.toLocaleString("pt-BR")} kg</div>
-    </div>`);
-  }
-
-  // S5: Repetições por grupo + top exercícios
-  {
-    const top6 = data.repsByMuscle.slice(0,6);
-    let rankHtml = '';
-    top6.forEach((m,i) => {
-      rankHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(wrappedCapitalize(m.muscle))}</span><span class="wrapped-rank-val">${m.reps.toLocaleString("pt-BR")} reps</span></div>`;
-    });
-    let topExHtml = '';
-    data.topExercisesByReps.forEach((e,i) => {
-      topExHtml += `<div class="wrapped-rank-item"><span class="wrapped-rank-pos">${i+1}</span><span class="wrapped-rank-name">${esc(e.name)}</span><span class="wrapped-rank-val">${e.reps.toLocaleString("pt-BR")} reps</span></div>`;
-    });
-    slides.push(`<div class="wrapped-card">
-      <div class="wrapped-big-label">Repetições por grupo</div>
-      <div class="wrapped-rank-list">${rankHtml}</div>
-      ${topExHtml ? `<div class="wrapped-section-title">Top exercícios</div><div class="wrapped-rank-list">${topExHtml}</div>` : ""}
-    </div>`);
-  }
-
-  state._wrappedTotal = slides.length;
-  state._wrappedCurrent = 0;
-  $wrappedSlides.innerHTML = slides.join("");
-  // Progress segments
-  $wrappedProgress.innerHTML = slides.map(() => '<div class="wrapped-progress-seg"></div>').join("");
-  updateWrappedSlide();
-}
-
-function updateWrappedSlide(){
-  const cards = $wrappedSlides.querySelectorAll(".wrapped-card");
-  cards.forEach((c,i) => c.classList.toggle("active", i === state._wrappedCurrent));
-  const segs = $wrappedProgress.querySelectorAll(".wrapped-progress-seg");
-  segs.forEach((s,i) => s.classList.toggle("filled", i <= state._wrappedCurrent));
-}
-
-function openWrapped(){
-  if(!state.allSessions || !state.allSessions.length) return;
-  const years = getWrappedYears();
-  if(!years.length) return;
-  // Find most recent year with data
-  let bestYear = years[0];
-  for(const y of years){
-    const d = computeWrapped(state.allSessions, y);
-    if(d){ bestYear = y; break; }
-  }
-  // Render year pills
-  if(years.length > 1){
-    $wrappedYearPills.innerHTML = years.map(y => `<button type="button" class="wrapped-year-pill${y===bestYear?" active":""}" data-year="${y}">${y}</button>`).join("");
-    $wrappedYearPills.style.display = "";
-    $wrappedYearPills.querySelectorAll(".wrapped-year-pill").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const yr = btn.dataset.year;
-        $wrappedYearPills.querySelectorAll(".wrapped-year-pill").forEach(b => b.classList.toggle("active", b.dataset.year === yr));
-        buildWrappedSlides(computeWrapped(state.allSessions, yr));
-      });
-    });
-  } else {
-    $wrappedYearPills.innerHTML = "";
-    $wrappedYearPills.style.display = "none";
-  }
-  buildWrappedSlides(computeWrapped(state.allSessions, bestYear));
-  $wrappedOverlay.classList.add("open");
-  document.body.style.overflow = "hidden";
-}
-
-function closeWrapped(){
-  $wrappedOverlay.classList.remove("open");
-  document.body.style.overflow = "";
-}
-
-document.getElementById("wrappedOpenBtn").addEventListener("click", () => {
-  $gamifModal.classList.remove("open");
-  openWrapped();
-});
-document.getElementById("wrappedCloseBtn").addEventListener("click", closeWrapped);
-
-// Tap navigation: right half → next, left half → prev
-$wrappedSlides.addEventListener("click", e => {
-  if(e.target.closest(".wrapped-close") || e.target.closest(".wrapped-year-pill")) return;
-  const rect = $wrappedSlides.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  if(x > rect.width / 2){
-    if(state._wrappedCurrent < state._wrappedTotal - 1){ state._wrappedCurrent++; updateWrappedSlide(); }
-  } else {
-    if(state._wrappedCurrent > 0){ state._wrappedCurrent--; updateWrappedSlide(); }
-  }
-});
+// ========= Gamificação — moved to features/gamification.js =========
+// ========= Wrapped overlay logic — moved to features/wrapped.js =========
 
 // ========= Render =========
 function exDone(ex){
@@ -1299,20 +587,7 @@ function skeletonPanel(n=5){
   return h;
 }
 
-function skeletonEvo(){
-  let stats = `<div class="evo-stats">`;
-  for(let i=0;i<3;i++){
-    stats += `<div class="evo-stat">
-      <div class="skeleton" style="width:50px;height:26px;margin:0 auto 6px"></div>
-      <div class="skeleton" style="width:70px;height:10px;margin:0 auto"></div>
-    </div>`;
-  }
-  stats += `</div>`;
-  stats += `<div class="evo-chart-card"><div class="evo-chart-wrap">
-    <div class="skeleton" style="width:100%;height:100%"></div>
-  </div></div>`;
-  return stats;
-}
+// skeletonEvo moved to features/evolution.js (only consumer)
 
 // ========= Train mode =========
 
@@ -1342,6 +617,9 @@ function exitTrainMode(){
   const art = $panel.querySelector(`.ex[data-i="${back}"]`);
   if(art) art.scrollIntoView({ block: "center" });
 }
+// Exposed so shell.js's showTab (which owns tab-switching) can exit train mode
+// without importing this day-view code, which isn't extracted in this phase.
+window._exitTrainMode = exitTrainMode;
 
 function renderTrainBar(){
   if(!state.trainMode || !state.session) return;
@@ -1612,7 +890,6 @@ function renderDay(){
   }
 
   const completed = countDone();
-  const pct = Math.round(completed/total*100);
 
   const _deloadActive = isDeloadActive();
   const _deload = !_deloadActive && !state.deloadDismissed ? deloadDue() : { due: false };
@@ -2098,9 +1375,6 @@ function closeMachineModal(){ $machineModal.classList.remove("open"); }
 
 function openMachineModal(exIdx, isSup){
   const ex = state.session.exercises[exIdx];
-  const day = activeDays()[state.current];
-  const planEx = day.ex[exIdx];
-  const effectiveName = isSup ? (planEx.superset ? planEx.superset.name : "") : (ex.subName || planEx.name);
   const currentMachine = isSup ? ex.supMachine : ex.machine;
 
   // Build chips: user's most-used machines GLOBAL across all sessions, ranked by frequency desc, cap 8
@@ -2228,15 +1502,8 @@ function renderStrip(){
   centerActiveDay();
 }
 
-function centerActiveDay(behavior){
-  if(!$strip) return;
-  const btn = $strip.querySelector('.day-btn[aria-selected="true"]');
-  if(!btn) return;
-  const cr = $strip.getBoundingClientRect();
-  const br = btn.getBoundingClientRect();
-  const delta = (br.left - cr.left) - (cr.width - br.width) / 2;
-  $strip.scrollTo({ left: $strip.scrollLeft + delta, behavior: behavior || "auto" });
-}
+// centerActiveDay lives in core/ui/sticky-header.js (imported above) — it's also
+// needed by that module's own scroll-collapse logic, which may not import main.js.
 
 function updateWeekLabel(){
   if(state.weekOffset === 0){
@@ -2275,374 +1542,7 @@ $weekNext.addEventListener("click", async () => {
   renderStrip();
 });
 
-// ========= Evolução =========
-const MUSCLE_ORDER = ["peito","costas","ombro","trapézio","bíceps","tríceps","antebraço","perna","glúteo","panturrilha","abdômen"];
-const MUSCLE_LABEL = {peito:"Peito",costas:"Costas",ombro:"Ombro","trapézio":"Trapézio","bíceps":"Bíceps","tríceps":"Tríceps","antebraço":"Antebraço",perna:"Perna","glúteo":"Glúteo","panturrilha":"Panturrilha","abdômen":"Abdômen"};
-
-function buildExerciseList(){
-  const seen = new Map();
-  activeDays().forEach((d, dk) => {
-    d.ex.forEach((e, ei) => {
-      if(!seen.has(e.name)) seen.set(e.name, {name:e.name, muscle:e.muscle, unit:e.unit||"kg", dayKey:dk, exIdx:ei, isSup:false});
-      if(e.superset && !seen.has(e.superset.name))
-        seen.set(e.superset.name, {name:e.superset.name, muscle:e.superset.muscle||e.muscle, unit:e.superset.unit||"kg", dayKey:dk, exIdx:ei, isSup:true});
-    });
-  });
-  // Add substituted exercise names from session history
-  if(state.allSessions){
-    state.allSessions.forEach(s => {
-      if(!s.exercises) return;
-      s.exercises.forEach(entry => {
-        if(entry.subName && !seen.has(entry.subName)){
-          seen.set(entry.subName, {name:entry.subName, muscle:entry.subMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:false});
-        }
-        if(entry.supSubName && !seen.has(entry.supSubName)){
-          seen.set(entry.supSubName, {name:entry.supSubName, muscle:entry.supSubMuscle||"outro", unit:"kg", dayKey:s.dayKey, exIdx:0, isSup:true});
-        }
-      });
-    });
-  }
-  return [...seen.values()];
-}
-state.EXERCISES = buildExerciseList();
-
-function rebuildEvoDropdown(){
-  const grouped = new Map();
-  state.EXERCISES.forEach((x,i) => {
-    const m = x.muscle || "outro";
-    if(!grouped.has(m)) grouped.set(m, []);
-    grouped.get(m).push({...x, idx:i});
-  });
-  let html = "";
-  MUSCLE_ORDER.forEach(m => {
-    const items = grouped.get(m);
-    if(!items) return;
-    items.sort((a,b) => a.name.localeCompare(b.name, "pt-BR"));
-    html += `<optgroup label="${MUSCLE_LABEL[m]}">`;
-    items.forEach(x => { html += `<option value="${x.idx}">${esc(x.name)}</option>`; });
-    html += `</optgroup>`;
-  });
-  $evoSelect.innerHTML = html;
-}
-
-// Entry point used by the Treino view to deep-link into a specific exercise chart.
-function openEvolucaoFor(name, machine){
-  state.evoPendingName = name || null;
-  state.evoPendingMachine = (machineFilterActive() && machine) ? normMachine(machine) : null;
-  const wasInit = state.evoInitialized;
-  showTab("evolucao");
-  window.scrollTo({top:0, behavior:"auto"});
-  // showTab -> initEvolucao only renders on first init; force a re-render otherwise.
-  if(wasInit) renderEvolucao();
-}
-
-function initEvolucao(){
-  if(state.evoInitialized) return;
-  state.evoInitialized = true;
-  rebuildEvoDropdown();
-  $evoSelect.addEventListener("change", renderEvolucao);
-  $evoMachineSelect.addEventListener("change", renderEvolucao);
-  renderEvolucao();
-}
-
-function loadMetrics(sets){
-  if(!sets) return null;
-  const ws = sets.map(s => (s && s.weight != null && s.weight !== "") ? Number(s.weight) : null)
-                 .filter(w => w != null && !isNaN(w));
-  if(!ws.length) return null;
-  const max = Math.max(...ws);
-  const avg = ws.reduce((a,b)=>a+b,0) / ws.length;
-  return { max, avg: Math.round(avg*10)/10 };
-}
-
-async function renderEvolucao(){
-  if(!state.user){ return; }
-  $evoBody.innerHTML = skeletonEvo();
-
-  await loadAllSessions();
-  // Rebuild exercise list to include substitutes from session history
-  const prevSelected = $evoSelect.value;
-  const prevName = state.EXERCISES[+prevSelected]?.name;
-  state.EXERCISES = buildExerciseList();
-  rebuildEvoDropdown();
-  // A pending deep-link wins over restoring the previous selection.
-  if(state.evoPendingName){
-    const pIdx = state.EXERCISES.findIndex(x => x.name === state.evoPendingName);
-    if(pIdx >= 0) $evoSelect.value = pIdx;
-    // Machine select is built further down and restores from dataset.prevNorm.
-    if(state.evoPendingMachine) $evoMachineSelect.dataset.prevNorm = state.evoPendingMachine;
-    state.evoPendingName = null;
-    state.evoPendingMachine = null;
-  } else if(prevName){
-    const newIdx = state.EXERCISES.findIndex(x => x.name === prevName);
-    if(newIdx >= 0) $evoSelect.value = newIdx;
-  }
-  const sel = state.EXERCISES[+$evoSelect.value || 0];
-  const evoUnit = sel.unit || "kg";
-  const featureActive = machineFilterActive();
-
-  // Collect matched sets bucketed by machine variant
-  // Each bucket key: normMachine(machine) ?? "__none"
-  const byVariant = new Map(); // key -> Map<date, sets[]>
-  (state.allSessions || []).forEach(s => {
-    if(!s.exercises) return;
-    s.exercises.forEach(entry => {
-      const effectiveName = entry.subName || entry.name;
-      let sets = [];
-      let machine = null;
-      if(effectiveName === sel.name && entry.main){
-        sets.push(...entry.main);
-        machine = entry.machine || null;
-      }
-      if((entry.supSubName || entry.supName) === sel.name && entry.sup){
-        sets.push(...entry.sup);
-        machine = entry.supMachine || null;
-      }
-      if(!sets.length) return;
-      const vKey = featureActive ? (normMachine(machine) ?? "__none") : "__none";
-      if(!byVariant.has(vKey)) byVariant.set(vKey, { displayName: machine ? String(machine).trim() : null, byDate: new Map() });
-      const bucket = byVariant.get(vKey);
-      // Keep the first non-null display name encountered for this normalized key
-      if(machine && !bucket.displayName) bucket.displayName = String(machine).trim();
-      const prev = bucket.byDate.get(s.date);
-      if(prev) prev.push(...sets); else bucket.byDate.set(s.date, [...sets]);
-    });
-  });
-
-  // Build machine select dropdown
-  const variantKeys = [...byVariant.keys()];
-  const showMachineSelect = featureActive && variantKeys.length > 1;
-  if(showMachineSelect){
-    const prevMachineVal = $evoMachineSelect.dataset.prevNorm || "";
-    let mhtml = `<option value="__all">Todas as máquinas</option>`;
-    variantKeys.sort((a,b) => {
-      if(a === "__none") return 1;
-      if(b === "__none") return -1;
-      return a.localeCompare(b, "pt-BR");
-    }).forEach(vk => {
-      const label = vk === "__none" ? "Geral (sem máquina)" : byVariant.get(vk).displayName;
-      mhtml += `<option value="${vk}">${label}</option>`;
-    });
-    $evoMachineSelect.innerHTML = mhtml;
-    // Restore previous selection if still valid
-    const opts = [...$evoMachineSelect.options].map(o => o.value);
-    if(prevMachineVal && opts.includes(prevMachineVal)){
-      $evoMachineSelect.value = prevMachineVal;
-    } else {
-      $evoMachineSelect.value = "__all";
-    }
-    $evoMachineSelect.dataset.prevNorm = $evoMachineSelect.value;
-    $evoMachineSelect.style.display = "";
-  } else if(featureActive && variantKeys.length === 1 && variantKeys[0] !== "__none"){
-    // Single tagged variant — show select but with only that option (no "all")
-    const vk = variantKeys[0];
-    const label = byVariant.get(vk).displayName;
-    $evoMachineSelect.innerHTML = `<option value="${vk}">${label}</option>`;
-    $evoMachineSelect.value = vk;
-    $evoMachineSelect.dataset.prevNorm = vk;
-    $evoMachineSelect.style.display = "";
-  } else {
-    $evoMachineSelect.style.display = "none";
-    $evoMachineSelect.dataset.prevNorm = "";
-  }
-
-  const selectedVariant = showMachineSelect ? $evoMachineSelect.value : (variantKeys[0] || "__none");
-  const isAllView = selectedVariant === "__all";
-
-  // -- Color palette for multi-variant view --
-  const VARIANT_COLORS = ["#FF5A1F","#3B82F6","#10B981","#F59E0B","#8B5CF6","#EC4899","#14B8A6","#EF4444"];
-
-  if(isAllView){
-    // Multi-variant: one max line per variant
-    const allDates = new Set();
-    const variantData = []; // [{key, label, points:[{date, max}]}]
-    variantKeys.sort((a,b) => {
-      if(a === "__none") return 1;
-      if(b === "__none") return -1;
-      return a.localeCompare(b, "pt-BR");
-    }).forEach(vk => {
-      const bucket = byVariant.get(vk);
-      const pts = [];
-      [...bucket.byDate.entries()]
-        .sort((a,b) => a[0].localeCompare(b[0]))
-        .forEach(([date, sets]) => {
-          const m = loadMetrics(sets);
-          if(m){ pts.push({ date, max: m.max }); allDates.add(date); }
-        });
-      if(pts.length){
-        variantData.push({ key: vk, label: vk === "__none" ? "Geral" : bucket.displayName, points: pts });
-      }
-    });
-
-    if(!variantData.length){
-      $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
-      if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
-      return;
-    }
-
-    // Stats for __all: last trained variant's max, sessions = distinct dates
-    const totalSessions = allDates.size;
-    // Find most recently trained variant
-    let latestDate = "";
-    let latestVariant = variantData[0];
-    variantData.forEach(vd => {
-      const last = vd.points[vd.points.length - 1].date;
-      if(last > latestDate){ latestDate = last; latestVariant = vd; }
-    });
-    const latestMax = latestVariant.points[latestVariant.points.length - 1].max;
-
-    $evoBody.innerHTML = `
-      <div class="evo-stats">
-        <div class="evo-stat"><div class="val">${latestMax}</div><div class="lbl">Carga máx. atual</div><div class="sub">${latestVariant.label}</div></div>
-        <div class="evo-stat"><div class="val">—</div><div class="lbl">Variação total</div></div>
-        <div class="evo-stat"><div class="val">${totalSessions}</div><div class="lbl">Sessões</div></div>
-      </div>
-      <div class="evo-chart-card">
-        <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
-        <div class="evo-legend">
-          ${variantData.map((vd, i) => `<span class="item"><span class="swatch" style="background:${VARIANT_COLORS[i % VARIANT_COLORS.length]}"></span>${vd.label}</span>`).join("")}
-        </div>
-      </div>`;
-
-    const datasets = variantData.map((vd, i) => ({
-      label: vd.label,
-      points: vd.points,
-      color: VARIANT_COLORS[i % VARIANT_COLORS.length]
-    }));
-    drawChart(datasets, evoUnit, true);
-
-  } else {
-    // Single-variant view (or feature inactive): legacy behavior
-    const bucket = byVariant.get(selectedVariant);
-    const points = [];
-    if(bucket){
-      [...bucket.byDate.entries()]
-        .sort((a,b) => a[0].localeCompare(b[0]))
-        .forEach(([date, sets]) => {
-          const m = loadMetrics(sets);
-          if(m) points.push({ date, max: m.max, avg: m.avg });
-        });
-    }
-
-    if(!points.length){
-      $evoBody.innerHTML = `<div class="evo-empty"><span class="big">Sem dados ainda</span>Registre a carga deste exercício em alguns treinos e a evolução aparecerá aqui.</div>`;
-      if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
-      return;
-    }
-
-    const lastMax = points[points.length-1].max;
-    const firstMax = points[0].max;
-    const delta = lastMax - firstMax;
-    const deltaTxt = points.length < 2
-      ? "—"
-      : (delta>0?"+":"") + (Math.round(delta*10)/10) + " " + UNIT_ABBR[evoUnit];
-
-    $evoBody.innerHTML = `
-      <div class="evo-stats">
-        <div class="evo-stat"><div class="val">${lastMax}</div><div class="lbl">Carga máx. atual</div></div>
-        <div class="evo-stat"><div class="val">${deltaTxt}</div><div class="lbl">Variação total</div></div>
-        <div class="evo-stat"><div class="val">${points.length}</div><div class="lbl">Sessões</div></div>
-      </div>
-      <div class="evo-chart-card">
-        <div class="evo-chart-wrap"><canvas id="evoCanvas"></canvas></div>
-        <div class="evo-legend">
-          <span class="item"><span class="swatch" style="background:var(--accent)"></span>Carga máxima</span>
-          <span class="item"><span class="swatch" style="background:var(--muted)"></span>Carga média</span>
-        </div>
-      </div>`;
-
-    drawChart(points, evoUnit, false);
-  }
-}
-
-function drawChart(data, unit, multi){
-  const uLabel = UNIT_ABBR[unit || "kg"];
-  if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
-  const ctx = document.getElementById("evoCanvas");
-  const css = getComputedStyle(document.documentElement);
-  const accent = css.getPropertyValue("--accent").trim() || "#FF5A1F";
-  const muted  = css.getPropertyValue("--muted").trim() || "#8A8F99";
-  const border = css.getPropertyValue("--border").trim() || "#2A2E37";
-  const faint  = css.getPropertyValue("--faint").trim() || "#5A5F69";
-
-  let labels, datasets;
-
-  if(multi){
-    // data = [{label, points:[{date,max}], color}]
-    // Build a unified date axis from all variants
-    const dateSet = new Set();
-    data.forEach(ds => ds.points.forEach(p => dateSet.add(p.date)));
-    const allDates = [...dateSet].sort();
-    labels = allDates.map(d => fmtDateBR(d));
-
-    datasets = data.map(ds => {
-      const dateMap = new Map(ds.points.map(p => [p.date, p.max]));
-      return {
-        label: ds.label,
-        data: allDates.map(d => dateMap.has(d) ? dateMap.get(d) : null),
-        borderColor: ds.color,
-        backgroundColor: ds.color,
-        borderWidth: 2.5,
-        tension: .3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        spanGaps: false,
-      };
-    });
-  } else {
-    // data = [{date, max, avg}] — legacy single-variant
-    labels = data.map(p => fmtDateBR(p.date));
-    datasets = [
-      {
-        label: "Carga máxima",
-        data: data.map(p => p.max),
-        borderColor: accent,
-        backgroundColor: accent,
-        borderWidth: 2.5,
-        tension: .3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-      {
-        label: "Carga média",
-        data: data.map(p => p.avg),
-        borderColor: muted,
-        backgroundColor: muted,
-        borderWidth: 2,
-        borderDash: [5,4],
-        tension: .3,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      }
-    ];
-  }
-
-  state.evoChart = new Chart(ctx, {
-    type: "line",
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: css.getPropertyValue("--surface-2").trim() || "#1E2128",
-          titleColor: css.getPropertyValue("--text").trim() || "#ECEDEF",
-          bodyColor: muted,
-          borderColor: border,
-          borderWidth: 1,
-          padding: 10,
-          callbacks: { label: c => c.parsed.y != null ? `${c.dataset.label}: ${c.parsed.y} ${uLabel}` : null }
-        }
-      },
-      scales: {
-        x: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11} } },
-        y: { grid:{ color:border, drawTicks:false }, ticks:{ color:faint, font:{size:11}, callback:v=>v+" "+uLabel }, beginAtZero:false }
-      }
-    }
-  });
-}
+// ========= Evolução — moved to features/evolution.js =========
 
 // ========= Exercise CRUD (Firestore) =========
 
@@ -2897,6 +1797,9 @@ function renderExercicios(){
   else if(state.exSubTab==="plans"){ renderPlansSection(); }
   else { renderDayCustomSection(); }
 }
+// Exposed so shell.js's showTab can render this view without importing this
+// exercises-view code, which isn't extracted in this phase.
+window._renderExercicios = renderExercicios;
 
 function renderExFilterBar(){
   const muscles = Object.entries(MUSCLE_LABEL);
@@ -3113,7 +2016,6 @@ function initDragAndDrop(){
     });
 
     // Touch fallback
-    let touchStartY = 0;
     let touchClone = null;
     let touchActive = false;
     let longPressTimer = null;
@@ -3122,7 +2024,6 @@ function initDragAndDrop(){
     if(!handle) return;
 
     handle.addEventListener("touchstart", e => {
-      touchStartY = e.touches[0].clientY;
       dragId = el.dataset.id;
       longPressTimer = setTimeout(() => {
         touchActive = true;
@@ -3234,93 +2135,8 @@ async function deletePlanDoc(docId){
   await repo.deletePlan(state.user.uid, docId);
 }
 
-// ========= Data export (Phase 1, item 4) =========
-
-// Firestore Timestamps don't survive JSON.stringify (they'd silently become {}).
-// Detect them by duck-typing .toDate() rather than importing the Timestamp class.
-function serializeTimestamps(value){
-  if(value && typeof value.toDate === "function") return value.toDate().toISOString();
-  if(Array.isArray(value)) return value.map(serializeTimestamps);
-  if(value && typeof value === "object"){
-    const out = {};
-    for(const k in value) out[k] = serializeTimestamps(value[k]);
-    return out;
-  }
-  return value;
-}
-
-// Reads straight from Firestore rather than the in-memory caches (allSessions,
-// exercisesCatalog, plansCache) — those are partial by design (and about to gain
-// a query limit), so a cache-built export could silently ship an incomplete backup.
-async function buildExportPayload(){
-  const uid = state.user.uid;
-  const [exercisesRaw, plansRaw, sessionsRaw, appPrefs, profilePrefs] = await Promise.all([
-    repo.fetchExercises(uid),
-    repo.fetchPlans(uid),
-    repo.fetchAllSessionsRaw(uid),
-    repo.getPrefs(uid),
-    repo.getProfileDoc(uid),
-  ]);
-
-  const toRecord = ({id, data}) => ({ id, ...serializeTimestamps(data) });
-  const exercises = exercisesRaw.map(toRecord);
-  const plans = plansRaw.map(toRecord);
-  const sessions = sessionsRaw.map(toRecord);
-  sessions.sort((a, b) => String(a.date||"").localeCompare(String(b.date||"")));
-
-  return {
-    schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
-    app: "strength-split",
-    user: { uid: state.user.uid, email: state.user.email || null, displayName: state.user.displayName || null },
-    prefs: {
-      app: appPrefs ? serializeTimestamps(appPrefs) : null,
-      profile: profilePrefs ? serializeTimestamps(profilePrefs) : null,
-    },
-    exercises, plans, sessions,
-  };
-}
-
-async function exportUserData(){
-  if(state.exportingData || !state.user) return;
-  state.exportingData = true;
-  const $row = document.getElementById("settingsExportRow");
-  const $label = document.getElementById("settingsExportLabel");
-  const originalLabel = $label.textContent;
-  $row.style.pointerEvents = "none";
-  $row.style.opacity = ".6";
-  $label.textContent = "Exportando…";
-
-  try {
-    const payload = await buildExportPayload();
-    const json = JSON.stringify(payload, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const filename = `strength-split-backup-${todayStr()}.json`;
-    const file = new File([blob], filename, { type: "application/json" });
-    if(navigator.canShare && navigator.canShare({ files: [file] })){
-      await navigator.share({ files: [file], title: "Backup Strength Split" });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-  } catch(e){
-    if(e.name !== "AbortError"){
-      console.error("exportUserData:", e);
-      alert("Erro ao exportar dados: " + e.message);
-    }
-  } finally {
-    state.exportingData = false;
-    $row.style.pointerEvents = "";
-    $row.style.opacity = "";
-    $label.textContent = originalLabel;
-  }
-}
-
+// ========= Data export — moved to features/export.js =========
+// renderPlansSection is Plans-view code (not export); it stays here.
 function renderPlansSection(){
   let html = "";
 
@@ -4164,192 +2980,22 @@ function closeExEditor(){
   document.removeEventListener("keydown", escHandler);
 }
 
-// ========= Share PDF =========
+// ========= Share PDF — moved to features/share-pdf.js =========
 
-$btnSharePdf.addEventListener("click", buildAndSharePdf);
+// ========= Bootstrap =========
+modal.init();
+stickyHeader.init();
+authModule.init();
+shell.init();
+settings.init();
+profileModal.init();
+gamification.init();
+wrapped.init();
+evolution.init();
+exportData.init();
+sharePdf.init();
 
-async function buildAndSharePdf(){
-  if(state.sharingPdf) return;
-  state.sharingPdf = true;
-  $btnSharePdf.disabled = true;
-  try { await _buildAndSharePdf(); } finally { state.sharingPdf = false; $btnSharePdf.disabled = false; }
-}
-
-async function _buildAndSharePdf(){
-  const days = activeDays().filter(d => d.ex && d.ex.length > 0);
-  if(!days.length){ alert("Nenhum dia de treino para exportar."); return; }
-
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit:"mm", format:"a4" });
-  const pw = 210, ph = 297, mx = 16, my = 16;
-  const cw = pw - mx * 2;
-  let y = my;
-  let pg = 1;
-
-  function checkPage(need){
-    if(y + need > ph - my){
-      drawFooter();
-      pdf.addPage();
-      pg++;
-      y = my;
-    }
-  }
-
-  function drawFooter(){
-    pdf.setFontSize(8);
-    pdf.setTextColor(150);
-    pdf.text("strength-split", mx, ph - 8);
-    pdf.text(String(pg), pw - mx, ph - 8, { align:"right" });
-  }
-
-  function fmtDate(d){
-    return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
-  }
-
-  const planName = state.currentPlanName || "Meu Treino";
-  const today = new Date();
-
-  // Header
-  pdf.setFont("helvetica","bold");
-  pdf.setFontSize(22);
-  pdf.setTextColor(255, 90, 31);
-  pdf.text("STRENGTH SPLIT", mx, y);
-  y += 8;
-
-  pdf.setFont("helvetica","normal");
-  pdf.setFontSize(13);
-  pdf.setTextColor(60);
-  pdf.text(planName, mx, y);
-  y += 6;
-
-  pdf.setFontSize(10);
-  pdf.setTextColor(140);
-  pdf.text(fmtDate(today), mx, y);
-  y += 12;
-
-  // Days
-  days.forEach(day => {
-    checkPage(24);
-
-    // Day heading
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(14);
-    pdf.setTextColor(30);
-    pdf.text(day.name, mx, y);
-
-    const tagText = day.tag || day.focus || "";
-    if(tagText){
-      const nameW = pdf.getTextWidth(day.name);
-      pdf.setFont("helvetica","normal");
-      pdf.setFontSize(10);
-      pdf.setTextColor(140);
-      pdf.text("  " + tagText, mx + nameW, y);
-    }
-    y += 3;
-    pdf.setDrawColor(220);
-    pdf.line(mx, y, pw - mx, y);
-    y += 6;
-
-    day.ex.forEach((ex, idx) => {
-      checkPage(18);
-      renderExerciseLine(pdf, ex, idx + 1, mx, false);
-
-      if(ex.superset){
-        checkPage(14);
-        renderExerciseLine(pdf, ex.superset, null, mx, true);
-      }
-    });
-
-    y += 6;
-  });
-
-  drawFooter();
-
-  function renderExerciseLine(p, ex, num, lx, isSuperset){
-    const indent = isSuperset ? 8 : 0;
-    const x = lx + indent;
-
-    // Prefix
-    if(isSuperset){
-      p.setFont("helvetica","italic");
-      p.setFontSize(9);
-      p.setTextColor(255, 90, 31);
-      p.text("+ Supersérie", x, y);
-      y += 4.5;
-    }
-
-    // Name line
-    p.setFont("helvetica","bold");
-    p.setFontSize(10);
-    p.setTextColor(30);
-    const prefix = num ? num + ". " : "";
-    p.text(prefix + ex.name, x, y);
-
-    // Muscle tag
-    const muscleLabel = MUSCLE_LABEL[ex.muscle] || ex.muscle || "";
-    if(muscleLabel){
-      const nameW = p.getTextWidth(prefix + ex.name);
-      p.setFont("helvetica","normal");
-      p.setFontSize(8);
-      p.setTextColor(120);
-      p.text("  " + muscleLabel, x + nameW, y);
-    }
-    y += 5;
-
-    // Reps
-    if(ex.reps && ex.reps.length){
-      p.setFont("helvetica","normal");
-      p.setFontSize(9);
-      p.setTextColor(80);
-      const repsStr = ex.reps.length + "× " + ex.reps.join("·");
-      p.text(repsStr, x, y);
-      y += 4.5;
-    }
-
-    // Badges
-    const badges = (ex.badges || []).filter(b => BADGE_LABEL[b]);
-    if(badges.length){
-      p.setFont("helvetica","italic");
-      p.setFontSize(8);
-      p.setTextColor(140);
-      p.text(badges.map(b => BADGE_LABEL[b]).join(" | "), x, y);
-      y += 4.5;
-    }
-
-    // Note
-    if(ex.note){
-      p.setFont("helvetica","italic");
-      p.setFontSize(8);
-      p.setTextColor(160);
-      const noteLines = p.splitTextToSize(ex.note, cw - indent);
-      noteLines.forEach(ln => {
-        checkPage(5);
-        p.text(ln, x, y);
-        y += 4;
-      });
-      y += 0.5;
-    }
-
-    y += 2;
-  }
-
-  // Share or download
-  const dateStr = today.toISOString().slice(0,10);
-  const slug = (state.currentPlanName || "treino").toLowerCase().replace(/\s+/g, "-");
-  const filename = `strength-split-${slug}-${dateStr}.pdf`;
-
-  try {
-    const blob = pdf.output("blob");
-    const file = new File([blob], filename, { type:"application/pdf" });
-    if(navigator.canShare && navigator.canShare({ files:[file] })){
-      await navigator.share({ files:[file], title:"Meu treino", text: planName });
-    } else {
-      pdf.save(filename);
-    }
-  } catch(e){
-    if(e.name !== "AbortError") alert("Erro ao gerar PDF: " + e.message);
-  }
-}
+bindFlagsUpdatedListener();
 
 applyTheme();
 applyModeButtons();

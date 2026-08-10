@@ -6,9 +6,3 @@ export function equipmentOf(name){
   if(n.includes("barra") && !n.includes("barra fixa")) return "barra";
   return "outro";
 }
-
-export function buildExTypeMap(catalog) {
-  const m = new Map();
-  catalog.forEach(e => m.set(stripDiacritics(e.name), e.type));
-  return m;
-}
