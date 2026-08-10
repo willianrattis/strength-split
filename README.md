@@ -8,7 +8,7 @@ Um SPA para acompanhar séries, repetições e carga ao longo da semana. Login c
 
 ## Funcionalidades
 
-- Split semanal de 5 dias, customizável por dia e por exercício
+- No primeiro acesso, escolha de um modelo de plano de treino (ou começar em branco); split semanal customizável por dia e por exercício
 - Registro de carga e repetições por série, com superséries
 - Sugestão automática de carga com auto-regulação
 - Detecção de deload e acompanhamento de variantes de máquina por exercício
@@ -29,7 +29,7 @@ src/
 ├── domain/    lógica pura, testada (sem DOM, sem Firestore)
 ├── core/      infraestrutura (state, Firestore, feature flags, DOM cache)
 ├── features/  UI e orquestração, uma pasta por área do app
-├── data/      catálogos estáticos (exercícios, dias, planos)
+├── data/      catálogos estáticos (exercícios, scaffold neutro de dias da semana, modelos de plano)
 └── styles/    CSS
 ```
 
