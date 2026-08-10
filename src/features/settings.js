@@ -1,8 +1,15 @@
+import { todayStr } from "../domain/dates.js";
 import { state } from "../core/state.js";
-import { $settingsModal, $settingsThemeToggle, $bnConfig } from "../core/dom.js";
-import { toggleTheme } from "./shell.js";
+import { $settingsModal, $settingsThemeToggle, $bnConfig, $viewTreino } from "../core/dom.js";
+import { toggleTheme, savePref } from "./shell.js";
 import { openProfileModal } from "./profile-modal.js";
 import { exportUserData } from "./export.js";
+import { renderDay } from "./day/render.js";
+import { refreshGamification } from "./gamification.js";
+import {
+  applyPeriodizationState, applyMachinesState, applyProfileState,
+  applyAutoregState, applyExecOrderState, applyGamificationState,
+} from "./flag-state.js";
 
 export function applyPrevLayoutState(){
   document.body.classList.toggle("layout-prev-column", state.prevLayout === "column" && !state.trainMode);
@@ -91,4 +98,77 @@ export function init(){
   });
   document.getElementById("settingsExportRow").addEventListener("click", exportUserData);
   document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
+
+  document.getElementById("prevLayoutToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-prevlayout]");
+    if(!btn) return;
+    state.prevLayout = btn.dataset.prevlayout === "panel" ? "panel" : "column";
+    syncPrevLayoutToggle();
+    savePref();
+    applyPrevLayoutState();
+    // renderDay is required, not optional: seriesHTML branches on the layout in JS.
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("periodToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-period]");
+    if(!btn) return;
+    state.periodizationEnabled = btn.dataset.period === "on";
+    syncPeriodToggle();
+    savePref();
+    applyPeriodizationState();
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("machinesToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-mach]");
+    if(!btn) return;
+    state.machinesEnabled = btn.dataset.mach === "on";
+    syncMachinesToggle();
+    savePref();
+    applyMachinesState();
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("profileToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-prof]");
+    if(!btn) return;
+    state.profileEnabled = btn.dataset.prof === "on";
+    syncProfileToggle();
+    savePref();
+    applyProfileState();
+  });
+  document.getElementById("autoregToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-autoreg]");
+    if(!btn) return;
+    state.autoregEnabled = btn.dataset.autoreg === "on";
+    syncAutoregToggle();
+    savePref();
+    applyAutoregState();
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("autoregSensToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-sens]");
+    if(!btn) return;
+    state.autoregSensitivity = btn.dataset.sens;
+    syncAutoregSensToggle();
+    savePref();
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("execOrderToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-execorder]");
+    if(!btn) return;
+    state.execOrderEnabled = btn.dataset.execorder === "on";
+    syncExecOrderToggle();
+    savePref();
+    applyExecOrderState();
+    if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("gamificationToggle").addEventListener("click", e => {
+    const btn = e.target.closest("[data-gamif]");
+    if(!btn) return;
+    state.gamificationEnabled = btn.dataset.gamif === "on";
+    if(state.gamificationEnabled && !state.gamifStartDate) state.gamifStartDate = todayStr();
+    syncGamificationToggle();
+    savePref();
+    refreshGamification();
+    applyGamificationState();
+  });
 }

@@ -1,13 +1,13 @@
 import { todayStr } from "../domain/dates.js";
 import { MUSCLE_ORDER } from "../data/labels.js";
-import { state } from "./state.js";
-import * as repo from "./repo.js";
-import { applyTheme, applyModeButtons, savePref } from "../features/shell.js";
-import { applyPrevLayoutState } from "../features/settings.js";
+import { state } from "../core/state.js";
+import * as repo from "../core/repo.js";
+import { applyTheme, applyModeButtons, savePref } from "./shell.js";
+import { applyPrevLayoutState } from "./settings.js";
 import {
   applyPeriodizationState, applyMachinesState, applyProfileState,
   applyAutoregState, applyExecOrderState, applyGamificationState,
-} from "../main.js";
+} from "./flag-state.js";
 
 export async function loadPref(){
   if(!state.user) return;

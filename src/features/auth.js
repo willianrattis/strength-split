@@ -1,15 +1,15 @@
 import { signInWithPopup, signOut } from "firebase/auth";
-import { state } from "./state.js";
-import { $loginBtn, $settingsLogoutBtn, $panel, $strip } from "./dom.js";
-import { auth, provider } from "./firebase.js";
-import { initializeFeatureFlags } from "./flags.js";
+import { state } from "../core/state.js";
+import { $loginBtn, $settingsLogoutBtn, $panel, $strip } from "../core/dom.js";
+import { auth, provider } from "../core/firebase.js";
+import { initializeFeatureFlags } from "../core/flags.js";
 import { loadPref } from "./prefs.js";
-import { setSync } from "../features/shell.js";
-import { renderStrip, skeletonStrip, skeletonPanel } from "../features/day/render.js";
-import { loadDay } from "../features/day/session-io.js";
-import { rebuildUserDays, loadExercises } from "../features/exercises/crud.js";
-import { loadDayCustomizations } from "../features/exercises/day-customization.js";
-import { loadPlans } from "../features/plans/index.js";
+import { setSync } from "./shell.js";
+import { renderStrip, skeletonStrip, skeletonPanel } from "./day/render.js";
+import { loadDay } from "./day/session-io.js";
+import { rebuildUserDays, loadExercises } from "./exercises/crud.js";
+import { loadDayCustomizations } from "./exercises/day-customization.js";
+import { loadPlans } from "./plans/index.js";
 
 export async function initApp(u){
   await Promise.all([

@@ -10,7 +10,13 @@ export default [
     },
     rules: {
       "no-undef": "error",
-      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }]
+      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }],
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["**/main.js", "../main.js", "./main.js"],
+          message: "main.js is the bootstrap. Nothing may import it — extract the shared code into a module instead."
+        }]
+      }]
     }
   },
   {
