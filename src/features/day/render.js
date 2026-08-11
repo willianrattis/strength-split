@@ -12,6 +12,7 @@ import {
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
 import { saveDeloadDate } from "../prefs.js";
+import { savePref } from "../shell.js";
 import { applyPrevLayoutState } from "../settings.js";
 import { openEvolucaoFor } from "../evolution.js";
 import { openOnboarding } from "../onboarding.js";
@@ -268,6 +269,13 @@ export function renderDay(){
   const _deloadActive = isDeloadActive();
   const _deload = !_deloadActive && !state.deloadDismissed ? deloadDue() : { due: false };
 
+  // First-session coach-mark: only for a brand-new user (no session history loaded
+  // yet at all, not merely none logged today) who hasn't dismissed it or started a
+  // workout. allSessions is null until loadAllSessions resolves — loadDay re-renders
+  // once it does, so this becomes reliable on the day's second render.
+  const showFirstRunHint = !state.trainMode && completed === 0 && !state.firstRunHintSeen &&
+    state.allSessions && state.allSessions.length === 0;
+
   let head = `
     <div class="panel-head">
       <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
@@ -276,9 +284,15 @@ export function renderDay(){
         <span><span class="count">${completed}</span>/${total} concluídos</span>
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
-      <button class="train-start" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
+      <button class="train-start ${showFirstRunHint ? 'pulse-hint' : ''}" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
     </div>
   `;
+  if(showFirstRunHint){
+    head += `<div class="first-run-hint" id="firstRunHint">
+      <span>Tudo pronto! Toque em <b>Iniciar treino</b> para fazer seu primeiro treino.</span>
+      <button class="first-run-hint-close" id="firstRunHintClose" title="Dispensar" type="button">×</button>
+    </div>`;
+  }
   if(state.showProgramReviewHint){
     head += `<div class="review-hint-card">
       <span class="review-hint-text">Programa aplicado — revisar programa?</span>
@@ -624,9 +638,21 @@ function attachHandlers(){
   });
 
   const $ts = document.getElementById("trainStartBtn");
-  if($ts) $ts.addEventListener("click", enterTrainMode);
+  if($ts) $ts.addEventListener("click", () => {
+    // Starting the first session retires the hint immediately, so it can't
+    // flicker back before the first set is saved.
+    if(!state.firstRunHintSeen){ state.firstRunHintSeen = true; savePref(); }
+    enterTrainMode();
+  });
   const $tf = document.getElementById("trainFinish");
   if($tf) $tf.addEventListener("click", exitTrainMode);
+
+  const $firstRunHintClose = document.getElementById("firstRunHintClose");
+  if($firstRunHintClose) $firstRunHintClose.addEventListener("click", () => {
+    state.firstRunHintSeen = true;
+    savePref();
+    renderDay();
+  });
 
   const $editDayBtn = document.getElementById("editDayBtn");
   if($editDayBtn) $editDayBtn.addEventListener("click", () => openDayQuickEdit(state.current));

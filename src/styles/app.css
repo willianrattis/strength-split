@@ -1235,6 +1235,7 @@
   /* ========= Modo Treino (carrossel de 1 exercício) ========= */
   .train-start{display:none}
   .train-bar{display:none}
+  .first-run-hint{display:none}
 
   @media(max-width:600px){
     .train-start{
@@ -1244,6 +1245,20 @@
       letter-spacing:.06em;text-transform:uppercase;
       background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);
       border-radius:12px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+    }
+    .train-start.pulse-hint{animation:pulse 1.4s ease-in-out infinite}
+
+    /* first-session coach-mark — reuses .train-start's mobile-only visibility,
+       since "Iniciar treino" itself only exists in that carousel breakpoint */
+    .first-run-hint{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;
+      padding:10px 14px;margin-top:10px;flex:1 0 100%;
+      font-family:var(--body);font-size:13px;font-weight:500;color:var(--text);
+    }
+    .first-run-hint-close{
+      flex:0 0 auto;background:none;border:none;color:var(--accent);
+      font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;
     }
 
     body.mode-train{overflow:hidden}

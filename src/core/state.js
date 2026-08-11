@@ -20,6 +20,10 @@ function makeInitialState(){
     // (not in savePref/loadPref); cleared on day navigation or when the banner is
     // opened/dismissed.
     showProgramReviewHint: false,
+    // Whether the first-session coach-mark ("Iniciar treino") has been dismissed or
+    // superseded by an actual first workout. Persisted (savePref/loadPref) so it
+    // doesn't come back after a reload once seen.
+    firstRunHintSeen: false,
     theme: (function(){
       try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
       catch(_){ return null; }

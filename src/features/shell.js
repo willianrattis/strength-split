@@ -58,6 +58,7 @@ export async function savePref(){
       execOrderEnabled: state.execOrderEnabled,
       gamificationEnabled: state.gamificationEnabled,
       gamifStartDate: state.gamifStartDate || null,
+      firstRunHintSeen: state.firstRunHintSeen,
     });
   }catch(e){ console.warn("savePref:", e.message); }
 }
