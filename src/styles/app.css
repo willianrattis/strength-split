@@ -682,9 +682,9 @@
   .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
   .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
   #settingsModal .mode-toggle{flex-shrink:0;width:auto}
-  #settingsPanels{display:grid}
-  #settingsPanels > [data-settingspanel]{grid-area:1/1;visibility:hidden;pointer-events:none}
-  #settingsPanels > [data-settingspanel].active{visibility:visible;pointer-events:auto}
+  #settingsPanels{display:block}
+  #settingsPanels > [data-settingspanel]{display:none}
+  #settingsPanels > [data-settingspanel].active{display:block}
   #settingsPanels *{transition:none}
   @media(max-width:600px){
     #settingsPeriodizationRow, #settingsMachinesRow, #settingsProfileRow,
@@ -980,6 +980,22 @@
   .wiz-step-title{
     text-align:center;font-family:var(--display);font-weight:600;font-size:11px;
     letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+  }
+
+  /* onboarding wizard — fixed sheet height across steps, so switching steps
+     never jumps the modal's size; the tallest step (Perfil) scrolls internally
+     instead of growing the sheet. */
+  #onboardingModalInner{
+    display:flex;flex-direction:column;
+    height:min(88dvh,700px);max-height:90dvh;overflow:hidden;
+  }
+  #onboardingModalInner > h3,
+  #onboardingModalInner .wiz-steps,
+  #onboardingModalInner .wiz-step-title{flex:0 0 auto}
+  #wizBody{flex:1 1 auto;min-height:0;overflow-y:auto}
+  #wizFooter{
+    flex:0 0 auto;margin-top:0;padding-top:16px;
+    border-top:1px solid var(--border);
   }
 
   /* Treino quick-edit sheet + post-apply review hint */
