@@ -8,6 +8,31 @@ export function pickSets(entry, name, machine, machineFilter) {
   return null;
 }
 
+// Groups sessions by exercise name, mirroring pickSets' matching exactly (main:
+// subName||name, sup: supSubName||supName). Restricting a scan to sessionsByName.get(name)
+// is equivalent to scanning the full array and filtering via pickSets, since sessions
+// missing the name always produce null from pickSets.
+export function buildSessionsByName(sessions){
+  const map = new Map();
+  if(!sessions) return map;
+  for(const sess of sessions){
+    if(!sess.exercises) continue;
+    const namesInSession = new Set();
+    for(const entry of sess.exercises){
+      const mainName = entry.subName || entry.name;
+      if(mainName) namesInSession.add(mainName);
+      const supName = entry.supSubName || entry.supName;
+      if(supName) namesInSession.add(supName);
+    }
+    for(const name of namesInSession){
+      let bucket = map.get(name);
+      if(!bucket){ bucket = []; map.set(name, bucket); }
+      bucket.push(sess);
+    }
+  }
+  return map;
+}
+
 export function execShiftMap(sess){
   const map = new Map();
   if(!sess || !sess.exercises) return map;

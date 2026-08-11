@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { pickSets, execShiftMap, prevLoadData, exerciseTopHistory, isStalled, bestWeightEver } from "../src/domain/history.js";
+import { pickSets, execShiftMap, prevLoadData, exerciseTopHistory, isStalled, bestWeightEver, buildSessionsByName } from "../src/domain/history.js";
+import { suggestLoads } from "../src/domain/suggestion.js";
 import { autoregCfg, orderFactor } from "../src/domain/autoreg.js";
 import { makeEntry, makeSession } from "./fixtures.js";
 
@@ -230,5 +231,115 @@ describe("bestWeightEver", () => {
   it("returns null with no numeric weights", () => {
     const sessions = [makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Supino", main: [{ weight: null }] })] })];
     expect(bestWeightEver(sessions, "Supino", undefined, {})).toBeNull();
+  });
+});
+
+describe("buildSessionsByName", () => {
+  it("buckets a session under its main entry name", () => {
+    const sess = makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Supino", main: [{ weight: 60 }] })] });
+    const map = buildSessionsByName([sess]);
+    expect(map.get("Supino")).toEqual([sess]);
+  });
+
+  it("buckets a session under its superset entry name too", () => {
+    const sess = makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Agachamento", main: [{ weight: 100 }], supName: "Remada", sup: [{ weight: 40 }] })
+    ] });
+    const map = buildSessionsByName([sess]);
+    expect(map.get("Agachamento")).toEqual([sess]);
+    expect(map.get("Remada")).toEqual([sess]);
+  });
+
+  it("keys by subName/supSubName when present, not the base name", () => {
+    const sess = makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Old", subName: "New", main: [{ weight: 60 }], supName: "SupOld", supSubName: "SupNew", sup: [{ weight: 30 }] })
+    ] });
+    const map = buildSessionsByName([sess]);
+    expect(map.get("New")).toEqual([sess]);
+    expect(map.get("SupNew")).toEqual([sess]);
+    expect(map.has("Old")).toBe(false);
+    expect(map.has("SupOld")).toBe(false);
+  });
+
+  it("dedupes: a session appears at most once per name even with two entries sharing it", () => {
+    const sess = makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", main: [{ weight: 60 }] }),
+      makeEntry({ name: "Agachamento", main: [{ weight: 100 }], supName: "Supino", sup: [{ weight: 40 }] })
+    ] });
+    const map = buildSessionsByName([sess]);
+    expect(map.get("Supino")).toEqual([sess]);
+  });
+
+  it("preserves the input order of sessions within a bucket", () => {
+    const s1 = makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Supino", main: [{ weight: 50 }] })] });
+    const s2 = makeSession({ date: "2026-01-03", exercises: [makeEntry({ name: "Supino", main: [{ weight: 60 }] })] });
+    const s3 = makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Supino", main: [{ weight: 55 }] })] });
+    const map = buildSessionsByName([s2, s3, s1]);
+    expect(map.get("Supino")).toEqual([s2, s3, s1]);
+  });
+
+  it("returns an empty map for null/empty input", () => {
+    expect(buildSessionsByName(null).size).toBe(0);
+    expect(buildSessionsByName([]).size).toBe(0);
+  });
+
+  it("skips sessions with no exercises", () => {
+    const sess = makeSession({ date: "2026-01-01", exercises: [] });
+    expect(buildSessionsByName([sess]).size).toBe(0);
+  });
+});
+
+describe("sessionsByName equivalence (proof that indexing preserves behavior)", () => {
+  // A mixed fixture: "Supino" shows up as a main name in one session, and as a
+  // superset partner (via supSubName) in another, alongside unrelated exercises
+  // and a session sharing currentKey — exercising every pickSets matching path.
+  const sessions = [
+    makeSession({ date: "2026-01-01", dayKey: 0, exercises: [
+      makeEntry({ name: "Supino", machine: "A", main: [{ weight: 50, reps: 10, repsDone: 10 }] })
+    ] }),
+    makeSession({ date: "2026-01-03", dayKey: 0, exercises: [
+      makeEntry({ name: "Agachamento", main: [{ weight: 100, reps: 10, repsDone: 10 }], supName: "Supino Old", supSubName: "Supino", supMachine: "B", sup: [{ weight: 45, reps: 10, repsDone: 10 }] }),
+      makeEntry({ name: "Remada", main: [{ weight: 80, reps: 10, repsDone: 10 }] })
+    ] }),
+    makeSession({ date: "2026-01-05", dayKey: 0, exercises: [
+      makeEntry({ name: "Supino", machine: "A", main: [{ weight: 999, reps: 10, repsDone: 10 }] })
+    ] }),
+    makeSession({ date: "2026-01-02", dayKey: 1, exercises: [
+      makeEntry({ name: "Levantamento Terra", main: [{ weight: 120 }] })
+    ] })
+  ];
+  const bucket = buildSessionsByName(sessions).get("Supino");
+  const cfg = autoregCfg("mod");
+
+  it("prevLoadData is identical whether given the full array or the name bucket", () => {
+    for(const opts of [{}, { currentKey: "2026-01-05_0" }, { machineFilter: true }, { machineFilter: false }]){
+      expect(prevLoadData(bucket, "Supino", "A", opts)).toEqual(prevLoadData(sessions, "Supino", "A", opts));
+    }
+  });
+
+  it("exerciseTopHistory is identical whether given the full array or the name bucket", () => {
+    for(const opts of [{}, { since: "2026-01-03" }, { machineFilter: true }, { execOrder: true, cfg }]){
+      expect(exerciseTopHistory(bucket, "Supino", opts)).toEqual(exerciseTopHistory(sessions, "Supino", opts));
+    }
+  });
+
+  it("bestWeightEver is identical whether given the full array or the name bucket", () => {
+    for(const opts of [{}, { currentKey: "2026-01-05_0" }, { machineFilter: true }]){
+      expect(bestWeightEver(bucket, "Supino", "A", opts)).toEqual(bestWeightEver(sessions, "Supino", "A", opts));
+    }
+  });
+
+  it("suggestLoads is identical whether given the full array or the name bucket", () => {
+    for(const opts of [{ cfg }, { cfg, currentKey: "2026-01-05_0" }, { cfg, machineFilter: true }]){
+      expect(suggestLoads(bucket, "Supino", "kg", "A", opts)).toEqual(suggestLoads(sessions, "Supino", "kg", "A", opts));
+    }
+  });
+
+  it("also holds for a name with no matches at all (empty bucket)", () => {
+    const emptyBucket = buildSessionsByName(sessions).get("Nonexistent") || [];
+    expect(prevLoadData(emptyBucket, "Nonexistent", undefined, {})).toEqual(prevLoadData(sessions, "Nonexistent", undefined, {}));
+    expect(bestWeightEver(emptyBucket, "Nonexistent", undefined, {})).toEqual(bestWeightEver(sessions, "Nonexistent", undefined, {}));
+    expect(exerciseTopHistory(emptyBucket, "Nonexistent", {})).toEqual(exerciseTopHistory(sessions, "Nonexistent", {}));
+    expect(suggestLoads(emptyBucket, "Nonexistent", "kg", undefined, { cfg })).toEqual(suggestLoads(sessions, "Nonexistent", "kg", undefined, { cfg }));
   });
 });

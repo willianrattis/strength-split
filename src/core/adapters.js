@@ -12,7 +12,7 @@ import { autoregCfg as domainAutoregCfg, projectLoad as domainProjectLoad } from
 import { profileAge as domainProfileAge } from "../domain/profile.js";
 import {
   prevLoadData as domainPrevLoadData, exerciseTopHistory as domainExerciseTopHistory,
-  bestWeightEver as domainBestWeightEver
+  bestWeightEver as domainBestWeightEver, buildSessionsByName
 } from "../domain/history.js";
 import { suggestLoads as domainSuggestLoads } from "../domain/suggestion.js";
 import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } from "../domain/deload.js";
@@ -52,11 +52,22 @@ export const histCtx = () => ({
   cfg: autoregCfg()
 });
 
-export const prevLoadData = (name, machine) => domainPrevLoadData(state.allSessions, name, machine, histCtx());
-export const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(state.allSessions, name, { ...histCtx(), since, machine });
-export const bestWeightEver = (name, machine) => domainBestWeightEver(state.allSessions, name, machine, histCtx());
+// Memoized on state.allSessions identity — allSessions is only ever replaced,
+// never mutated in place (see saveNow in day/session-io.js), so this stays valid.
+let _sbnRef = null, _sbn = null;
+function sessionsFor(name){
+  if(state.allSessions !== _sbnRef){
+    _sbnRef = state.allSessions;
+    _sbn = state.allSessions ? buildSessionsByName(state.allSessions) : new Map();
+  }
+  return _sbn.get(name) || [];
+}
 
-export const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(state.allSessions, name, unit, machine, {
+export const prevLoadData = (name, machine) => domainPrevLoadData(sessionsFor(name), name, machine, histCtx());
+export const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(sessionsFor(name), name, { ...histCtx(), since, machine });
+export const bestWeightEver = (name, machine) => domainBestWeightEver(sessionsFor(name), name, machine, histCtx());
+
+export const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(sessionsFor(name), name, unit, machine, {
   ...histCtx(),
   muscle: opts && opts.muscle,
   profileActive: profileActive(),

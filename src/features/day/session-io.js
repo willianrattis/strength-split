@@ -75,8 +75,9 @@ export async function saveNow(){
     setSync(navigator.onLine ? "live" : "offline", navigator.onLine ? "sincronizado" : "offline — salvando local");
     if(state.allSessions){
       const idx = state.allSessions.findIndex(s => s.date === state.session.date && s.dayKey === state.session.dayKey);
-      if(idx >= 0) state.allSessions[idx] = { ...state.session };
-      else state.allSessions.push({ ...state.session });
+      state.allSessions = idx >= 0
+        ? state.allSessions.map((s, i) => i === idx ? { ...state.session } : s)
+        : [...state.allSessions, { ...state.session }];
       refreshGamification();
     }
   }catch(e){
