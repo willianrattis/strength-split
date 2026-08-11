@@ -966,6 +966,22 @@
      exercise editor / day-rename over the Treino quick-edit sheet */
   #applyPlanModal,#exModal,#dayEditModal{z-index:110}
 
+  /* onboarding wizard — step indicator + footer nav */
+  .wiz-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:8px}
+  .wiz-step-dot{
+    width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+    font-family:var(--display);font-weight:700;font-size:12px;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--faint);
+  }
+  .wiz-step-dot.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .wiz-step-dot.done{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wiz-step-line{width:28px;height:2px;background:var(--border);flex:0 0 auto}
+  .wiz-step-line.done{background:var(--accent)}
+  .wiz-step-title{
+    text-align:center;font-family:var(--display);font-weight:600;font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+  }
+
   /* Treino quick-edit sheet + post-apply review hint */
   .review-hint-card{
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
