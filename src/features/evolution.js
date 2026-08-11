@@ -8,6 +8,7 @@ import { $evoSelect, $evoMachineSelect, $evoBody } from "../core/dom.js";
 import { activeDays, machineFilterActive } from "../core/adapters.js";
 import { showTab } from "./shell.js";
 import { loadAllSessions } from "./day/session-io.js";
+import { openOnboarding } from "./onboarding.js";
 
 function skeletonEvo(){
   let stats = `<div class="evo-stats">`;
@@ -109,6 +110,20 @@ export async function renderEvolucao(){
   const prevName = state.EXERCISES[+prevSelected]?.name;
   state.EXERCISES = buildExerciseList();
   rebuildEvoDropdown();
+
+  const $evoControls = document.querySelector(".evo-controls");
+  if(!state.EXERCISES.length){
+    if($evoControls) $evoControls.style.display = "none";
+    $evoBody.innerHTML = `<div class="evo-empty">
+      <span class="big">Nenhum exercício para acompanhar</span>
+      Aplique um programa para começar a registrar sua evolução.
+      <button class="modal-btn primary" id="evoApplyPlanBtn" style="margin-top:14px">Aplicar um programa</button>
+    </div>`;
+    document.getElementById("evoApplyPlanBtn").addEventListener("click", openOnboarding);
+    if(state.evoChart){ state.evoChart.destroy(); state.evoChart = null; }
+    return;
+  }
+  if($evoControls) $evoControls.style.display = "";
   // A pending deep-link wins over restoring the previous selection.
   if(state.evoPendingName){
     const pIdx = state.EXERCISES.findIndex(x => x.name === state.evoPendingName);

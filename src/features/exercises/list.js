@@ -9,6 +9,7 @@ import { renderDayCustomSection } from "./day-customization.js";
 import { initDragAndDrop } from "./dnd.js";
 import { openExEditor } from "./editor.js";
 import { renderPlansSection } from "../plans/index.js";
+import { openOnboarding } from "../onboarding.js";
 
 export function renderExercicios(){
   document.querySelectorAll("#exSubTabs [data-subtab]").forEach(b =>
@@ -116,7 +117,16 @@ export function renderExList(){
   }
 
   if(!items.length){
-    $exList.innerHTML = `<div class="evo-empty"><span class="big">Nenhum exercício encontrado</span></div>`;
+    if(state.exercisesCatalog.size === 0){
+      $exList.innerHTML = `<div class="evo-empty">
+        <span class="big">Nenhum programa</span>
+        Aplique um programa pronto para começar a treinar.
+        <button class="modal-btn primary" id="exApplyPlanBtn" style="margin-top:14px">Aplicar um programa</button>
+      </div>`;
+      document.getElementById("exApplyPlanBtn").addEventListener("click", openOnboarding);
+    } else {
+      $exList.innerHTML = `<div class="evo-empty"><span class="big">Nenhum resultado para este filtro</span></div>`;
+    }
     return;
   }
 

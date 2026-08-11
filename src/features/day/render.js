@@ -14,6 +14,8 @@ import { centerActiveDay } from "../../core/ui/sticky-header.js";
 import { saveDeloadDate } from "../prefs.js";
 import { applyPrevLayoutState } from "../settings.js";
 import { openEvolucaoFor } from "../evolution.js";
+import { openOnboarding } from "../onboarding.js";
+import { openExEditor } from "../exercises/editor.js";
 import { scheduleSave, loadDay } from "./session-io.js";
 import { openSubModal } from "./substitution-modal.js";
 import { openMachineModal } from "./machine-modal.js";
@@ -236,6 +238,22 @@ export function renderDay(){
     if(state.trainMode){ state.trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
     document.getElementById("dayProgressFill").style.width = "0%";
     document.getElementById("dayProgressPct").textContent = "0%";
+
+    if(state.exercisesCatalog.size === 0){
+      $panel.innerHTML = `
+        <div class="rest-placeholder">
+          <span class="big">Nenhum programa</span>
+          Você ainda não tem exercícios cadastrados. Aplique um programa pronto ou adicione seu primeiro exercício.
+          <div class="modal-footer" style="justify-content:center">
+            <button class="modal-btn primary" id="setupApplyPlanBtn">Aplicar um programa</button>
+            <button class="modal-btn secondary" id="setupAddExBtn">Adicionar exercício</button>
+          </div>
+        </div>`;
+      document.getElementById("setupApplyPlanBtn").addEventListener("click", openOnboarding);
+      document.getElementById("setupAddExBtn").addEventListener("click", () => openExEditor(null));
+      return;
+    }
+
     $panel.innerHTML = `
       <div class="rest-placeholder">
         <span class="big">Descanso</span>
