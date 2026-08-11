@@ -992,7 +992,10 @@
   #onboardingModalInner > h3,
   #onboardingModalInner .wiz-steps,
   #onboardingModalInner .wiz-step-title{flex:0 0 auto}
-  #wizBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:12px}
+  #wizBody{
+    flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:12px;
+    margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px;
+  }
   #onboardingModalInner #wizFooter{
     flex:0 0 auto;position:static;margin-top:0;padding-top:16px;
     border-top:1px solid var(--border);
