@@ -15,6 +15,7 @@ export function openExEditor(docId, preselectDays = []){
   } : {...state.exercisesCatalog.get(docId)};
 
   let html = `<h3>${isNew ? 'Novo exercício' : 'Editar exercício'}</h3>`;
+  html += `<div class="modal-scroll">`;
 
   // Nome
   html += `<div class="modal-field">
@@ -110,6 +111,8 @@ export function openExEditor(docId, preselectDays = []){
       </div>
     </div>
   </div>`;
+
+  html += `</div>`;
 
   // Error
   html += `<div class="modal-error" id="mfError" style="display:none"></div>`;

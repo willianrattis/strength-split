@@ -33,8 +33,8 @@ export function renderProfileForm(containerEl){
   const todayISO = new Date().toISOString().slice(0,10);
   const ageHint = profileAge();
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Data de nascimento</label>`;
-  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
-  html += `<span id="profAgeHint" style="font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="flex:1 1 auto;min-width:150px;box-sizing:border-box;min-height:40px;padding:8px 14px 8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
+  html += `<span id="profAgeHint" style="flex:0 0 auto;white-space:nowrap;font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
 
   // Sexo
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
@@ -47,7 +47,7 @@ export function renderProfileForm(containerEl){
 
   // Peso corporal
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Peso corporal (kg)</label>`;
-  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:120px;box-sizing:border-box;min-height:40px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
 
   // Experiência
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Experiência</label>`;
