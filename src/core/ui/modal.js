@@ -18,15 +18,17 @@ export function unlockBodyScroll(){
 }
 
 export function init(){
-  // Observe all modal overlays for .open class changes
+  // Observe all modal overlays for .open class changes. Overlays can stack
+  // (e.g. the apply-plan modal opened on top of onboarding) — track how many
+  // are open so the body only unlocks once the last one closes, instead of a
+  // naive per-overlay toggle re-locking/unlocking on every mutation.
   const _allOverlays = document.querySelectorAll(".modal-overlay");
+  let _locked = false;
   const _modalObserver = new MutationObserver(mutations => {
-    for(const m of mutations){
-      if(m.attributeName !== "class") continue;
-      const el = m.target;
-      if(el.classList.contains("open")) lockBodyScroll();
-      else unlockBodyScroll();
-    }
+    if(!mutations.some(m => m.attributeName === "class")) return;
+    const anyOpen = Array.from(_allOverlays).some(ov => ov.classList.contains("open"));
+    if(anyOpen && !_locked){ lockBodyScroll(); _locked = true; }
+    else if(!anyOpen && _locked){ unlockBodyScroll(); _locked = false; }
   });
   _allOverlays.forEach(ov => _modalObserver.observe(ov, { attributes:true }));
 

@@ -7,14 +7,15 @@ import { $exModal, $exModalInner } from "../../core/dom.js";
 import { saveExerciseDoc, deleteExerciseDoc, rebuildUserDays } from "./crud.js";
 import { renderExercicios } from "./list.js";
 
-export function openExEditor(docId){
+export function openExEditor(docId, preselectDays = []){
   const isNew = !docId;
   const ex = isNew ? {
     name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
-    active:true, days:[], orderByDay:{}, superset:null,
+    active:true, days:[...preselectDays], orderByDay:{}, superset:null,
   } : {...state.exercisesCatalog.get(docId)};
 
   let html = `<h3>${isNew ? 'Novo exercício' : 'Editar exercício'}</h3>`;
+  html += `<div class="modal-scroll">`;
 
   // Nome
   html += `<div class="modal-field">
@@ -110,6 +111,8 @@ export function openExEditor(docId){
       </div>
     </div>
   </div>`;
+
+  html += `</div>`;
 
   // Error
   html += `<div class="modal-error" id="mfError" style="display:none"></div>`;

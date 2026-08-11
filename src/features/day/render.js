@@ -12,8 +12,12 @@ import {
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
 import { saveDeloadDate } from "../prefs.js";
+import { savePref } from "../shell.js";
 import { applyPrevLayoutState } from "../settings.js";
 import { openEvolucaoFor } from "../evolution.js";
+import { openOnboarding } from "../onboarding.js";
+import { openExEditor } from "../exercises/editor.js";
+import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay } from "./session-io.js";
 import { openSubModal } from "./substitution-modal.js";
 import { openMachineModal } from "./machine-modal.js";
@@ -236,6 +240,22 @@ export function renderDay(){
     if(state.trainMode){ state.trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
     document.getElementById("dayProgressFill").style.width = "0%";
     document.getElementById("dayProgressPct").textContent = "0%";
+
+    if(state.exercisesCatalog.size === 0){
+      $panel.innerHTML = `
+        <div class="rest-placeholder">
+          <span class="big">Nenhum programa</span>
+          Você ainda não tem exercícios cadastrados. Aplique um programa pronto ou adicione seu primeiro exercício.
+          <div class="modal-footer" style="justify-content:center">
+            <button class="modal-btn primary" id="setupApplyPlanBtn">Aplicar um programa</button>
+            <button class="modal-btn secondary" id="setupAddExBtn">Adicionar exercício</button>
+          </div>
+        </div>`;
+      document.getElementById("setupApplyPlanBtn").addEventListener("click", openOnboarding);
+      document.getElementById("setupAddExBtn").addEventListener("click", () => openExEditor(null));
+      return;
+    }
+
     $panel.innerHTML = `
       <div class="rest-placeholder">
         <span class="big">Descanso</span>
@@ -249,16 +269,41 @@ export function renderDay(){
   const _deloadActive = isDeloadActive();
   const _deload = !_deloadActive && !state.deloadDismissed ? deloadDue() : { due: false };
 
+  // First-session coach-mark: only for a brand-new user (no session history loaded
+  // yet at all, not merely none logged today) who hasn't dismissed it or started a
+  // workout. allSessions is null until loadAllSessions resolves — loadDay re-renders
+  // once it does, so this becomes reliable on the day's second render.
+  const showFirstRunHint = !state.showProgramReviewHint && !state.trainMode && completed === 0 &&
+    !state.firstRunHintSeen && state.allSessions && state.allSessions.length === 0;
+
   let head = `
     <div class="panel-head">
-      <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+      <div class="panel-head-title">
+        <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+        <button class="day-edit-btn" id="editDayBtn" type="button" title="Editar dia">✎</button>
+      </div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} concluídos</span>
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
-      <button class="train-start" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
+      <button class="train-start ${showFirstRunHint ? 'pulse-hint' : ''}" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
     </div>
   `;
+  if(showFirstRunHint){
+    head += `<div class="first-run-hint" id="firstRunHint">
+      <span>Tudo pronto! Toque em <b>Iniciar treino</b> para fazer seu primeiro treino.</span>
+      <button class="first-run-hint-close" id="firstRunHintClose" title="Dispensar" type="button">×</button>
+    </div>`;
+  }
+  if(state.showProgramReviewHint){
+    head += `<div class="review-hint-card">
+      <span class="review-hint-text">Programa aplicado — revisar programa?</span>
+      <div class="review-hint-actions">
+        <button class="modal-btn primary" id="reviewHintOpen">Revisar</button>
+        <button class="ex-icon-btn" id="reviewHintDismiss" title="Dispensar">✕</button>
+      </div>
+    </div>`;
+  }
   let html = "";
   if(_deload.due){
     head += `<div class="deload-card">
@@ -595,9 +640,36 @@ function attachHandlers(){
   });
 
   const $ts = document.getElementById("trainStartBtn");
-  if($ts) $ts.addEventListener("click", enterTrainMode);
+  if($ts) $ts.addEventListener("click", () => {
+    // Starting the first session retires the hint immediately, so it can't
+    // flicker back before the first set is saved.
+    if(!state.firstRunHintSeen){ state.firstRunHintSeen = true; savePref(); }
+    enterTrainMode();
+  });
   const $tf = document.getElementById("trainFinish");
   if($tf) $tf.addEventListener("click", exitTrainMode);
+
+  const $firstRunHintClose = document.getElementById("firstRunHintClose");
+  if($firstRunHintClose) $firstRunHintClose.addEventListener("click", () => {
+    state.firstRunHintSeen = true;
+    savePref();
+    renderDay();
+  });
+
+  const $editDayBtn = document.getElementById("editDayBtn");
+  if($editDayBtn) $editDayBtn.addEventListener("click", () => openDayQuickEdit(state.current));
+
+  const $reviewOpen = document.getElementById("reviewHintOpen");
+  if($reviewOpen) $reviewOpen.addEventListener("click", () => {
+    state.showProgramReviewHint = false;
+    renderDay();
+    openDayQuickEdit(state.current);
+  });
+  const $reviewDismiss = document.getElementById("reviewHintDismiss");
+  if($reviewDismiss) $reviewDismiss.addEventListener("click", () => {
+    state.showProgramReviewHint = false;
+    renderDay();
+  });
 }
 
 export function renderStrip(){
@@ -617,6 +689,7 @@ export function renderStrip(){
   $strip.querySelectorAll(".day-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       state.current = +btn.dataset.i;
+      state.showProgramReviewHint = false;
       renderStrip();
       $panel.innerHTML = skeletonPanel();
       await loadDay(state.current);

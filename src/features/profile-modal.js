@@ -17,7 +17,12 @@ async function saveProfileDoc(){
 }
 
 export function closeProfileModal(){ $profileModal.classList.remove("open"); }
-export function openProfileModal(){
+
+// Renders the profile fields (birthDate/sex/bodyweight/experience/injuries) into
+// any container and wires them scoped to that container — never document-wide —
+// so this can be reused (e.g. by the onboarding wizard's Step 1) without ID
+// cross-talk against the standalone modal's copy of the same field IDs.
+export function renderProfileForm(containerEl){
   const SEX_OPTS = [{val:"m",label:"M"},{val:"f",label:"F"},{val:null,label:"Prefiro não dizer"}];
   const EXP_OPTS = [{val:"beg",label:"Iniciante · 0–1a"},{val:"int",label:"Intermediário · 1–3a"},{val:"adv",label:"Avançado · +3a"}];
 
@@ -28,8 +33,8 @@ export function openProfileModal(){
   const todayISO = new Date().toISOString().slice(0,10);
   const ageHint = profileAge();
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Data de nascimento</label>`;
-  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="width:150px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
-  html += `<span id="profAgeHint" style="font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="profBirth" type="date" value="${state.profile.birthDate ?? ""}" max="${todayISO}" style="flex:1 1 auto;min-width:150px;box-sizing:border-box;min-height:40px;padding:8px 14px 8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body)">`;
+  html += `<span id="profAgeHint" style="flex:0 0 auto;white-space:nowrap;font-size:12px;color:var(--faint)">${ageHint != null ? "("+ageHint+" anos)" : ""}</span></div>`;
 
   // Sexo
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Sexo</label>`;
@@ -42,7 +47,7 @@ export function openProfileModal(){
 
   // Peso corporal
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;display:block">Peso corporal (kg)</label>`;
-  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
+  html += `<input id="profWeight" type="text" inputmode="decimal" placeholder="—" value="${state.profile.bodyweight != null ? state.profile.bodyweight : ""}" style="width:120px;box-sizing:border-box;min-height:40px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:var(--body);margin-bottom:14px">`;
 
   // Experiência
   html += `<label style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;display:block">Experiência</label>`;
@@ -63,12 +68,11 @@ export function openProfileModal(){
   });
   html += `</div>`;
 
-  $profileModalInner.innerHTML = html;
-  $profileModal.classList.add("open");
+  containerEl.innerHTML = html;
 
-  // — Bind listeners —
+  // — Bind listeners, scoped to containerEl —
   // Birth date
-  document.getElementById("profBirth").addEventListener("change", e => {
+  containerEl.querySelector("#profBirth").addEventListener("change", e => {
     const v = e.target.value;
     if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
       const yr = parseInt(v.slice(0,4),10);
@@ -76,14 +80,14 @@ export function openProfileModal(){
         state.profile.birthDate = v;
       } else { state.profile.birthDate = null; }
     } else { state.profile.birthDate = null; }
-    const hint = document.getElementById("profAgeHint");
+    const hint = containerEl.querySelector("#profAgeHint");
     const a = profileAge();
     if(hint) hint.textContent = a != null ? "("+a+" anos)" : "";
     scheduleProfileSave();
   });
 
   // Sex chips
-  document.getElementById("profSex").addEventListener("click", e => {
+  containerEl.querySelector("#profSex").addEventListener("click", e => {
     const btn = e.target.closest("[data-val]");
     if(!btn) return;
     const val = btn.dataset.val === "null" ? null : btn.dataset.val;
@@ -99,7 +103,7 @@ export function openProfileModal(){
   });
 
   // Weight
-  document.getElementById("profWeight").addEventListener("input", e => {
+  containerEl.querySelector("#profWeight").addEventListener("input", e => {
     const v = e.target.value.replace(/[^0-9.,]/g,"").replace(",",".");
     e.target.value = v;
     const n = parseFloat(v);
@@ -108,7 +112,7 @@ export function openProfileModal(){
   });
 
   // Experience chips (tap active to deselect)
-  document.getElementById("profExp").addEventListener("click", e => {
+  containerEl.querySelector("#profExp").addEventListener("click", e => {
     const btn = e.target.closest("[data-val]");
     if(!btn) return;
     const val = btn.dataset.val;
@@ -125,7 +129,7 @@ export function openProfileModal(){
   });
 
   // Injury chips (multi-toggle)
-  document.getElementById("profInjuries").addEventListener("click", e => {
+  containerEl.querySelector("#profInjuries").addEventListener("click", e => {
     const btn = e.target.closest("[data-muscle]");
     if(!btn) return;
     const k = btn.dataset.muscle;
@@ -137,6 +141,11 @@ export function openProfileModal(){
     btn.style.color = active ? "var(--accent)" : "var(--text)";
     scheduleProfileSave();
   });
+}
+
+export function openProfileModal(){
+  $profileModal.classList.add("open");
+  renderProfileForm($profileModalInner);
 }
 
 export function init(){

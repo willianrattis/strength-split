@@ -121,6 +121,13 @@
   .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
   .panel-head h2{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:24px;letter-spacing:.02em}
   .panel-head .focus-tag{color:var(--muted);font-size:13px;font-weight:500}
+  .panel-head-title{display:flex;align-items:center;gap:8px;min-width:0}
+  .day-edit-btn{
+    flex:0 0 auto;background:none;border:1px solid var(--border);color:var(--muted);
+    border-radius:9px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
+    font-size:12px;transition:.15s;
+  }
+  .day-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
   .progress{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--muted)}
   .progress .count{color:var(--text)}
   .reset{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--body);font-size:11px;font-weight:600;border-radius:8px;padding:5px 9px;cursor:pointer;transition:.15s}
@@ -675,9 +682,9 @@
   .setting-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;text-align:left}
   .setting-desc{font-family:var(--body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--faint);line-height:1.3}
   #settingsModal .mode-toggle{flex-shrink:0;width:auto}
-  #settingsPanels{display:grid}
-  #settingsPanels > [data-settingspanel]{grid-area:1/1;visibility:hidden;pointer-events:none}
-  #settingsPanels > [data-settingspanel].active{visibility:visible;pointer-events:auto}
+  #settingsPanels{display:block}
+  #settingsPanels > [data-settingspanel]{display:none}
+  #settingsPanels > [data-settingspanel].active{display:block}
   #settingsPanels *{transition:none}
   @media(max-width:600px){
     #settingsPeriodizationRow, #settingsMachinesRow, #settingsProfileRow,
@@ -934,7 +941,8 @@
   }
 
   /* day mapping modal */
-  .day-map-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .day-map-item{margin-bottom:16px}
+  .day-map-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   .day-map-type{
     font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);
     width:32px;text-align:center;flex:0 0 auto;
@@ -947,6 +955,60 @@
     -webkit-appearance:none;appearance:none;cursor:pointer;flex:0 0 140px;
   }
   .day-map-select:focus{border-color:var(--accent)}
+  .day-map-exlist{display:flex;flex-wrap:wrap;gap:6px;margin-left:44px}
+  .day-map-ex{
+    font-size:11px;font-weight:500;color:var(--muted);background:var(--surface-2);
+    border-radius:6px;padding:3px 8px;
+  }
+
+  /* these overlays can be opened stacked on top of another sheet, so they need
+     to paint above the default .modal-overlay z-index: apply-plan over onboarding,
+     exercise editor / day-rename over the Treino quick-edit sheet */
+  #applyPlanModal,#exModal,#dayEditModal{z-index:110}
+
+  /* onboarding wizard — step indicator + footer nav */
+  .wiz-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:8px}
+  .wiz-step-dot{
+    width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+    font-family:var(--display);font-weight:700;font-size:12px;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--faint);
+  }
+  .wiz-step-dot.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .wiz-step-dot.done{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wiz-step-line{width:28px;height:2px;background:var(--border);flex:0 0 auto}
+  .wiz-step-line.done{background:var(--accent)}
+  .wiz-step-title{
+    text-align:center;font-family:var(--display);font-weight:600;font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;
+  }
+
+  /* onboarding wizard — fixed sheet height across steps, so switching steps
+     never jumps the modal's size; the tallest step (Perfil) scrolls internally
+     instead of growing the sheet. */
+  #onboardingModalInner{
+    display:flex;flex-direction:column;
+    height:min(96dvh,1000px);max-height:96dvh;overflow:hidden;padding-bottom:0;
+  }
+  #onboardingModalInner > h3,
+  #onboardingModalInner .wiz-steps,
+  #onboardingModalInner .wiz-step-title{flex:0 0 auto}
+  #wizBody{
+    flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:12px;
+    margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px;
+  }
+  #onboardingModalInner #wizFooter{
+    flex:0 0 auto;position:static;margin-top:0;padding-top:16px;
+    border-top:1px solid var(--border);
+  }
+
+  /* Treino quick-edit sheet + post-apply review hint */
+  .review-hint-card{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:14px;
+    padding:12px 14px;margin-bottom:16px;
+  }
+  .review-hint-text{font-family:var(--body);font-size:13px;font-weight:600;color:var(--text)}
+  .review-hint-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 
   /* plan editor */
   .plan-day-type{
@@ -1125,6 +1187,14 @@
     z-index:2;
   }
 
+  /* 4c. Exercise editor — flex column with a scrollable field area, so the
+     sticky footer above can't float over the superset fields when they expand
+     and grow the modal past the viewport. Same pattern as the onboarding
+     wizard; scoped to #exModalInner only. */
+  #exModalInner{display:flex;flex-direction:column;overflow:hidden}
+  #exModalInner .modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
+  #exModalInner .modal-footer{position:static}
+
   /* 5. Day strip scroll-snap mandatory + edge fade */
   .days-inner{scroll-snap-type:x mandatory}
 
@@ -1215,6 +1285,7 @@
   /* ========= Modo Treino (carrossel de 1 exercício) ========= */
   .train-start{display:none}
   .train-bar{display:none}
+  .first-run-hint{display:none}
 
   @media(max-width:600px){
     .train-start{
@@ -1224,6 +1295,20 @@
       letter-spacing:.06em;text-transform:uppercase;
       background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);
       border-radius:12px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+    }
+    .train-start.pulse-hint{animation:pulse 1.4s ease-in-out infinite}
+
+    /* first-session coach-mark — reuses .train-start's mobile-only visibility,
+       since "Iniciar treino" itself only exists in that carousel breakpoint */
+    .first-run-hint{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;
+      padding:10px 14px;margin:10px 0 16px;flex:1 0 100%;
+      font-family:var(--body);font-size:13px;font-weight:500;color:var(--text);
+    }
+    .first-run-hint-close{
+      flex:0 0 auto;background:none;border:none;color:var(--accent);
+      font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;
     }
 
     body.mode-train{overflow:hidden}
