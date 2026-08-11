@@ -10,6 +10,7 @@ import { loadDay } from "./day/session-io.js";
 import { rebuildUserDays, loadExercises } from "./exercises/crud.js";
 import { loadDayCustomizations } from "./exercises/day-customization.js";
 import { loadPlans } from "./plans/index.js";
+import { openOnboarding } from "./onboarding.js";
 
 export async function initApp(u){
   await Promise.all([
@@ -22,6 +23,7 @@ export async function initApp(u){
   rebuildUserDays();
   renderStrip();
   await loadDay(state.current);
+  if(state.needsOnboarding) openOnboarding();
 }
 export function initWithTimeout(u, ms = 15000){
   return Promise.race([

@@ -1,6 +1,6 @@
 import { onAuthStateChanged } from "firebase/auth";
 
-import { state } from "./core/state.js";
+import { state, resetUserState } from "./core/state.js";
 import { $authBox, $appContent, $gateWrap, $strip, $panel } from "./core/dom.js";
 import { auth } from "./core/firebase.js";
 import { teardownFeatureFlags } from "./core/flags.js";
@@ -24,18 +24,13 @@ import * as machineModal from "./features/day/machine-modal.js";
 import * as train from "./features/train/index.js";
 import * as exercisesList from "./features/exercises/list.js";
 import * as flagState from "./features/flag-state.js";
+import { initOnboarding } from "./features/onboarding.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
 
 // ========= Auth (loginBtn/logout/online-offline wiring + initApp/initWithTimeout/renderInitError live in features/auth.js) =========
 onAuthStateChanged(auth, async u => {
+  resetUserState();
   state.user = u;
-  state.allSessions = null;
-  state.allSessionsTruncated = false;
-  state.allSessionsError = false;
-  state.allSessionsPromise = null;
-  state.gamification = null;
-  state.gamificationEnabled = false;
-  state.gamifStartDate = null;
   setGamifChipLoading(true);
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
@@ -57,13 +52,6 @@ onAuthStateChanged(auth, async u => {
     $appContent.style.display = "none";
     setSync("", "aguardando login");
     if(window.SSSplash) window.SSSplash.ready();
-    state.exercisesCatalog.clear();
-    state.userDays = null;
-    state.dayCustomizations = {};
-    state.plansCache.clear();
-    state.currentPlanName = null;
-    state.currentPlanId = null;
-    state.currentPlanKey = null;
     teardownFeatureFlags();
   }
 });
@@ -86,6 +74,7 @@ machineModal.init();
 train.init();
 exercisesList.init();
 flagState.init();
+initOnboarding();
 
 applyTheme();
 applyModeButtons();

@@ -2,20 +2,12 @@ import { serverTimestamp } from "firebase/firestore";
 import { orderForDay, cmpExOrder } from "../../domain/order.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
-import { DAYS } from "../../data/days.js";
+import { WEEKDAYS } from "../../data/days.js";
 import { buildExerciseList } from "../evolution.js";
 
 // Build userDays from exercisesCatalog
 export function rebuildUserDays(){
-  const base = [
-    {abbr:"Seg",name:"Segunda",tag:"Ombro · Costas",focus:"Ombro lateral/posterior · Costas"},
-    {abbr:"Ter",name:"Terça",tag:"Posterior",focus:"Ombro frontal · Posterior de coxa · Glúteo"},
-    {abbr:"Qua",name:"Quarta",tag:"Peito",focus:"Peito · Ombro"},
-    {abbr:"Qui",name:"Quinta",tag:"Braços",focus:"Posterior de ombro · Tríceps · Bíceps"},
-    {abbr:"Sex",name:"Sexta",tag:"Pernas",focus:"Quadríceps · Adutor"},
-    {abbr:"Sáb",name:"Sábado",tag:"Livre",focus:"Livre"},
-    {abbr:"Dom",name:"Domingo",tag:"Livre",focus:"Livre"},
-  ];
+  const base = WEEKDAYS.map(d => ({...d, tag:"", focus:""}));
   base.forEach((d,i) => {
     d.ex = [];
     const custom = state.dayCustomizations[i];
@@ -54,7 +46,8 @@ export function rebuildUserDays(){
 // touched in this phase, so the window hook mechanism from 0.d-3a/3b stays.
 window._rebuildUserDays = rebuildUserDays;
 
-// Load exercises from Firestore (seeds from hardcoded DAYS on first login)
+// Load exercises from Firestore. An empty catalog on a first login is left empty —
+// the onboarding picker (features/onboarding.js) is responsible for seeding it.
 export async function loadExercises(uid){
   if(!state.user && !uid) return;
   uid = uid || state.user.uid;
@@ -62,43 +55,10 @@ export async function loadExercises(uid){
   try { docs = await repo.fetchExercises(uid); }
   catch(e){ console.warn("loadExercises:", e.message); return; }
   state.exercisesCatalog.clear();
+  state.needsOnboarding = docs.length === 0;
   if(docs.length){
     docs.forEach(({id, data}) => state.exercisesCatalog.set(id, data));
-    return;
   }
-  // First login: seed from hardcoded DAYS, populate cache from write refs (no re-read)
-  const byName = new Map();
-  DAYS.forEach((d, dk) => {
-    d.ex.forEach((e, ei) => {
-      if(!byName.has(e.name)){
-        byName.set(e.name, {
-          name: e.name, muscle: e.muscle,
-          reps: [...e.reps], badges: [...(e.badges||[])],
-          note: e.note || null, active: true,
-          days: [dk], orderByDay: {[dk]: ei},
-          superset: e.superset ? {
-            name: e.superset.name, muscle: e.superset.muscle || e.muscle,
-            reps: [...e.superset.reps], badges: [...(e.superset.badges||[])],
-            note: e.superset.note || null
-          } : null,
-        });
-      } else {
-        const existing = byName.get(e.name);
-        if(!existing.days.includes(dk)){
-          existing.days.push(dk);
-          existing.orderByDay[dk] = ei;
-        }
-      }
-    });
-  });
-  try {
-    const writes = [];
-    byName.forEach(ex => {
-      const data = { ...ex, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-      writes.push(repo.addExercise(uid, data).then(id => state.exercisesCatalog.set(id, data)));
-    });
-    await Promise.all(writes);
-  } catch(e){ console.error("seed exercises:", e); }
 }
 
 // Save exercise doc

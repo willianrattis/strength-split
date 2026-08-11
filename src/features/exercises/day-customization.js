@@ -2,19 +2,15 @@ import { serverTimestamp } from "firebase/firestore";
 import { esc } from "../../domain/text.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
+import { WEEKDAYS } from "../../data/days.js";
 import { $dayCustomSection, $dayEditModal, $dayEditModalBody } from "../../core/dom.js";
 import { renderDay, renderStrip } from "../day/render.js";
 import { rebuildUserDays } from "./crud.js";
 
-export const DAY_DEFAULTS = [
-  {tag:"Ombro · Costas", focus:"Ombro lateral/posterior · Costas"},
-  {tag:"Posterior", focus:"Ombro frontal · Posterior de coxa · Glúteo"},
-  {tag:"Peito", focus:"Peito · Ombro"},
-  {tag:"Braços", focus:"Posterior de ombro · Tríceps · Bíceps"},
-  {tag:"Pernas", focus:"Quadríceps · Adutor"},
-  {tag:"Livre", focus:"Livre"},
-  {tag:"Livre", focus:"Livre"},
-];
+const TAG_PLACEHOLDER = "Ex.: Peito · Ombro";
+const FOCUS_PLACEHOLDER = "Ex.: peito superior, ombro anterior";
+
+export const DAY_DEFAULTS = WEEKDAYS.map(() => ({tag:"", focus:""}));
 
 export async function loadDayCustomizations(){
   if(!state.user) return;
@@ -39,15 +35,7 @@ export async function deleteDayCustomization(dayKey){
 }
 
 export function renderDayCustomSection(){
-  const base = [
-    {abbr:"Seg", name:"Segunda"},
-    {abbr:"Ter", name:"Terça"},
-    {abbr:"Qua", name:"Quarta"},
-    {abbr:"Qui", name:"Quinta"},
-    {abbr:"Sex", name:"Sexta"},
-    {abbr:"Sáb", name:"Sábado"},
-    {abbr:"Dom", name:"Domingo"},
-  ];
+  const base = WEEKDAYS;
 
   let html = "";
   base.forEach((d, i) => {
@@ -84,11 +72,11 @@ export function openDayEditSheet(dk, dayName){
   let html = `<h3 style="font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.02em;font-size:18px;margin:0 0 18px">${esc(dayName)}</h3>`;
   html += `<div class="modal-field" style="margin-bottom:14px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Tag</label>
-    <input class="modal-input" id="dayEditTag" value="${esc(tagVal)}" maxlength="30" placeholder="${DAY_DEFAULTS[dk].tag}">
+    <input class="modal-input" id="dayEditTag" value="${esc(tagVal)}" maxlength="30" placeholder="${TAG_PLACEHOLDER}">
   </div>`;
   html += `<div class="modal-field" style="margin-bottom:18px">
     <label style="display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px">Foco</label>
-    <input class="modal-input" id="dayEditFocus" value="${esc(focusVal)}" maxlength="80" placeholder="${DAY_DEFAULTS[dk].focus}">
+    <input class="modal-input" id="dayEditFocus" value="${esc(focusVal)}" maxlength="80" placeholder="${FOCUS_PLACEHOLDER}">
   </div>`;
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">`;
   if(isCustom) html += `<button class="modal-btn" id="dayEditReset" style="margin-right:auto;color:var(--muted)">Restaurar padrão</button>`;
@@ -106,10 +94,8 @@ export function openDayEditSheet(dk, dayName){
   document.getElementById("dayEditSave").addEventListener("click", async () => {
     const tag = document.getElementById("dayEditTag").value.trim();
     const focus = document.getElementById("dayEditFocus").value.trim();
-    const finalTag = tag || DAY_DEFAULTS[dk].tag;
-    const finalFocus = focus || DAY_DEFAULTS[dk].focus;
     try {
-      await saveDayCustomization(dk, finalTag, finalFocus);
+      await saveDayCustomization(dk, tag, focus);
       rebuildUserDays();
       renderStrip();
       if(state.current === dk) renderDay();
