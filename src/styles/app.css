@@ -934,7 +934,8 @@
   }
 
   /* day mapping modal */
-  .day-map-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .day-map-item{margin-bottom:16px}
+  .day-map-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   .day-map-type{
     font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);
     width:32px;text-align:center;flex:0 0 auto;
@@ -947,6 +948,14 @@
     -webkit-appearance:none;appearance:none;cursor:pointer;flex:0 0 140px;
   }
   .day-map-select:focus{border-color:var(--accent)}
+  .day-map-exlist{display:flex;flex-wrap:wrap;gap:6px;margin-left:44px}
+  .day-map-ex{
+    font-size:11px;font-weight:500;color:var(--muted);background:var(--surface-2);
+    border-radius:6px;padding:3px 8px;
+  }
+
+  /* apply-plan modal layers above onboarding when opened on top of it */
+  #applyPlanModal{z-index:110}
 
   /* plan editor */
   .plan-day-type{

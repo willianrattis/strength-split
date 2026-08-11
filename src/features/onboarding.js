@@ -5,27 +5,22 @@ import { $onboardingModal, $onboardingModalInner } from "../core/dom.js";
 import { renderStrip } from "./day/render.js";
 import { loadDay } from "./day/session-io.js";
 import { rebuildUserDays } from "./exercises/crud.js";
-import { applyPlan } from "./plans/apply-modal.js";
+import { openApplyPlanModal } from "./plans/apply-modal.js";
 
 function closeOnboarding(){
   $onboardingModal.classList.remove("open");
 }
 
-async function chooseTemplate(tpl){
-  const errEl = document.getElementById("onboardingError");
-  const buttons = $onboardingModalInner.querySelectorAll("button");
-  buttons.forEach(b => { b.disabled = true; });
-  try{
-    // Sequential weekday mapping (A→Mon, B→Tue, ...) — every template tops out
-    // at 5 day-types, well within the Mon–Fri range.
-    const mapping = tpl.days.map((d, i) => ({ dayTypeIdx: i, weekday: i }));
-    await applyPlan(tpl, null, mapping);
-    state.needsOnboarding = false;
-    closeOnboarding();
-  }catch(e){
-    buttons.forEach(b => { b.disabled = false; });
-    if(errEl){ errEl.textContent = "Erro: " + e.message; errEl.style.display = ""; }
-  }
+function chooseTemplate(tpl){
+  // Picker overlay stays open underneath; the apply modal layers on top
+  // (z-index override in app.css) so a cancel leaves the user back at the
+  // picker instead of a blank screen.
+  openApplyPlanModal(tpl, null, {
+    onApplied: () => {
+      state.needsOnboarding = false;
+      closeOnboarding();
+    },
+  });
 }
 
 async function chooseBlank(){
@@ -54,7 +49,6 @@ export function openOnboarding(){
     </div>`;
   });
 
-  html += `<div class="modal-error" id="onboardingError" style="display:none"></div>`;
   html += `<div class="modal-footer">
     <button class="modal-btn secondary" id="onboardingBlankBtn">Começar em branco</button>
   </div>`;

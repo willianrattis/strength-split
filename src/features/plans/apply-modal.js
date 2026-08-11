@@ -11,24 +11,33 @@ import { rebuildUserDays, deleteExerciseDoc } from "../exercises/crud.js";
 import { saveDayCustomization } from "../exercises/day-customization.js";
 import { savePlanDoc, renderPlansSection } from "./index.js";
 
-export function openApplyPlanModal(plan, planDocId){
+export function openApplyPlanModal(plan, planDocId, opts = {}){
+  const { onApplied = () => {}, onCancel = () => {} } = opts;
   const dayTypes = plan.days || [];
   const weekdays = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-  const autoMap = dayTypes.length === 5 || dayTypes.length === 7;
 
   let html = `<h3>Aplicar plano</h3>`;
   html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${esc(plan.name)}</p>`;
   html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias não mapeados serão dias de descanso.</p>`;
 
   dayTypes.forEach((d, i) => {
-    const defaultDay = autoMap ? i : -1;
-    html += `<div class="day-map-row">
-      <span class="day-map-type">${d.type}</span>
-      <span class="day-map-label">${esc(d.label)} (${d.exercises.length} ex.)</span>
-      <select class="day-map-select" data-idx="${i}">
-        <option value="">— Selecionar —</option>
-        ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
-      </select>
+    const defaultDay = i < weekdays.length ? i : -1;
+    const exNames = d.exercises.map(e => e.superset
+      ? `${esc(e.name)} + ${esc(e.superset.name)}`
+      : esc(e.name)
+    );
+    html += `<div class="day-map-item">
+      <div class="day-map-row">
+        <span class="day-map-type">${d.type}</span>
+        <span class="day-map-label">${esc(d.label)}</span>
+        <select class="day-map-select" data-idx="${i}">
+          <option value="">— Selecionar —</option>
+          ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
+        </select>
+      </div>
+      <div class="day-map-exlist">
+        ${exNames.map(n => `<span class="day-map-ex">${n}</span>`).join("")}
+      </div>
     </div>`;
   });
 
@@ -41,9 +50,11 @@ export function openApplyPlanModal(plan, planDocId){
   $applyPlanModalInner.innerHTML = html;
   $applyPlanModal.classList.add("open");
 
+  let settled = false;
   const closeApply = () => $applyPlanModal.classList.remove("open");
-  document.getElementById("applyCancel").addEventListener("click", closeApply);
-  $applyPlanModal.addEventListener("click", e => { if(e.target === $applyPlanModal) closeApply(); });
+  const cancelApply = () => { if(settled) return; settled = true; closeApply(); onCancel(); };
+  document.getElementById("applyCancel").addEventListener("click", cancelApply);
+  $applyPlanModal.addEventListener("click", e => { if(e.target === $applyPlanModal) cancelApply(); });
 
   document.getElementById("applyConfirm").addEventListener("click", async () => {
     const errEl = document.getElementById("applyError");
@@ -83,7 +94,9 @@ export function openApplyPlanModal(plan, planDocId){
 
     try{
       await applyPlan(plan, planDocId, mapping);
+      settled = true;
       closeApply();
+      onApplied();
     }catch(e){
       $confirmBtn.disabled = false;
       $confirmBtn.classList.remove("loading");
