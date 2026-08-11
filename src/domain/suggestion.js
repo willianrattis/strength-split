@@ -12,7 +12,7 @@ export function suggestLoads(sessions, name, unit, machine, opts){
   let bestDate = "";
   let bestShift = 0;
   // order-aware: also track latest in-order candidate
-  let ioSets = null, ioDate = "", ioEntryIdx = -1;
+  let ioSets = null, ioDate = "";
   const eoActive = execOrder;
   for(const sess of sessions){
     if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;

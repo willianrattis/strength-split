@@ -10,7 +10,7 @@ export default [
     },
     rules: {
       "no-undef": "error",
-      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }],
+      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
       "no-restricted-imports": ["error", {
         patterns: [{
           group: ["**/main.js", "../main.js", "./main.js"],
@@ -28,7 +28,7 @@ export default [
     },
     rules: {
       "no-undef": "error",
-      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }]
+      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }]
     }
   }
 ];

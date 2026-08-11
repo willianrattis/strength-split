@@ -11,8 +11,7 @@ import {
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
-import { saveDeloadDate } from "../prefs.js";
-import { savePref } from "../shell.js";
+import { saveDeloadDate, savePref } from "../prefs.js";
 import { applyPrevLayoutState } from "../settings.js";
 import { openEvolucaoFor } from "../evolution.js";
 import { openOnboarding } from "../onboarding.js";

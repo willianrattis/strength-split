@@ -1,7 +1,8 @@
 import { todayStr } from "../domain/dates.js";
 import { state } from "../core/state.js";
 import { $settingsModal, $settingsThemeToggle, $bnConfig, $viewTreino } from "../core/dom.js";
-import { toggleTheme, savePref } from "./shell.js";
+import { toggleTheme } from "./shell.js";
+import { savePref } from "./prefs.js";
 import { openProfileModal } from "./profile-modal.js";
 import { exportUserData } from "./export.js";
 import { renderDay } from "./day/render.js";

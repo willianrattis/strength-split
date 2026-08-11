@@ -3,7 +3,7 @@ import { MUSCLE_LABEL } from "../../data/labels.js";
 import { EXERCISE_CATALOG } from "../../data/exercise-catalog.js";
 import { state } from "../../core/state.js";
 import { $planModal, $planModalInner } from "../../core/dom.js";
-import { savePref } from "../shell.js";
+import { savePref } from "../prefs.js";
 import { savePlanDoc, deletePlanDoc, renderPlansSection } from "./index.js";
 
 export function openPlanEditor(planDocId){
