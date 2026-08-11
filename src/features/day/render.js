@@ -273,13 +273,15 @@ export function renderDay(){
   // yet at all, not merely none logged today) who hasn't dismissed it or started a
   // workout. allSessions is null until loadAllSessions resolves — loadDay re-renders
   // once it does, so this becomes reliable on the day's second render.
-  const showFirstRunHint = !state.trainMode && completed === 0 && !state.firstRunHintSeen &&
-    state.allSessions && state.allSessions.length === 0;
+  const showFirstRunHint = !state.showProgramReviewHint && !state.trainMode && completed === 0 &&
+    !state.firstRunHintSeen && state.allSessions && state.allSessions.length === 0;
 
   let head = `
     <div class="panel-head">
-      <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
-      <button class="ex-icon-btn" id="editDayBtn" type="button" title="Editar dia">✎</button>
+      <div class="panel-head-title">
+        <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+        <button class="day-edit-btn" id="editDayBtn" type="button" title="Editar dia">✎</button>
+      </div>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} concluídos</span>
         <button class="reset" id="resetBtn">Limpar</button>

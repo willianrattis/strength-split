@@ -121,6 +121,13 @@
   .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
   .panel-head h2{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:24px;letter-spacing:.02em}
   .panel-head .focus-tag{color:var(--muted);font-size:13px;font-weight:500}
+  .panel-head-title{display:flex;align-items:center;gap:8px;min-width:0}
+  .day-edit-btn{
+    flex:0 0 auto;background:none;border:1px solid var(--border);color:var(--muted);
+    border-radius:9px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
+    font-size:12px;transition:.15s;
+  }
+  .day-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
   .progress{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--muted)}
   .progress .count{color:var(--text)}
   .reset{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--body);font-size:11px;font-weight:600;border-radius:8px;padding:5px 9px;cursor:pointer;transition:.15s}
@@ -1253,7 +1260,7 @@
     .first-run-hint{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
       background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;
-      padding:10px 14px;margin-top:10px;flex:1 0 100%;
+      padding:10px 14px;margin:10px 0 16px;flex:1 0 100%;
       font-family:var(--body);font-size:13px;font-weight:500;color:var(--text);
     }
     .first-run-hint-close{
