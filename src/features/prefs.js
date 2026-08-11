@@ -2,7 +2,7 @@ import { todayStr } from "../domain/dates.js";
 import { MUSCLE_ORDER } from "../data/labels.js";
 import { state } from "../core/state.js";
 import * as repo from "../core/repo.js";
-import { applyTheme, applyModeButtons, savePref } from "./shell.js";
+import { applyTheme, applyModeButtons } from "./shell.js";
 import { applyPrevLayoutState } from "./settings.js";
 import {
   applyPeriodizationState, applyMachinesState, applyProfileState,
@@ -57,6 +57,28 @@ export async function loadPref(){
   applyAutoregState();
   applyExecOrderState();
   applyGamificationState();
+}
+
+export async function savePref(){
+  if(!state.user) return;
+  try{
+    await repo.setPrefs(state.user.uid, {
+      viewMode: state.viewMode, theme: state.theme || null,
+      currentPlanName: state.currentPlanName || null,
+      currentPlanId: state.currentPlanId || null,
+      currentPlanKey: state.currentPlanKey || null,
+      prevLayout: state.prevLayout,
+      periodizationEnabled: state.periodizationEnabled,
+      machinesEnabled: state.machinesEnabled,
+      profileEnabled: state.profileEnabled,
+      autoregEnabled: state.autoregEnabled,
+      autoregSensitivity: state.autoregSensitivity,
+      execOrderEnabled: state.execOrderEnabled,
+      gamificationEnabled: state.gamificationEnabled,
+      gamifStartDate: state.gamifStartDate || null,
+      firstRunHintSeen: state.firstRunHintSeen,
+    });
+  }catch(e){ console.warn("savePref:", e.message); }
 }
 
 export async function saveDeloadDate(){

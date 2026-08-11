@@ -1,5 +1,4 @@
 import { state } from "../core/state.js";
-import * as repo from "../core/repo.js";
 import {
   $themeBtn, $settingsThemeToggle,
   $tabTreino, $tabExercicios, $tabEvolucao, $viewTreino, $viewExercicios, $viewEvolucao,
@@ -8,6 +7,7 @@ import {
 } from "../core/dom.js";
 import { renderEvolucao, initEvolucao } from "./evolution.js";
 import { renderDay } from "./day/render.js";
+import { savePref } from "./prefs.js";
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
@@ -39,28 +39,6 @@ export function toggleTheme(){
   applyTheme();
   savePref();
   if(state.evoChart && $viewEvolucao.style.display !== "none") renderEvolucao();
-}
-
-export async function savePref(){
-  if(!state.user) return;
-  try{
-    await repo.setPrefs(state.user.uid, {
-      viewMode: state.viewMode, theme: state.theme || null,
-      currentPlanName: state.currentPlanName || null,
-      currentPlanId: state.currentPlanId || null,
-      currentPlanKey: state.currentPlanKey || null,
-      prevLayout: state.prevLayout,
-      periodizationEnabled: state.periodizationEnabled,
-      machinesEnabled: state.machinesEnabled,
-      profileEnabled: state.profileEnabled,
-      autoregEnabled: state.autoregEnabled,
-      autoregSensitivity: state.autoregSensitivity,
-      execOrderEnabled: state.execOrderEnabled,
-      gamificationEnabled: state.gamificationEnabled,
-      gamifStartDate: state.gamifStartDate || null,
-      firstRunHintSeen: state.firstRunHintSeen,
-    });
-  }catch(e){ console.warn("savePref:", e.message); }
 }
 
 export function applyModeButtons(){

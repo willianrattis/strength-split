@@ -4,7 +4,7 @@ import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
 import { $applyPlanModal, $applyPlanModalInner } from "../../core/dom.js";
 import { activeDays } from "../../core/adapters.js";
-import { savePref } from "../shell.js";
+import { savePref } from "../prefs.js";
 import { renderDay, renderStrip } from "../day/render.js";
 import { loadDay } from "../day/session-io.js";
 import { rebuildUserDays, deleteExerciseDoc } from "../exercises/crud.js";

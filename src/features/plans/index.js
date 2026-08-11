@@ -4,7 +4,7 @@ import { PLAN_TEMPLATES } from "../../data/plan-templates.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
 import { $plansSection } from "../../core/dom.js";
-import { savePref } from "../shell.js";
+import { savePref } from "../prefs.js";
 import { openPlanEditor } from "./editor.js";
 import { openApplyPlanModal } from "./apply-modal.js";
 
