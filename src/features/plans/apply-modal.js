@@ -5,7 +5,7 @@ import * as repo from "../../core/repo.js";
 import { $applyPlanModal, $applyPlanModalInner } from "../../core/dom.js";
 import { activeDays } from "../../core/adapters.js";
 import { savePref } from "../shell.js";
-import { renderStrip } from "../day/render.js";
+import { renderDay, renderStrip } from "../day/render.js";
 import { loadDay } from "../day/session-io.js";
 import { rebuildUserDays, deleteExerciseDoc } from "../exercises/crud.js";
 import { saveDayCustomization } from "../exercises/day-customization.js";
@@ -228,4 +228,9 @@ export async function applyPlan(plan, planDocId, mapping){
   state.session = null;
   await loadDay(state.current);
   renderPlansSection();
+
+  // Ephemeral post-apply nudge (never persisted) — set only after the renders
+  // above, then one more renderDay() to actually paint the banner.
+  state.showProgramReviewHint = true;
+  renderDay();
 }

@@ -16,6 +16,7 @@ import { applyPrevLayoutState } from "../settings.js";
 import { openEvolucaoFor } from "../evolution.js";
 import { openOnboarding } from "../onboarding.js";
 import { openExEditor } from "../exercises/editor.js";
+import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay } from "./session-io.js";
 import { openSubModal } from "./substitution-modal.js";
 import { openMachineModal } from "./machine-modal.js";
@@ -270,6 +271,7 @@ export function renderDay(){
   let head = `
     <div class="panel-head">
       <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
+      <button class="ex-icon-btn" id="editDayBtn" type="button" title="Editar dia">✎</button>
       <div class="progress">
         <span><span class="count">${completed}</span>/${total} concluídos</span>
         <button class="reset" id="resetBtn">Limpar</button>
@@ -277,6 +279,15 @@ export function renderDay(){
       <button class="train-start" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
     </div>
   `;
+  if(state.showProgramReviewHint){
+    head += `<div class="review-hint-card">
+      <span class="review-hint-text">Programa aplicado — revisar programa?</span>
+      <div class="review-hint-actions">
+        <button class="modal-btn primary" id="reviewHintOpen">Revisar</button>
+        <button class="ex-icon-btn" id="reviewHintDismiss" title="Dispensar">✕</button>
+      </div>
+    </div>`;
+  }
   let html = "";
   if(_deload.due){
     head += `<div class="deload-card">
@@ -616,6 +627,21 @@ function attachHandlers(){
   if($ts) $ts.addEventListener("click", enterTrainMode);
   const $tf = document.getElementById("trainFinish");
   if($tf) $tf.addEventListener("click", exitTrainMode);
+
+  const $editDayBtn = document.getElementById("editDayBtn");
+  if($editDayBtn) $editDayBtn.addEventListener("click", () => openDayQuickEdit(state.current));
+
+  const $reviewOpen = document.getElementById("reviewHintOpen");
+  if($reviewOpen) $reviewOpen.addEventListener("click", () => {
+    state.showProgramReviewHint = false;
+    renderDay();
+    openDayQuickEdit(state.current);
+  });
+  const $reviewDismiss = document.getElementById("reviewHintDismiss");
+  if($reviewDismiss) $reviewDismiss.addEventListener("click", () => {
+    state.showProgramReviewHint = false;
+    renderDay();
+  });
 }
 
 export function renderStrip(){
@@ -635,6 +661,7 @@ export function renderStrip(){
   $strip.querySelectorAll(".day-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       state.current = +btn.dataset.i;
+      state.showProgramReviewHint = false;
       renderStrip();
       $panel.innerHTML = skeletonPanel();
       await loadDay(state.current);

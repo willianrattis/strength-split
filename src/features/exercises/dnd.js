@@ -1,5 +1,6 @@
 import { state } from "../../core/state.js";
 import { $exList } from "../../core/dom.js";
+import { activeDays } from "../../core/adapters.js";
 import { saveExerciseDoc, rebuildUserDays } from "./crud.js";
 import { renderExList } from "./list.js";
 
@@ -103,22 +104,9 @@ export function initDragAndDrop(){
   });
 }
 
-export async function reorderExercise(fromId, toId, before){
-  if(state.exFilterDay === null) return;
-  const dk = state.exFilterDay;
-
-  // get current order
-  const ordered = [];
-  $exList.querySelectorAll(".ex-list-item").forEach(el => ordered.push(el.dataset.id));
-
-  // remove fromId and insert at new position
-  const fromIdx = ordered.indexOf(fromId);
-  if(fromIdx >= 0) ordered.splice(fromIdx, 1);
-  let toIdx = ordered.indexOf(toId);
-  if(!before) toIdx++;
-  ordered.splice(toIdx, 0, fromId);
-
-  // update orderByDay for all affected
+// Recomputes and persists orderByDay[dk] for every exercise in `ordered` (fromId
+// already moved to its new index). Shared by both reorder entry points below.
+async function persistDayOrder(dk, ordered){
   const promises = [];
   ordered.forEach((id, i) => {
     const ex = state.exercisesCatalog.get(id);
@@ -128,7 +116,38 @@ export async function reorderExercise(fromId, toId, before){
     promises.push(saveExerciseDoc(id, { orderByDay: ex.orderByDay }));
   });
   await Promise.all(promises);
+}
 
+function reinsert(ordered, fromId, toId, before){
+  const fromIdx = ordered.indexOf(fromId);
+  if(fromIdx >= 0) ordered.splice(fromIdx, 1);
+  let toIdx = ordered.indexOf(toId);
+  if(!before) toIdx++;
+  ordered.splice(toIdx, 0, fromId);
+}
+
+export async function reorderExercise(fromId, toId, before){
+  if(state.exFilterDay === null) return;
+  const dk = state.exFilterDay;
+
+  // Current order: scraped from the rendered, already-sorted draggable list —
+  // this can include inactive exercises when "Inativos" is toggled on, which
+  // activeDays() deliberately excludes, so it can't be swapped for that.
+  const ordered = [];
+  $exList.querySelectorAll(".ex-list-item").forEach(el => ordered.push(el.dataset.id));
+  reinsert(ordered, fromId, toId, before);
+
+  await persistDayOrder(dk, ordered);
   rebuildUserDays();
   renderExList();
+}
+
+// Same reorder, driven by the in-memory day plan instead of the Exercícios tab's
+// DOM — for callers (e.g. day/quick-edit.js) reordering a day that isn't the one
+// currently rendered/filtered in that tab.
+export async function reorderExerciseInDay(dk, fromId, toId, before){
+  const ordered = activeDays()[dk].ex.map(e => e._id);
+  reinsert(ordered, fromId, toId, before);
+  await persistDayOrder(dk, ordered);
+  rebuildUserDays();
 }

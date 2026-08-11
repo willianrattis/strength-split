@@ -954,8 +954,19 @@
     border-radius:6px;padding:3px 8px;
   }
 
-  /* apply-plan modal layers above onboarding when opened on top of it */
-  #applyPlanModal{z-index:110}
+  /* these overlays can be opened stacked on top of another sheet, so they need
+     to paint above the default .modal-overlay z-index: apply-plan over onboarding,
+     exercise editor / day-rename over the Treino quick-edit sheet */
+  #applyPlanModal,#exModal,#dayEditModal{z-index:110}
+
+  /* Treino quick-edit sheet + post-apply review hint */
+  .review-hint-card{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:14px;
+    padding:12px 14px;margin-bottom:16px;
+  }
+  .review-hint-text{font-family:var(--body);font-size:13px;font-weight:600;color:var(--text)}
+  .review-hint-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 
   /* plan editor */
   .plan-day-type{

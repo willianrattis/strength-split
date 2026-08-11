@@ -15,6 +15,11 @@ function makeInitialState(){
     // Set when a brand-new account's exercise catalog is empty, to show the onboarding
     // picker. Ephemeral UI state — NEVER persisted (not in savePref/loadPref).
     needsOnboarding: false,
+    // Set right after applyPlan finishes, to nudge the user to review the freshly
+    // applied program from the Treino day view. Ephemeral UI state — NEVER persisted
+    // (not in savePref/loadPref); cleared on day navigation or when the banner is
+    // opened/dismissed.
+    showProgramReviewHint: false,
     theme: (function(){
       try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
       catch(_){ return null; }
