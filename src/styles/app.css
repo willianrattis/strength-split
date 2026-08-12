@@ -1061,23 +1061,10 @@
     border-radius:8px;padding:7px 10px;outline:none;transition:.15s;flex:1;
   }
   .plan-day-type-label-input:focus{border-color:var(--accent)}
-  .plan-ex-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;padding-left:40px}
-  .plan-ex-row input,.plan-ex-row select{
-    font-family:var(--body);font-size:13px;font-weight:500;
-    background:var(--surface);border:1px solid var(--border);color:var(--text);
-    border-radius:8px;padding:7px 10px;outline:none;transition:.15s;
-  }
-  .plan-ex-row input:focus,.plan-ex-row select:focus{border-color:var(--accent)}
-  .plan-ex-name-wrap{flex:1 1 100%;min-width:0}
-  .plan-ex-name{width:100%;min-width:0}
-  .plan-ex-muscle{flex:1 1 auto;-webkit-appearance:none;appearance:none;cursor:pointer}
-  .plan-ex-reps{flex:0 0 90px;text-align:center}
-  .plan-ex-remove{
-    background:none;border:1px solid var(--border);color:var(--faint);
-    border-radius:8px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
-    font-size:14px;transition:.15s;flex:0 0 auto;
-  }
-  .plan-ex-remove:hover{border-color:#F87171;color:#F87171}
+  /* Each plan exercise is a tappable summary — reuses .ex-list-item (Exercícios tab)
+     wholesale; this just restores the indent under the day letter that .plan-ex-row
+     used to carry. */
+  .plan-ex-item{margin-left:40px}
   .plan-add-ex-btn{
     font-family:var(--body);font-size:11px;font-weight:600;color:var(--accent);
     background:none;border:1px dashed var(--accent);border-radius:8px;
@@ -1098,7 +1085,7 @@
   }
   .plan-remove-day:hover{border-color:#F87171;color:#F87171}
   @media(max-width:480px){
-    .plan-ex-row{padding-left:0}
+    .plan-ex-item{margin-left:0}
     .plan-card-actions{flex-wrap:wrap}
   }
 
@@ -1259,14 +1246,12 @@
     .modal-input,.modal-select,.modal-textarea,
     .weight-input,.rep-input,.evo-select,
     .day-map-select,.plan-day-type-label-input,
-    .day-custom-fields .modal-input,
-    .plan-ex-row input,.plan-ex-row select{
+    .day-custom-fields .modal-input{
       font-size:16px !important;
     }
     /* Compensate density for small inline inputs */
     .weight-input{padding:6px 4px 6px 6px}
     .rep-input{width:56px;padding:7px 4px}
-    .plan-ex-row input,.plan-ex-row select{padding:8px 10px}
     .plan-day-type-label-input{padding:8px 10px}
 
     /* 2. Tap targets >=44px */
