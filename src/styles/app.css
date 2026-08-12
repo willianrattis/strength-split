@@ -1061,17 +1061,17 @@
     border-radius:8px;padding:7px 10px;outline:none;transition:.15s;flex:1;
   }
   .plan-day-type-label-input:focus{border-color:var(--accent)}
-  .plan-ex-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;padding-left:40px}
+  .plan-ex-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;padding-left:40px}
   .plan-ex-row input,.plan-ex-row select{
     font-family:var(--body);font-size:13px;font-weight:500;
     background:var(--surface);border:1px solid var(--border);color:var(--text);
     border-radius:8px;padding:7px 10px;outline:none;transition:.15s;
   }
   .plan-ex-row input:focus,.plan-ex-row select:focus{border-color:var(--accent)}
-  .plan-ex-name-wrap{flex:2;min-width:0}
+  .plan-ex-name-wrap{flex:1 1 100%;min-width:0}
   .plan-ex-name{width:100%;min-width:0}
-  .plan-ex-muscle{flex:0 0 100px;-webkit-appearance:none;appearance:none;cursor:pointer}
-  .plan-ex-reps{flex:0 0 80px;text-align:center}
+  .plan-ex-muscle{flex:1 1 auto;-webkit-appearance:none;appearance:none;cursor:pointer}
+  .plan-ex-reps{flex:0 0 90px;text-align:center}
   .plan-ex-remove{
     background:none;border:1px solid var(--border);color:var(--faint);
     border-radius:8px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
@@ -1098,8 +1098,7 @@
   }
   .plan-remove-day:hover{border-color:#F87171;color:#F87171}
   @media(max-width:480px){
-    .plan-ex-row{padding-left:0;flex-wrap:wrap}
-    .plan-ex-muscle{flex:0 0 80px}
+    .plan-ex-row{padding-left:0}
     .plan-card-actions{flex-wrap:wrap}
   }
 
@@ -1228,6 +1227,12 @@
   #exModalInner{display:flex;flex-direction:column;overflow:hidden}
   #exModalInner .modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
   #exModalInner .modal-footer{position:static}
+
+  /* Same fix, scoped to #planModalInner — the plan editor's day/exercise list can
+     grow past the viewport just like the exercise editor's superset fields. */
+  #planModalInner{display:flex;flex-direction:column;overflow:hidden}
+  #planModalInner .modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
+  #planModalInner .modal-footer{position:static}
 
   /* 5. Day strip scroll-snap mandatory + edge fade */
   .days-inner{scroll-snap-type:x mandatory}

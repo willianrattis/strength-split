@@ -20,6 +20,7 @@ export function openPlanEditor(planDocId){
 
   function renderPlanEditorContent(){
     let html = `<h3>${isNew ? 'Novo plano' : 'Editar plano'}</h3>`;
+    html += `<div class="modal-scroll">`;
     html += `<div class="modal-field">
       <label>Nome do plano</label>
       <input class="modal-input" id="pfName" value="${esc(plan.name)}" placeholder="Ex: Push Pull Legs">
@@ -55,6 +56,8 @@ export function openPlanEditor(planDocId){
     if(plan.days.length < 7){
       html += `<button class="plan-add-day-btn" id="pfAddDay">+ Adicionar dia</button>`;
     }
+
+    html += `</div>`;
 
     html += `<div class="modal-error" id="pfError" style="display:none"></div>`;
     html += `<div class="modal-footer">
@@ -175,7 +178,8 @@ export function openPlanEditor(planDocId){
         plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10]}] });
         renderPlanEditorContent();
         requestAnimationFrame(() => {
-          $planModalInner.scrollTo({ top: $planModalInner.scrollHeight, behavior: "smooth" });
+          const $scroll = $planModalInner.querySelector(".modal-scroll");
+          if($scroll) $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: "smooth" });
         });
       });
     }
