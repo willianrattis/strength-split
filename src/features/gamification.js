@@ -2,6 +2,7 @@ import { esc } from "../domain/text.js";
 import { computeGamification } from "../domain/gamification.js";
 import { state } from "../core/state.js";
 import { $gamifModal } from "../core/dom.js";
+import { ensureSessionsLoaded, recentCutoff } from "./day/session-io.js";
 
 // Presentation for BADGE_IDS in src/domain/gamification.js — ids and order must match.
 const BADGES = [
@@ -30,7 +31,12 @@ export function showGamifToast(name){
   state._gamifToastTimer = setTimeout(() => $t.classList.remove("show"), 3500);
 }
 
-export function refreshGamification(){
+// Fire-and-forget from every call site (day load, set save, flag toggle) — the ensure
+// widens the cache in the background when gamifStartDate reaches further back than
+// the day view's recent window; the chip/modal simply reflect whatever is loaded and
+// refresh again next call once the wider fetch lands.
+export async function refreshGamification(){
+  await ensureSessionsLoaded(state.gamifStartDate || recentCutoff());
   const prevEarned = state.gamification && state.gamification.badges
     ? new Set(state.gamification.badges.filter(b => b.earned).map(b => b.id))
     : null;

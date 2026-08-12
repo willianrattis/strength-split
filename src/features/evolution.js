@@ -7,7 +7,7 @@ import { state } from "../core/state.js";
 import { $evoSelect, $evoMachineSelect, $evoBody } from "../core/dom.js";
 import { activeDays, machineFilterActive } from "../core/adapters.js";
 import { showTab } from "./shell.js";
-import { loadAllSessions } from "./day/session-io.js";
+import { ensureSessionsLoaded } from "./day/session-io.js";
 import { openOnboarding } from "./onboarding.js";
 
 function skeletonEvo(){
@@ -104,7 +104,7 @@ export async function renderEvolucao(){
   if(!state.user){ return; }
   $evoBody.innerHTML = skeletonEvo();
 
-  await loadAllSessions();
+  await ensureSessionsLoaded("ALL");
   // Rebuild exercise list to include substitutes from session history
   const prevSelected = $evoSelect.value;
   const prevName = state.EXERCISES[+prevSelected]?.name;

@@ -3,6 +3,7 @@ import { fmtDateBR } from "../domain/dates.js";
 import { state } from "../core/state.js";
 import { $gamifModal, $wrappedOverlay, $wrappedSlides, $wrappedProgress, $wrappedYearPills } from "../core/dom.js";
 import { computeWrapped } from "../core/adapters.js";
+import { ensureSessionsLoaded } from "./day/session-io.js";
 
 function wrappedCapitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
 
@@ -104,7 +105,8 @@ function updateWrappedSlide(){
   segs.forEach((s,i) => s.classList.toggle("filled", i <= state._wrappedCurrent));
 }
 
-export function openWrapped(){
+export async function openWrapped(){
+  await ensureSessionsLoaded("ALL");
   if(!state.allSessions || !state.allSessions.length) return;
   const years = getWrappedYears();
   if(!years.length) return;

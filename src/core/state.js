@@ -28,9 +28,16 @@ function makeInitialState(){
       try{ var t = localStorage.getItem("ss_theme"); return (t === "dark" || t === "light") ? t : null; }
       catch(_){ return null; }
     })(),                    // "dark" | "light" — null = segue o sistema
-    allSessions: null,  // cache: array de todas as sessões do usuário (mais recente primeiro)
-    allSessionsTruncated: false,
+    allSessions: null,  // cache: sessões do usuário (mais recente primeiro) — extensão variável, ver sessionsLoadedSince
     allSessionsError: false,
+    // How far back allSessions currently covers: null = nothing loaded, "YYYY-MM-DD" =
+    // earliest date loaded (a recent window), "ALL" = full history loaded. Never
+    // persisted — see ensureSessionsLoaded in features/day/session-io.js (Phase 5.2).
+    sessionsLoadedSince: null,
+    // One-time guard so renderDay only kicks off the "is this account really new?"
+    // full-history fetch once per login when the recent window comes back empty —
+    // see showFirstRunHint in features/day/render.js. Ephemeral — never persisted.
+    _firstRunEnsureTried: false,
     exercisesCatalog: new Map(), // docId -> exercise doc
     userDays: null, // built by rebuildUserDays() from the user's exercise catalog
     dayCustomizations: {}, // {0: {tag, focus}, 1: ...} from Firestore

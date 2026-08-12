@@ -54,7 +54,9 @@ export const histCtx = () => ({
 
 // Memoized on state.allSessions identity — allSessions is only ever replaced,
 // never mutated in place (see saveNow in day/session-io.js), so this stays valid.
-let _sbnRef = null, _sbn = null;
+// _sbnRef starts as a Symbol that can never equal a real allSessions value (including
+// null, before any load has happened), so the guard always runs on the first call.
+let _sbnRef = Symbol("unset"), _sbn = new Map();
 function sessionsFor(name){
   if(state.allSessions !== _sbnRef){
     _sbnRef = state.allSessions;

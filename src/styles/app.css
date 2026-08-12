@@ -1452,6 +1452,8 @@
       color:var(--accent);font-variant-numeric:tabular-nums;
     }
     .ts-pr-w em{font-style:normal;font-weight:500;font-size:11px;color:var(--muted)}
+    .ts-prs.loading{background:var(--surface-2);border-color:var(--border)}
+    .ts-prs.loading .ts-prs-title{color:var(--muted)}
     .train-end-big{
       font-family:var(--display);font-weight:700;font-size:22px;
       text-transform:uppercase;letter-spacing:.02em;color:var(--text);

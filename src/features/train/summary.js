@@ -4,6 +4,7 @@ import { GAP_MIN_MS, GAP_MAX_MS } from "../../core/config.js";
 import { state } from "../../core/state.js";
 import { activeDays, machineFilterActive, bestWeightEver } from "../../core/adapters.js";
 import { countDone } from "../day/render.js";
+import { ensureSessionsLoaded } from "../day/session-io.js";
 import { trainExCount, exitTrainMode } from "./index.js";
 
 const LB_TO_KG = 0.45359237;
@@ -25,6 +26,10 @@ function trainSummary(){
   const evts = [];
   let volKg = 0, volSkipped = 0, doneSets = 0;
   const prs = [];
+  // bestWeightEver needs the FULL account history — computing it against only the
+  // day view's recent window would silently show a window-scoped "PR" as if it were
+  // all-time. Skip it until ensureSessionsLoaded("ALL") has actually landed.
+  const prsReady = state.sessionsLoadedSince === "ALL";
 
   state.session.exercises.forEach((ex, i) => {
     const e = day.ex[i];
@@ -56,7 +61,7 @@ function trainSummary(){
         }
         if(w != null && b.unit !== "placas" && (topW == null || w > topW)) topW = w;
       });
-      if(topW != null){
+      if(topW != null && prsReady){
         const prev = bestWeightEver(b.name, b.machine);
         if(prev != null && topW > prev) prs.push({ name: b.name, weight: topW, unit: b.unit, prev });
       }
@@ -95,7 +100,7 @@ function trainSummary(){
   const mins = totalMs / 60000;
   const density = (volKg > 0 && mins >= 1) ? volKg / mins : null;
 
-  return { totalMs, gapMs, gapN: gaps.length, volKg, volSkipped, density, doneSets, prs };
+  return { totalMs, gapMs, gapN: gaps.length, volKg, volSkipped, density, doneSets, prs, prsReady };
 }
 
 function trainEndInnerHTML(done, total){
@@ -135,7 +140,12 @@ function trainEndInnerHTML(done, total){
   }
   h += `</div>`;
 
-  if(sum.prs.length){
+  if(!sum.prsReady){
+    // Full history hasn't landed yet — show a neutral placeholder rather than a
+    // recent-window-only "PR" that could be wrong. refreshTrainEndCard() re-renders
+    // this card with the real all-time PRs once ensureSessionsLoaded("ALL") resolves.
+    h += `<div class="ts-prs loading"><span class="ts-prs-title">Calculando recordes…</span></div>`;
+  } else if(sum.prs.length){
     h += `<div class="ts-prs"><span class="ts-prs-title">${sum.prs.length === 1 ? "1 recorde" : sum.prs.length + " recordes"}</span>`;
     sum.prs.slice(0, 4).forEach(p => {
       h += `<div class="ts-pr">
@@ -162,8 +172,12 @@ export function trainEndCardHTML(done, total){
 }
 
 // Targeted refresh when the carousel lands on the terminal card. Avoids a full renderDay(),
-// which would rebuild the track and disturb the in-flight scroll.
-export function refreshTrainEndCard(){
+// which would rebuild the track and disturb the in-flight scroll. Awaits full history
+// (bestWeightEver PRs need it) before computing the summary — the authoritative check;
+// enterTrainMode's fire-and-forget ensure has usually already resolved by now.
+export async function refreshTrainEndCard(){
+  if(!state.trainMode || !state.session) return;
+  await ensureSessionsLoaded("ALL");
   if(!state.trainMode || !state.session) return;
   const card = document.querySelector(".train-track > .train-end");
   if(!card) return;
