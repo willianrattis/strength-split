@@ -28,6 +28,11 @@ import * as flagState from "./features/flag-state.js";
 import { initOnboarding } from "./features/onboarding.js";
 import { initHowItWorks } from "./features/how-it-works.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
+import { capturePendingSharedPlan, initPlanImport } from "./features/plans/plan-import.js";
+
+// Captured before auth resolves — a shared link must survive login, and the
+// fragment needs to be off the URL before anything else runs.
+capturePendingSharedPlan();
 
 // ========= Auth (loginBtn/logout/online-offline wiring + initApp/initWithTimeout/renderInitError live in features/auth.js) =========
 onAuthStateChanged(auth, async u => {
@@ -79,6 +84,7 @@ exercisesList.init();
 flagState.init();
 initOnboarding();
 initHowItWorks();
+initPlanImport();
 
 applyTheme();
 applyModeButtons();

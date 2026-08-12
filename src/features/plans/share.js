@@ -38,7 +38,7 @@ export async function sharePlan(plan){
   }
 }
 
-function showShareToast(msg){
+export function showShareToast(msg){
   let $t = document.getElementById("shareToast");
   if(!$t){
     $t = document.createElement("div");

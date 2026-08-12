@@ -10,6 +10,7 @@ import { loadDay } from "./day/session-io.js";
 import { rebuildUserDays, loadExercises } from "./exercises/crud.js";
 import { loadDayCustomizations } from "./exercises/day-customization.js";
 import { loadPlans } from "./plans/index.js";
+import { pendingSharedPlan, presentSharedPlan } from "./plans/plan-import.js";
 import { openOnboarding } from "./onboarding.js";
 
 export async function initApp(u){
@@ -23,7 +24,17 @@ export async function initApp(u){
   rebuildUserDays();
   renderStrip();
   await loadDay(state.current);
-  if(state.needsOnboarding) openOnboarding();
+
+  // A shared link takes precedence over default onboarding; a brand-new user
+  // who dismisses it still falls back to onboarding instead of a blank state.
+  const shared = pendingSharedPlan();
+  if(shared){
+    presentSharedPlan(shared, {
+      onDismiss: () => { if(state.needsOnboarding) openOnboarding(); },
+    });
+  } else if(state.needsOnboarding){
+    openOnboarding();
+  }
 }
 export function initWithTimeout(u, ms = 15000){
   return Promise.race([
