@@ -4,6 +4,7 @@ import { $settingsModal, $settingsThemeToggle, $bnConfig, $viewTreino } from "..
 import { toggleTheme } from "./shell.js";
 import { savePref } from "./prefs.js";
 import { openProfileModal } from "./profile-modal.js";
+import { openHowItWorks } from "./how-it-works.js";
 import { exportUserData } from "./export.js";
 import { renderDay } from "./day/render.js";
 import { refreshGamification } from "./gamification.js";
@@ -98,6 +99,10 @@ export function init(){
     openProfileModal();
   });
   document.getElementById("settingsExportRow").addEventListener("click", exportUserData);
+  document.getElementById("settingsHowItWorksRow").addEventListener("click", () => {
+    closeSettings();
+    openHowItWorks();
+  });
   document.getElementById("settingsBtnDesktop").addEventListener("click", openSettings);
 
   document.getElementById("prevLayoutToggle").addEventListener("click", e => {

@@ -164,7 +164,7 @@ window.SSSplash = (function(){
       <div class="wrap">
         <div class="days-inner" id="dayStrip" role="tablist"></div>
       </div>
-      <div class="wrap days-toolbar">
+      <div class="wrap days-toolbar" id="daysToolbar">
         <span class="days-toolbar-label">Visualização</span>
         <div class="mode-toggle" role="group" aria-label="Modo de visualização">
           <button id="modeCompact" type="button">Compacto</button>
@@ -248,6 +248,10 @@ window.SSSplash = (function(){
   <!-- MODAL: Onboarding (escolha de programa inicial) -->
   <div class="modal-overlay" id="onboardingModal">
     <div class="modal" id="onboardingModalInner"></div>
+  </div>
+  <!-- MODAL: Como funciona (compacto vs carga) -->
+  <div class="modal-overlay" id="howItWorksModal">
+    <div class="modal" id="howItWorksModalInner"></div>
   </div>
   <!-- MODAL: Editar dia da semana -->
   <div class="modal-overlay" id="dayEditModal"><div class="modal" id="dayEditModalBody"></div></div>
@@ -357,6 +361,12 @@ window.SSSplash = (function(){
         <div class="setting-text">
           <span class="period-label" id="settingsExportLabel">Exportar meus dados</span>
           <span class="setting-desc">Baixa um arquivo com todo o seu histórico, exercícios e planos.</span>
+        </div>
+      </div>
+      <div id="settingsHowItWorksRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+        <div class="setting-text">
+          <span class="period-label">Como funciona</span>
+          <span class="setting-desc">Diferença entre modo compacto e modo carga.</span>
         </div>
       </div>
       <div id="settingsProfileEditRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">

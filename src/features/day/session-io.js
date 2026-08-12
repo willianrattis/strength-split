@@ -7,6 +7,7 @@ import { collectAllPages } from "../../core/pagination.js";
 import { emptySession, reconcileSession } from "../../core/adapters.js";
 import { setSync } from "../shell.js";
 import { refreshGamification } from "../gamification.js";
+import { maybeShowModeTip } from "../coach-mark.js";
 import { renderDay } from "./render.js";
 
 // Drives collectAllPages with the Firestore-backed page fetcher. Pages come back
@@ -117,6 +118,7 @@ export async function loadDay(dayKey){
     state.prevSession = findPrevSession(dayKey, date);
     renderDay();
   }
+  maybeShowModeTip();
 }
 
 export function scheduleSave(){

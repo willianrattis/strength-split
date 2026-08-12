@@ -26,6 +26,7 @@ import * as train from "./features/train/index.js";
 import * as exercisesList from "./features/exercises/list.js";
 import * as flagState from "./features/flag-state.js";
 import { initOnboarding } from "./features/onboarding.js";
+import { initHowItWorks } from "./features/how-it-works.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
 
 // ========= Auth (loginBtn/logout/online-offline wiring + initApp/initWithTimeout/renderInitError live in features/auth.js) =========
@@ -77,6 +78,7 @@ train.init();
 exercisesList.init();
 flagState.init();
 initOnboarding();
+initHowItWorks();
 
 applyTheme();
 applyModeButtons();
