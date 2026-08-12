@@ -6,7 +6,7 @@ import * as repo from "../../core/repo.js";
 import { $plansSection } from "../../core/dom.js";
 import { savePref } from "../prefs.js";
 import { openPlanEditor } from "./editor.js";
-import { openApplyPlanModal } from "./apply-modal.js";
+import { openApplyPlanModal, activeProgramAsPlan } from "./apply-modal.js";
 import { sharePlan } from "./share.js";
 
 export async function loadPlans(){
@@ -47,6 +47,10 @@ export function renderPlansSection(){
 
   html += `<button class="ex-new-btn" id="newPlanBtn" style="margin-bottom:14px">+ Novo plano</button>`;
 
+  if(state.exercisesCatalog.size > 0){
+    html += `<button class="modal-btn secondary" id="shareCurrentBtn" style="width:100%;margin-bottom:14px">↗ Compartilhar meu treino atual</button>`;
+  }
+
   html += `<div class="ex-section-header">Predefinidos</div>`;
   PLAN_TEMPLATES.forEach(t => {
     const isActive = state.currentPlanKey === t.templateKey;
@@ -60,6 +64,7 @@ export function renderPlansSection(){
         </div>
       </div>
       <div class="plan-card-actions">
+        <button class="ex-icon-btn plan-share-btn" data-key="${t.templateKey}" title="Compartilhar">↗</button>
         <button class="plan-apply-btn" data-key="${t.templateKey}">Aplicar</button>
       </div>
     </div>`;
@@ -92,6 +97,9 @@ export function renderPlansSection(){
 
   document.getElementById("newPlanBtn").addEventListener("click", () => openPlanEditor(null));
 
+  const $shareCurrentBtn = document.getElementById("shareCurrentBtn");
+  if($shareCurrentBtn) $shareCurrentBtn.addEventListener("click", () => sharePlan(activeProgramAsPlan()));
+
   $plansSection.querySelectorAll(".plan-apply-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
@@ -110,8 +118,15 @@ export function renderPlansSection(){
   $plansSection.querySelectorAll(".plan-share-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      const plan = state.plansCache.get(btn.dataset.id);
-      if(plan) sharePlan(plan);
+      const key = btn.dataset.key;
+      const id = btn.dataset.id;
+      if(key){
+        const tpl = PLAN_TEMPLATES.find(t => t.templateKey === key);
+        if(tpl) sharePlan(tpl);
+      } else if(id){
+        const plan = state.plansCache.get(id);
+        if(plan) sharePlan(plan);
+      }
     });
   });
 
