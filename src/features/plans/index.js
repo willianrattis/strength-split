@@ -7,6 +7,7 @@ import { $plansSection } from "../../core/dom.js";
 import { savePref } from "../prefs.js";
 import { openPlanEditor } from "./editor.js";
 import { openApplyPlanModal } from "./apply-modal.js";
+import { sharePlan } from "./share.js";
 
 export async function loadPlans(){
   if(!state.user) return;
@@ -78,6 +79,7 @@ export function renderPlansSection(){
           </div>
         </div>
         <div class="plan-card-actions">
+          <button class="ex-icon-btn plan-share-btn" data-id="${id}" title="Compartilhar">↗</button>
           <button class="ex-icon-btn plan-edit-btn" data-id="${id}" title="Editar">✎</button>
           <button class="ex-icon-btn plan-delete-btn" data-id="${id}" title="Excluir">✕</button>
           <button class="plan-apply-btn" data-id="${id}">Aplicar</button>
@@ -102,6 +104,14 @@ export function renderPlansSection(){
         const plan = state.plansCache.get(id);
         if(plan) openApplyPlanModal(plan, id);
       }
+    });
+  });
+
+  $plansSection.querySelectorAll(".plan-share-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const plan = state.plansCache.get(btn.dataset.id);
+      if(plan) sharePlan(plan);
     });
   });
 
