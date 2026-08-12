@@ -4,7 +4,7 @@
 // in main.js.
 import {
   doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc,
-  query, orderBy, limit as fsLimit
+  query, orderBy, limit as fsLimit, where, startAfter
 } from "firebase/firestore";
 import { db } from "./firebase.js";
 
@@ -48,6 +48,42 @@ export async function fetchSessions(uid, limitN) {
   const sessions = [];
   snap.forEach(d => sessions.push(d.data()));
   return { sessions, truncated: snap.size >= limitN };
+}
+
+// where("date", ...) + orderBy("date", ...) are on the same field, so this
+// only needs the automatic single-field index — no composite index required.
+export async function fetchSessionsSince(uid, sinceDate) {
+  const q = query(
+    collection(db, "users", uid, "sessions"),
+    where("date", ">=", sinceDate),
+    orderBy("date", "desc")
+  );
+  const snap = await getDocs(q);
+  const sessions = [];
+  snap.forEach(d => sessions.push(d.data()));
+  return sessions;
+}
+
+// One page of sessions ordered by `date` desc, cursored by the `date` value
+// of the last doc in the page (stateless — caller holds the cursor). Pages
+// are keyed by the `date` field, same as fetchSessions/fetchSessionsSince, so
+// no composite index is needed. If two sessions can ever share a `date`
+// value, a pure date cursor can skip or repeat entries at a page boundary;
+// this is only safe where date order (not exact pagination) is sufficient,
+// which is what 5.2+ will rely on.
+export async function fetchSessionsPage(uid, { limit, startAfterDate = null } = {}) {
+  const clauses = [
+    collection(db, "users", uid, "sessions"),
+    orderBy("date", "desc")
+  ];
+  if (startAfterDate != null) clauses.push(startAfter(startAfterDate));
+  clauses.push(fsLimit(limit));
+  const q = query(...clauses);
+  const snap = await getDocs(q);
+  const sessions = [];
+  snap.forEach(d => sessions.push(d.data()));
+  const cursor = sessions.length ? sessions[sessions.length - 1].date : startAfterDate;
+  return { sessions, cursor, done: sessions.length < limit };
 }
 
 // Unbounded, undordered — only for the full-account data export.

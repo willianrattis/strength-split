@@ -3,6 +3,7 @@ import { $panel, $trainSegs, $trainCount, $trainFocus } from "../../core/dom.js"
 import { activeDays } from "../../core/adapters.js";
 import { applyPrevLayoutState } from "../settings.js";
 import { exDone, renderDay } from "../day/render.js";
+import { ensureSessionsLoaded } from "../day/session-io.js";
 import { refreshTrainEndCard } from "./summary.js";
 
 export function trainExCount(){ return activeDays()[state.current].ex.length; }
@@ -19,6 +20,11 @@ export function enterTrainMode(){
   state.trainIdx = firstIncompleteIdx();
   document.body.classList.add("mode-train");
   applyPrevLayoutState();
+  // Fire-and-forget: the train-mode summary needs full history for bestWeightEver
+  // PRs, but the user has to swipe through every exercise before reaching it — by
+  // then this has almost always resolved. refreshTrainEndCard awaits it again right
+  // before reading, as the authoritative check.
+  ensureSessionsLoaded("ALL");
   renderDay();
 }
 

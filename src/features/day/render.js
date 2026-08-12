@@ -17,7 +17,7 @@ import { openEvolucaoFor } from "../evolution.js";
 import { openOnboarding } from "../onboarding.js";
 import { openExEditor } from "../exercises/editor.js";
 import { openDayQuickEdit } from "./quick-edit.js";
-import { scheduleSave, loadDay } from "./session-io.js";
+import { scheduleSave, loadDay, ensureSessionsLoaded } from "./session-io.js";
 import { openSubModal } from "./substitution-modal.js";
 import { openMachineModal } from "./machine-modal.js";
 import { enterTrainMode, exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
@@ -268,12 +268,21 @@ export function renderDay(){
   const _deloadActive = isDeloadActive();
   const _deload = !_deloadActive && !state.deloadDismissed ? deloadDue() : { due: false };
 
-  // First-session coach-mark: only for a brand-new user (no session history loaded
-  // yet at all, not merely none logged today) who hasn't dismissed it or started a
-  // workout. allSessions is null until loadAllSessions resolves — loadDay re-renders
-  // once it does, so this becomes reliable on the day's second render.
+  // First-session coach-mark: only for a brand-new user (confirmed empty across the
+  // FULL account history, not merely today, and not merely the day view's recent
+  // window) who hasn't dismissed it or started a workout. An account dormant for
+  // longer than RECENT_WINDOW_DAYS also has an empty recent window, so an empty
+  // window alone doesn't prove "never trained" — only sessionsLoadedSince === "ALL"
+  // does. When the recent window comes back empty, kick off a one-time full fetch
+  // (fire-and-forget, non-blocking) to get an authoritative answer: a genuinely new
+  // account still has 0 docs, a dormant one gets its history back and the hint stays
+  // suppressed on the next render.
+  if(!state._firstRunEnsureTried && state.allSessions && state.allSessions.length === 0 && state.sessionsLoadedSince !== "ALL"){
+    state._firstRunEnsureTried = true;
+    ensureSessionsLoaded("ALL");
+  }
   const showFirstRunHint = !state.showProgramReviewHint && !state.trainMode && completed === 0 &&
-    !state.firstRunHintSeen && state.allSessions && state.allSessions.length === 0;
+    !state.firstRunHintSeen && state.sessionsLoadedSince === "ALL" && (state.allSessions?.length ?? 0) === 0;
 
   let head = `
     <div class="panel-head">
