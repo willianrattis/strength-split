@@ -8,6 +8,7 @@ import {
 import { renderEvolucao, initEvolucao } from "./evolution.js";
 import { renderDay } from "./day/render.js";
 import { savePref } from "./prefs.js";
+import { maybeShowModeTip } from "./coach-mark.js";
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>';
@@ -70,6 +71,7 @@ export function showTab(which){
   if(window._updateCondensed) window._updateCondensed();
   if(which === "evolucao") initEvolucao();
   if(which === "exercicios" && window._renderExercicios) window._renderExercicios();
+  if(which === "treino") maybeShowModeTip();
 }
 
 function syncBottomNav(which){

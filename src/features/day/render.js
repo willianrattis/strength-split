@@ -11,8 +11,9 @@ import {
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
-import { saveDeloadDate, savePref } from "../prefs.js";
+import { saveDeloadDate } from "../prefs.js";
 import { applyPrevLayoutState } from "../settings.js";
+import { hasSeenTip, markTipSeen } from "../tips.js";
 import { openEvolucaoFor } from "../evolution.js";
 import { openOnboarding } from "../onboarding.js";
 import { openExEditor } from "../exercises/editor.js";
@@ -282,7 +283,7 @@ export function renderDay(){
     ensureSessionsLoaded("ALL");
   }
   const showFirstRunHint = !state.showProgramReviewHint && !state.trainMode && completed === 0 &&
-    !state.firstRunHintSeen && state.sessionsLoadedSince === "ALL" && (state.allSessions?.length ?? 0) === 0;
+    !hasSeenTip("firstRun") && state.sessionsLoadedSince === "ALL" && (state.allSessions?.length ?? 0) === 0;
 
   let head = `
     <div class="panel-head">
@@ -651,7 +652,7 @@ function attachHandlers(){
   if($ts) $ts.addEventListener("click", () => {
     // Starting the first session retires the hint immediately, so it can't
     // flicker back before the first set is saved.
-    if(!state.firstRunHintSeen){ state.firstRunHintSeen = true; savePref(); }
+    markTipSeen("firstRun");
     enterTrainMode();
   });
   const $tf = document.getElementById("trainFinish");
@@ -659,8 +660,7 @@ function attachHandlers(){
 
   const $firstRunHintClose = document.getElementById("firstRunHintClose");
   if($firstRunHintClose) $firstRunHintClose.addEventListener("click", () => {
-    state.firstRunHintSeen = true;
-    savePref();
+    markTipSeen("firstRun");
     renderDay();
   });
 

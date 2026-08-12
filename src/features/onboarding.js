@@ -8,6 +8,8 @@ import { rebuildUserDays } from "./exercises/crud.js";
 import { openApplyPlanModal } from "./plans/apply-modal.js";
 import { renderProfileForm } from "./profile-modal.js";
 import { openSettings } from "./settings.js";
+import { hasSeenTip } from "./tips.js";
+import { openHowItWorks } from "./how-it-works.js";
 
 const STEP_LABELS = ["Perfil", "Treino", "Config"];
 
@@ -132,6 +134,7 @@ async function finishWizard(){
   renderStrip();
   await loadDay(state.current);
   step = 1;
+  if(!hasSeenTip("howItWorks")) openHowItWorks();
 }
 
 function renderStep(){

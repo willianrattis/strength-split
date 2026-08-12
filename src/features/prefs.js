@@ -29,7 +29,8 @@ export async function loadPref(){
       if(typeof d.execOrderEnabled === "boolean") state.execOrderEnabled = d.execOrderEnabled;
       if(typeof d.gamificationEnabled === "boolean") state.gamificationEnabled = d.gamificationEnabled;
       if(typeof d.gamifStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.gamifStartDate)) state.gamifStartDate = d.gamifStartDate;
-      if(typeof d.firstRunHintSeen === "boolean") state.firstRunHintSeen = d.firstRunHintSeen;
+      if(Array.isArray(d.tipsSeen)) state.tipsSeen = new Set(d.tipsSeen.filter(x => typeof x === "string"));
+      else if(d.firstRunHintSeen === true) state.tipsSeen = new Set(["firstRun"]);
     }
   }catch(e){ console.warn("loadPref:", e.message); }
   // Migrate: gamification already ON but no start date → anchor to today (fresh window)
@@ -76,7 +77,7 @@ export async function savePref(){
       execOrderEnabled: state.execOrderEnabled,
       gamificationEnabled: state.gamificationEnabled,
       gamifStartDate: state.gamifStartDate || null,
-      firstRunHintSeen: state.firstRunHintSeen,
+      tipsSeen: [...state.tipsSeen],
     });
   }catch(e){ console.warn("savePref:", e.message); }
 }
