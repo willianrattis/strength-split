@@ -824,17 +824,27 @@
   .hiw-label{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.03em;color:var(--text);margin-bottom:4px}
   .hiw-desc{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
 
-  /* generic one-time coach-mark (contextual tips), e.g. the compacto/carga toggle */
-  .coach-mark{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
-    max-width:780px;margin:10px auto 16px;padding:10px 16px;
-    background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;
-    font-family:var(--body);font-size:13px;font-weight:500;color:var(--text);
+  /* generic one-time coach popover (contextual tips), e.g. the compacto/carga toggle.
+     Anchored via position:relative on the caller's container (see .days-toolbar). */
+  .coach-popover{
+    position:absolute;top:100%;right:16px;margin-top:8px;z-index:5;
+    max-width:230px;width:max-content;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.28);
+    padding:10px 26px 10px 12px;
+    font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);line-height:1.45;
   }
-  .coach-mark-close{
-    flex:0 0 auto;background:none;border:none;color:var(--accent);
-    font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;
+  .coach-popover b{color:var(--text)}
+  .coach-popover-caret{
+    position:absolute;top:-5px;right:20px;width:10px;height:10px;
+    background:var(--surface);border-left:1px solid var(--border);border-top:1px solid var(--border);
+    transform:rotate(45deg);
   }
+  .coach-popover-close{
+    position:absolute;top:4px;right:4px;background:none;border:none;color:var(--faint);
+    font-size:16px;line-height:1;cursor:pointer;padding:2px 6px;
+  }
+  .coach-popover-close:hover{color:var(--muted)}
 
   /* drag handle */
   .drag-handle{
@@ -1103,7 +1113,7 @@
   .share-pdf-wrap{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px}
 
   /* Toolbar row (mode-toggle relocated into nav.days) */
-  .days-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px;padding-bottom:0}
+  .days-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px;padding-bottom:0;position:relative}
   .days-toolbar-label{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 
   /* Smooth transitions for condensed state — only with motion allowed */

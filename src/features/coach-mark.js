@@ -1,23 +1,40 @@
 import { state } from "../core/state.js";
-import { $viewTreino, $daysToolbar } from "../core/dom.js";
+import { $viewTreino, $daysToolbar, $modeCompact, $modeLoad } from "../core/dom.js";
 import { hasSeenTip, markTipSeen } from "./tips.js";
 
-// Generic dismissible one-time coach-mark. No-ops if this tip was already seen,
-// or if a coach-mark for this id is already sitting in the DOM (calling this
-// repeatedly from multiple settle points is expected — see maybeShowModeTip).
-export function showCoachMark(id, afterEl, html){
-  if(!afterEl || hasSeenTip(id)) return;
-  const domId = `coachMark-${id}`;
+// Reusable one-time contextual popover. `anchorEl` must be `position:relative` in CSS —
+// the popover renders as its absolutely-positioned child, so it floats over the page
+// instead of pushing content down. No-ops if this tip was already seen, or if a popover
+// for this id is already in the DOM. `dismissEls` are extra elements that, when clicked,
+// dismiss the popover in addition to its own close button and an outside tap.
+export function showCoachPopover(id, anchorEl, html, dismissEls = []){
+  if(!anchorEl || hasSeenTip(id)) return;
+  const domId = `coachPopover-${id}`;
   if(document.getElementById(domId)) return;
   const el = document.createElement("div");
-  el.className = "coach-mark";
+  el.className = "coach-popover";
   el.id = domId;
-  el.innerHTML = `<span>${html}</span><button class="coach-mark-close" type="button" title="Dispensar">×</button>`;
-  afterEl.insertAdjacentElement("afterend", el);
-  el.querySelector(".coach-mark-close").addEventListener("click", () => {
+  el.innerHTML = `
+    <span class="coach-popover-caret"></span>
+    <button class="coach-popover-close" type="button" title="Dispensar">×</button>
+    <span>${html}</span>
+  `;
+  anchorEl.appendChild(el);
+
+  function dismiss(){
     markTipSeen(id);
     el.remove();
-  });
+    dismissEls.forEach(btn => btn && btn.removeEventListener("click", dismiss));
+    document.removeEventListener("click", onOutsideClick, true);
+  }
+  el.querySelector(".coach-popover-close").addEventListener("click", dismiss);
+  dismissEls.forEach(btn => btn && btn.addEventListener("click", dismiss));
+
+  function onOutsideClick(e){
+    if(!anchorEl.contains(e.target)) dismiss();
+  }
+  // Deferred so the click that triggered this render doesn't immediately dismiss it.
+  setTimeout(() => document.addEventListener("click", onOutsideClick, true), 0);
 }
 
 export function maybeShowModeTip(){
@@ -30,6 +47,7 @@ export function maybeShowModeTip(){
   // chance.
   if(document.getElementById("firstRunHint")) return;
   if(!hasSeenTip("firstRun") && state.sessionsLoadedSince !== "ALL" && (state.allSessions?.length ?? 0) === 0) return;
-  showCoachMark("modeToggle", $daysToolbar,
-    "Toque em <b>Carga</b> para registrar peso e repetições — é assim que o app sugere carga e mostra sua evolução. No <b>Compacto</b>, você só marca as séries feitas.");
+  showCoachPopover("modeToggle", $daysToolbar,
+    "<b>Carga</b> registra peso e repetições — é o que gera sugestões e evolução.",
+    [$modeCompact, $modeLoad]);
 }
