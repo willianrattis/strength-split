@@ -74,7 +74,7 @@ function renderQuickEditBody(dayKey){
 
   document.getElementById("qeAddExBtn").addEventListener("click", () => {
     watchExEditorClose(dayKey);
-    openExEditor(null, [dayKey]);
+    openExEditor(null, { preselectDays: [dayKey] });
   });
 
   $dayQuickEditModalInner.querySelectorAll(".qe-edit").forEach(btn => {

@@ -7,12 +7,22 @@ import { $exModal, $exModalInner } from "../../core/dom.js";
 import { saveExerciseDoc, deleteExerciseDoc, rebuildUserDays } from "./crud.js";
 import { renderExercicios } from "./list.js";
 
-export function openExEditor(docId, preselectDays = []){
-  const isNew = !docId;
-  const ex = isNew ? {
-    name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
-    active:true, days:[...preselectDays], orderByDay:{}, superset:null,
-  } : {...state.exercisesCatalog.get(docId)};
+// PLAN mode (opts.ex + opts.onSave both set): edits an arbitrary in-memory exercise
+// (a plan day's exercise entry) instead of the Firestore catalog. Days/Active are
+// hidden (hideDaysActive) and Save calls onSave(collected) instead of persisting —
+// see plans/editor.js. docId is always null in this mode. CATALOG mode (no opts.ex)
+// is everything below unchanged: Firestore save, Days + Active shown, delete allowed.
+export function openExEditor(docId, opts = {}){
+  const { preselectDays = [], ex: planEx = null, hideDaysActive = false, onSave = null } = opts;
+  const isPlanMode = !!onSave;
+  const isNew = isPlanMode ? !planEx?.name : !docId;
+  const showDelete = !isPlanMode && !isNew;
+  const ex = isPlanMode
+    ? { name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null, superset:null, ...planEx }
+    : (isNew ? {
+        name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
+        active:true, days:[...preselectDays], orderByDay:{}, superset:null,
+      } : {...state.exercisesCatalog.get(docId)});
 
   let html = `<h3>${isNew ? 'Novo exercício' : 'Editar exercício'}</h3>`;
   html += `<div class="modal-scroll">`;
@@ -57,19 +67,21 @@ export function openExEditor(docId, preselectDays = []){
     <textarea class="modal-textarea" id="mfNote" placeholder="Opcional">${esc(ex.note)}</textarea>
   </div>`;
 
-  // Dias
-  html += `<div class="modal-field">
-    <label>Dias</label>
-    <div class="day-chips" id="mfDays">
-      ${DAY_NAMES_SHORT.map((d,i) => `<span class="day-chip ${(ex.days||[]).includes(i)?'selected':''}" data-day="${i}">${d}</span>`).join("")}
-    </div>
-  </div>`;
+  if(!hideDaysActive){
+    // Dias
+    html += `<div class="modal-field">
+      <label>Dias</label>
+      <div class="day-chips" id="mfDays">
+        ${DAY_NAMES_SHORT.map((d,i) => `<span class="day-chip ${(ex.days||[]).includes(i)?'selected':''}" data-day="${i}">${d}</span>`).join("")}
+      </div>
+    </div>`;
 
-  // Ativo
-  html += `<div class="modal-field" style="display:flex;align-items:center;gap:10px">
-    <label style="margin-bottom:0">Ativo</label>
-    <label class="switch"><input type="checkbox" id="mfActive" ${ex.active!==false?'checked':''}><span class="slider"></span></label>
-  </div>`;
+    // Ativo
+    html += `<div class="modal-field" style="display:flex;align-items:center;gap:10px">
+      <label style="margin-bottom:0">Ativo</label>
+      <label class="switch"><input type="checkbox" id="mfActive" ${ex.active!==false?'checked':''}><span class="slider"></span></label>
+    </div>`;
+  }
 
   // Supersérie
   const sup = ex.superset || {name:"",muscle:"ombro",reps:[12,10,8],badges:[],note:null};
@@ -121,7 +133,7 @@ export function openExEditor(docId, preselectDays = []){
   html += `<div class="modal-footer">
     <button class="modal-btn primary" id="mfSave">Salvar</button>
     <button class="modal-btn secondary" id="mfCancel">Cancelar</button>
-    ${!isNew ? `<button class="modal-btn danger" id="mfDelete">Excluir</button>` : ''}
+    ${showDelete ? `<button class="modal-btn danger" id="mfDelete">Excluir</button>` : ''}
   </div>`;
 
   $exModalInner.innerHTML = html;
@@ -158,9 +170,11 @@ export function openExEditor(docId, preselectDays = []){
   bindBadges("mfSupBadges");
 
   // day chips
-  document.getElementById("mfDays").querySelectorAll(".day-chip").forEach(el => {
-    el.addEventListener("click", () => el.classList.toggle("selected"));
-  });
+  if(!hideDaysActive){
+    document.getElementById("mfDays").querySelectorAll(".day-chip").forEach(el => {
+      el.addEventListener("click", () => el.classList.toggle("selected"));
+    });
+  }
 
   // superset toggle
   document.getElementById("mfSupToggle").addEventListener("click", () => {
@@ -238,8 +252,6 @@ export function openExEditor(docId, preselectDays = []){
     const reps = [...document.querySelectorAll("#mfReps .rep-input")].map(i => Math.max(1, parseInt(i.value)||1));
     const badges = [...document.querySelectorAll("#mfBadges .badge-toggle.selected")].map(el => el.dataset.badge);
     const note = document.getElementById("mfNote").value.trim() || null;
-    const days = [...document.querySelectorAll("#mfDays .day-chip.selected")].map(el => Number(el.dataset.day));
-    const active = document.getElementById("mfActive").checked;
 
     // superset
     const supOpen = document.getElementById("mfSupFields").classList.contains("open");
@@ -258,6 +270,15 @@ export function openExEditor(docId, preselectDays = []){
     // validation
     if(!name){ errEl.textContent = "Nome é obrigatório."; errEl.style.display = ""; return; }
     if(reps.length < 1){ errEl.textContent = "Adicione ao menos 1 série."; errEl.style.display = ""; return; }
+
+    if(isPlanMode){
+      onSave({ name, muscle, reps, badges, note, superset });
+      closeExEditor();
+      return;
+    }
+
+    const days = [...document.querySelectorAll("#mfDays .day-chip.selected")].map(el => Number(el.dataset.day));
+    const active = document.getElementById("mfActive").checked;
     if(days.length < 1){ errEl.textContent = "Selecione ao menos 1 dia."; errEl.style.display = ""; return; }
 
     // compute orderByDay for new days (append to end)
@@ -293,7 +314,7 @@ export function openExEditor(docId, preselectDays = []){
   });
 
   // delete
-  if(!isNew){
+  if(showDelete){
     document.getElementById("mfDelete").addEventListener("click", async () => {
       if(!confirm(`Excluir "${ex.name}" permanentemente?`)) return;
       try {

@@ -110,9 +110,10 @@ export function openApplyPlanModal(plan, planDocId, opts = {}){
   });
 }
 
-export async function preserveCurrentAsCustomPlan(){
-  if(!state.user || state.exercisesCatalog.size === 0) return;
-
+// Maps the live day/exercise setup (activeDays()) into plan-shaped {type,label,
+// exercises} day types, skipping rest days. Shared by preserveCurrentAsCustomPlan
+// (below) and the "share current program" entry point in plans/index.js.
+export function activeProgramAsPlan(){
   const typeLetters = ['A','B','C','D','E','F','G'];
   const days = activeDays();
   const dayTypes = [];
@@ -138,6 +139,13 @@ export async function preserveCurrentAsCustomPlan(){
     });
   });
 
+  return { name: state.currentPlanName || "Meu treino", days: dayTypes };
+}
+
+export async function preserveCurrentAsCustomPlan(){
+  if(!state.user || state.exercisesCatalog.size === 0) return;
+
+  const { days: dayTypes } = activeProgramAsPlan();
   if(!dayTypes.length) return;
 
   const planName = state.currentPlanName || "Treino anterior";
