@@ -7,6 +7,7 @@ const fullPlan = {
   active: true,
   createdAt: { seconds: 1 },
   name: "Push Pull Legs",
+  notes: ["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"],
   days: [
     {
       type: "A",
@@ -35,6 +36,7 @@ describe("serializePlan", () => {
     expect(out).toEqual({
       v: 1,
       name: "Push Pull Legs",
+      notes: ["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"],
       days: [
         {
           type: "A",
@@ -197,6 +199,31 @@ describe("parseSharedPlan", () => {
     expect(parsed.days[0].exercises[0].badges).toEqual(["peak", "drop"]);
   });
 
+  it("round-trips valid notes, defaults a non-array to [], and drops bad entries instead of rejecting the plan", () => {
+    const serialized = serializePlan(fullPlan);
+    expect(serialized.notes).toEqual(["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"]);
+
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.notes).toEqual(["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"]);
+
+    expect(parseSharedPlan({ ...serialized, notes: "not-an-array" }).notes).toEqual([]);
+    expect(parseSharedPlan({ ...serialized, notes: undefined }).notes).toEqual([]);
+    expect(parseSharedPlan({ ...serialized, notes: null }).notes).toEqual([]);
+
+    // non-string / empty entries are dropped, not rejected
+    const mixed = parseSharedPlan({ ...serialized, notes: ["ok", 42, "", "   ", null, "also ok"] });
+    expect(mixed).not.toBeNull();
+    expect(mixed.notes).toEqual(["ok", "also ok"]);
+
+    // oversized count is capped, not rejected
+    const many = parseSharedPlan({ ...serialized, notes: Array(25).fill("n") });
+    expect(many.notes.length).toBe(20);
+
+    // oversized individual line is capped, not rejected
+    const huge = parseSharedPlan({ ...serialized, notes: ["x".repeat(500)] });
+    expect(huge.notes[0].length).toBeLessThanOrEqual(200);
+  });
+
   it("ignores injected extra/unknown fields instead of leaking them through", () => {
     const injected = {
       v: SHARE_VERSION,
@@ -216,6 +243,7 @@ describe("parseSharedPlan", () => {
     expect(parsed).toEqual({
       v: 1,
       name: "Test",
+      notes: [],
       days: [
         {
           type: "A",

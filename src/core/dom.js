@@ -70,3 +70,4 @@ export const $subModalInner = document.getElementById("subModalInner");
 export const $machineModal = document.getElementById("machineModal");
 export const $machineModalInner = document.getElementById("machineModalInner");
 export const $btnSharePdf = document.getElementById("btnSharePdf");
+export const $generalNotes = document.getElementById("generalNotes");

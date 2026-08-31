@@ -4,6 +4,7 @@ import { state } from "../../core/state.js";
 import { $planModal, $planModalInner } from "../../core/dom.js";
 import { savePref } from "../prefs.js";
 import { openExEditor } from "../exercises/editor.js";
+import { renderGeneralNotes } from "../day/render.js";
 import { savePlanDoc, deletePlanDoc, renderPlansSection } from "./index.js";
 
 export function openPlanEditor(planDocId){
@@ -11,7 +12,7 @@ export function openPlanEditor(planDocId){
   let plan;
 
   if(isNew){
-    plan = { name: "", source: "custom", days: [
+    plan = { name: "", source: "custom", notes: [], days: [
       { type: "A", label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10],badges:[],grip:null,note:null,superset:null}] }
     ]};
   } else {
@@ -65,6 +66,11 @@ export function openPlanEditor(planDocId){
       html += `<button class="plan-add-day-btn" id="pfAddDay">+ Adicionar dia</button>`;
     }
 
+    html += `<div class="modal-field">
+      <label>Notas gerais</label>
+      <textarea class="modal-textarea" id="pfNotes" placeholder="Opcional — uma nota por linha">${esc((plan.notes||[]).join("\n"))}</textarea>
+    </div>`;
+
     html += `</div>`;
 
     html += `<div class="modal-error" id="pfError" style="display:none"></div>`;
@@ -84,6 +90,9 @@ export function openPlanEditor(planDocId){
   function syncPlanFromUI(){
     const nameEl = document.getElementById("pfName");
     if(nameEl) plan.name = nameEl.value.trim();
+
+    const notesEl = document.getElementById("pfNotes");
+    if(notesEl) plan.notes = notesEl.value.split("\n").map(s => s.trim()).filter(Boolean);
 
     $planModalInner.querySelectorAll(".plan-day-type").forEach(dtEl => {
       const di = +dtEl.dataset.di;
@@ -188,11 +197,12 @@ export function openPlanEditor(planDocId){
       }
 
       try{
-        const data = { name: plan.name, source: "custom", days: plan.days };
+        const data = { name: plan.name, source: "custom", notes: plan.notes || [], days: plan.days };
         const id = await savePlanDoc(planDocId, data);
         state.plansCache.set(id, { ...data });
         closePlanEditor();
         renderPlansSection();
+        renderGeneralNotes();
       }catch(e){
         errEl.textContent = "Erro: " + e.message;
         errEl.style.display = "";

@@ -5,7 +5,7 @@ import { UNIT_CYCLE, UNIT_ABBR, UNIT_BTN, UNIT_STEP } from "../../domain/units.j
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { DELOAD_FACTOR } from "../../core/config.js";
 import { state } from "../../core/state.js";
-import { $panel, $strip, $weekPrev, $weekNext, $weekLabel } from "../../core/dom.js";
+import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes } from "../../core/dom.js";
 import {
   activeDays, machineFilterActive, prevLoadData, suggestLoads,
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
@@ -181,6 +181,29 @@ function badgesHTML(b){
   return `<div class="badges">${b.map(x=>`<span class="badge ${x}">${BADGE_LABEL[x]}</span>`).join("")}</div>`;
 }
 
+// #generalNotes is a footer sibling of #panel (not inside it), so it survives
+// renderDay's $panel.innerHTML replace — call this whenever the active plan's
+// notes could have changed (renderDay itself, plus after applyPlan/plan save/
+// loadPlans, none of which are guaranteed to trigger a renderDay).
+export function renderGeneralNotes(){
+  const notes = state.currentPlanId ? state.plansCache.get(state.currentPlanId)?.notes : null;
+  if(!notes || !notes.length){
+    $generalNotes.innerHTML = "";
+    $generalNotes.style.display = "none";
+    return;
+  }
+  let html = `<h3>Notas gerais</h3><ul>`;
+  notes.forEach(n => {
+    const i = n.indexOf(":");
+    html += i > -1
+      ? `<li><div><b>${esc(n.slice(0, i))}:</b>${esc(n.slice(i + 1))}</div></li>`
+      : `<li><div>${esc(n)}</div></li>`;
+  });
+  html += `</ul>`;
+  $generalNotes.innerHTML = html;
+  $generalNotes.style.display = "";
+}
+
 export function skeletonStrip(){
   let h = "";
   for(let i=0;i<5;i++){
@@ -232,6 +255,7 @@ export function renderDaySoft(){
 export function renderDay(){
   clearTimeout(state._softRenderT);
   if(!state.session) return;
+  renderGeneralNotes();
   $panel.classList.toggle("compact", state.viewMode === "compact");
   const day = activeDays()[state.current];
   const total = day.ex.length;

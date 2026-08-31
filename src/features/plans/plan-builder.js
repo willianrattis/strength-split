@@ -23,6 +23,9 @@ let currentDayIdx = 0;
 // picking a result keeps the query + filtered list so a run of similar
 // exercises (e.g. "supino" variants) can be added without retyping.
 let pbSearch = "";
+// General plan notes, authored on the last day of Step 3. Raw textarea text —
+// only split into the saved `notes` array (one line each) on finish.
+let pbNotes = "";
 
 function closePlanBuilder(){
   $planBuilderModal.classList.remove("open");
@@ -284,6 +287,7 @@ function refreshDay(){
 function renderStep3(){
   const di = currentDayIdx;
   const day = draft.days[di];
+  const isLast = di === draft.days.length - 1;
 
   let html = `<div class="plan-day-type">`;
   html += `<div class="plan-day-type-header">
@@ -308,6 +312,13 @@ function renderStep3(){
 
   html += `<button class="plan-add-ex-btn" id="pbAddCustomEx">+ Outro exercício</button>`;
   html += `</div>`;
+
+  if(isLast){
+    html += `<div class="modal-field" style="margin-top:16px">
+      <label>Notas gerais (opcional)</label>
+      <textarea class="modal-textarea" id="pbNotes" placeholder="uma nota por linha">${esc(pbNotes)}</textarea>
+    </div>`;
+  }
 
   const $body = document.getElementById("pbBody");
   $body.innerHTML = html;
@@ -349,6 +360,11 @@ function renderStep3(){
 
   document.getElementById("pbAddCustomEx").addEventListener("click", () => openDayExAdder(di));
 
+  const $notes = document.getElementById("pbNotes");
+  if($notes){
+    $notes.addEventListener("input", () => { pbNotes = $notes.value; });
+  }
+
   renderFooter();
 }
 
@@ -361,9 +377,11 @@ async function finishBuilder(){
   $finish.innerHTML = '<span class="spinner"></span>Salvando…';
 
   try{
+    const notes = pbNotes.split("\n").map(s => s.trim()).filter(Boolean);
     const plan = {
       name: draft.name,
       source: "custom",
+      notes,
       days: draft.days.map((d, i) => ({
         type: DAY_TYPE_LETTERS[i] || String(i),
         label: d.label || WEEKDAYS[d.weekday].name,
@@ -371,7 +389,7 @@ async function finishBuilder(){
       })),
     };
 
-    const id = await savePlanDoc(null, { name: plan.name, source: "custom", days: plan.days });
+    const id = await savePlanDoc(null, { name: plan.name, source: "custom", notes: plan.notes, days: plan.days });
     state.plansCache.set(id, { ...plan });
 
     const mapping = draft.days.map((d, i) => ({ dayTypeIdx: i, weekday: d.weekday }));
@@ -402,6 +420,7 @@ export function openPlanBuilder(){
   step = 1;
   currentDayIdx = 0;
   pbSearch = "";
+  pbNotes = "";
   $planBuilderModal.classList.add("open");
   renderStep();
 }

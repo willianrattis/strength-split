@@ -14,6 +14,8 @@ const MAX_DAYS = 10;
 const MAX_EXERCISES = 30;
 const MAX_REPS = 12;
 const MAX_BADGES = 8;
+const MAX_NOTES = 20;
+const MAX_NOTE_LINE_LEN = 200;
 // grip has a closed set of valid values (unlike badges, which are free strings
 // with no closed-set assumption — see CLAUDE.md). Kept local rather than
 // imported from data/labels.js: domain/ imports nothing outside domain/.
@@ -23,6 +25,7 @@ export function serializePlan(plan){
   return {
     v: SHARE_VERSION,
     name: plan.name,
+    notes: (plan.notes || []).slice(),
     days: (plan.days || []).map(d => ({
       type: d.type,
       label: d.label,
@@ -58,7 +61,23 @@ export function parseSharedPlan(raw){
     days.push(day);
   }
 
-  return { v: SHARE_VERSION, name, days };
+  const notes = parseNotes(raw.notes);
+
+  return { v: SHARE_VERSION, name, notes, days };
+}
+
+// notes are display-only and low-stakes, same treatment as grip above: a
+// malformed shape (not an array) or a bad individual entry is dropped rather
+// than rejecting the whole shared plan over cosmetic content.
+function parseNotes(raw){
+  if(!Array.isArray(raw)) return [];
+  const out = [];
+  for(const n of raw){
+    if(out.length >= MAX_NOTES) break;
+    const s = normStr(n, MAX_NOTE_LINE_LEN);
+    if(s) out.push(s);
+  }
+  return out;
 }
 
 function parseDay(d){
