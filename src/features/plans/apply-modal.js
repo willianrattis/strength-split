@@ -124,11 +124,13 @@ export function activeProgramAsPlan(){
       name: e.name, muscle: e.muscle,
       reps: [...(e.reps||[])],
       badges: [...(e.badges||[])],
+      grip: e.grip || null,
       note: e.note || null,
       superset: e.superset ? {
         name: e.superset.name, muscle: e.superset.muscle,
         reps: [...(e.superset.reps||[])],
         badges: [...(e.superset.badges||[])],
+        grip: e.superset.grip || null,
         note: e.superset.note || null,
       } : null,
     }));
@@ -180,12 +182,14 @@ export async function applyPlan(plan, planDocId, mapping){
           name: e.name, muscle: e.muscle,
           reps: [...(e.reps||[12,10,8])],
           badges: [...(e.badges||[])],
+          grip: e.grip || null,
           note: e.note || null, active: true,
           days: [weekday], orderByDay: { [weekday]: ei },
           superset: e.superset ? {
             name: e.superset.name, muscle: e.superset.muscle || e.muscle,
             reps: [...(e.superset.reps||[])],
             badges: [...(e.superset.badges||[])],
+            grip: e.superset.grip || null,
             note: e.superset.note || null,
           } : null,
         });

@@ -38,6 +38,7 @@
   }
   [data-theme="light"] .badge.iso{color:#3A50C0;border-color:#B9C2EE;background:#EBEEFB}
   [data-theme="light"] .badge.fast{color:#9A6B12;border-color:#E6D2A0;background:#FBF4E3}
+  [data-theme="light"] .badge.peak{color:#1F7A5C;border-color:#BEE6D5;background:#E8F7F1}
   .wrap{max-width:780px;margin:0 auto;padding:0 16px}
 
   /* topo */
@@ -461,9 +462,11 @@
   .badge.drop{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
   .badge.iso{background:var(--surface-2);color:#9FB4FF;border-color:#39406b}
   .badge.fast{background:var(--surface-2);color:#FFD27A;border-color:#5e4d28}
+  .badge.peak{background:var(--surface-2);color:#7EE0B8;border-color:#2f5e4d}
   .badge.drop::before{content:"▼ ";font-weight:700}
   .badge.iso::before{content:"⏱ ";font-weight:700}
   .badge.fast::before{content:"⚡ ";font-weight:700}
+  .badge.peak::before{content:"▲ ";font-weight:700}
 
   /* supersérie */
   .superset{margin:0 16px 15px 60px;border-left:2px solid var(--accent);padding:12px 0 2px 14px}
@@ -703,6 +706,10 @@
   .flag-machines .machine-btn{display:flex;align-items:center;justify-content:center}
   .flag-machines .machine-tag{display:inline-block}
   .machine-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-2);color:var(--muted);margin-left:6px;border:1px solid var(--border)}
+
+  /* grip (pegada) tag — same look as .machine-tag, but never flag-gated: grip
+     is a plain exercise attribute, not a feature-flagged one. */
+  .grip-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-2);color:var(--muted);margin-left:6px;border:1px solid var(--border)}
 
   /* modal */
   .modal-overlay{

@@ -1,6 +1,6 @@
 import { esc, stripDiacritics } from "../../domain/text.js";
 import { WEEKDAYS } from "../../data/days.js";
-import { MUSCLE_ORDER, MUSCLE_LABEL } from "../../data/labels.js";
+import { MUSCLE_ORDER, MUSCLE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { EXERCISE_CATALOG } from "../../data/exercise-catalog.js";
 import { state } from "../../core/state.js";
 import { $planBuilderModal, $planBuilderModalInner } from "../../core/dom.js";
@@ -189,7 +189,7 @@ function openDayExEditor(di, ei){
 function openDayExAdder(di){
   const day = draft.days[di];
   openExEditor(null, {
-    ex: { name:"", muscle: day.focus[0] || "peito", reps:[10,10,10], badges:[], note:null, superset:null },
+    ex: { name:"", muscle: day.focus[0] || "peito", reps:[10,10,10], badges:[], grip:null, note:null, superset:null },
     hideDaysActive: true,
     onSave: (data) => { day.exercises.push(data); refreshDay(); },
   });
@@ -205,6 +205,7 @@ function exerciseRowsHTML(day, di){
         <div class="ex-list-meta">
           ${repsSummary ? `<span class="ex-tag">${repsSummary}</span>` : ''}
           ${badgeCount ? `<span class="ex-tag accent">${badgeCount} badge${badgeCount>1?'s':''}</span>` : ''}
+          ${e.grip ? `<span class="ex-tag">${esc(GRIP_LABEL[e.grip])}</span>` : ''}
           ${e.note ? '<span class="ex-tag">nota</span>' : ''}
           ${e.superset ? '<span class="ex-tag accent">⇄ supersérie</span>' : ''}
         </div>
@@ -334,7 +335,7 @@ function renderStep3(){
       if(!chip) return;
       day.exercises.push({
         name: chip.dataset.name, muscle: chip.dataset.muscle,
-        reps: [10,10,10], badges: [], note: null, superset: null,
+        reps: [10,10,10], badges: [], grip: null, note: null, superset: null,
       });
       refreshDay();
     });

@@ -29,6 +29,7 @@ export function rebuildUserDays(){
         muscle: ex.muscle,
         reps: ex.reps || [12,10,8],
         badges: ex.badges || [],
+        grip: ex.grip || null,
         note: ex.note || null,
         unit: ex.unit || "kg",
         superset: sup,

@@ -14,6 +14,10 @@ const MAX_DAYS = 10;
 const MAX_EXERCISES = 30;
 const MAX_REPS = 12;
 const MAX_BADGES = 8;
+// grip has a closed set of valid values (unlike badges, which are free strings
+// with no closed-set assumption — see CLAUDE.md). Kept local rather than
+// imported from data/labels.js: domain/ imports nothing outside domain/.
+const GRIP_KEYS = new Set(["supinada", "pronada", "neutra"]);
 
 export function serializePlan(plan){
   return {
@@ -33,6 +37,7 @@ function serializeExercise(e){
     muscle: e.muscle,
     reps: (e.reps || []).slice(),
     badges: (e.badges || []).slice(),
+    grip: e.grip ?? null,
     note: e.note ?? null,
     superset: e.superset ? serializeExercise(e.superset) : null,
   };
@@ -99,6 +104,11 @@ function parseExercise(e, allowSuperset){
     }
   }
 
+  // grip is display-only and low-stakes, so an unrecognized/malformed value is
+  // coerced to null rather than rejecting the whole exercise (unlike the
+  // stricter reject-on-invalid fields above).
+  const grip = (typeof e.grip === "string" && GRIP_KEYS.has(e.grip)) ? e.grip : null;
+
   let note = null;
   if(e.note != null){
     note = normStr(e.note, MAX_NOTE_LEN, true);
@@ -111,7 +121,7 @@ function parseExercise(e, allowSuperset){
     if(!superset) return null;
   }
 
-  return { name, muscle, reps, badges, note, superset };
+  return { name, muscle, reps, badges, grip, note, superset };
 }
 
 function parseReps(reps){

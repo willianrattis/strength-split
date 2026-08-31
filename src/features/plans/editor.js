@@ -1,5 +1,5 @@
 import { esc } from "../../domain/text.js";
-import { MUSCLE_LABEL } from "../../data/labels.js";
+import { MUSCLE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { state } from "../../core/state.js";
 import { $planModal, $planModalInner } from "../../core/dom.js";
 import { savePref } from "../prefs.js";
@@ -12,7 +12,7 @@ export function openPlanEditor(planDocId){
 
   if(isNew){
     plan = { name: "", source: "custom", days: [
-      { type: "A", label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10],badges:[],note:null,superset:null}] }
+      { type: "A", label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10],badges:[],grip:null,note:null,superset:null}] }
     ]};
   } else {
     plan = JSON.parse(JSON.stringify(state.plansCache.get(planDocId)));
@@ -45,6 +45,7 @@ export function openPlanEditor(planDocId){
               <span class="ex-tag">${esc(MUSCLE_LABEL[e.muscle]||e.muscle||'')}</span>
               ${repsSummary ? `<span class="ex-tag">${repsSummary}</span>` : ''}
               ${badgeCount ? `<span class="ex-tag accent">${badgeCount} badge${badgeCount>1?'s':''}</span>` : ''}
+              ${e.grip ? `<span class="ex-tag">${esc(GRIP_LABEL[e.grip])}</span>` : ''}
               ${e.note ? '<span class="ex-tag">nota</span>' : ''}
               ${e.superset ? '<span class="ex-tag accent">⇄ supersérie</span>' : ''}
             </div>
@@ -129,7 +130,7 @@ export function openPlanEditor(planDocId){
         syncPlanFromUI();
         const di = +btn.dataset.di;
         const ei = plan.days[di].exercises.length;
-        plan.days[di].exercises.push({name:"",muscle:"peito",reps:[10,10,10],badges:[],note:null,superset:null});
+        plan.days[di].exercises.push({name:"",muscle:"peito",reps:[10,10,10],badges:[],grip:null,note:null,superset:null});
         renderPlanEditorContent();
         openPlanExEditor(di, ei);
       });
@@ -150,7 +151,7 @@ export function openPlanEditor(planDocId){
       addDayBtn.addEventListener("click", () => {
         syncPlanFromUI();
         const typeLetters = 'ABCDEFGHIJ';
-        plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10],badges:[],note:null,superset:null}] });
+        plan.days.push({ type: typeLetters[plan.days.length] || String(plan.days.length), label: "", exercises: [{name:"",muscle:"peito",reps:[10,10,10],badges:[],grip:null,note:null,superset:null}] });
         renderPlanEditorContent();
         requestAnimationFrame(() => {
           const $scroll = $planModalInner.querySelector(".modal-scroll");

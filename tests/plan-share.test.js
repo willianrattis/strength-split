@@ -18,9 +18,10 @@ const fullPlan = {
           muscle: "peito",
           reps: [10, 10, 8],
           badges: ["falha"],
+          grip: "pronada",
           note: "cadência lenta",
           fromSug: true,
-          superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], note: null },
+          superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], grip: "supinada", note: null },
         },
         { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], note: null, superset: null },
       ],
@@ -44,10 +45,11 @@ describe("serializePlan", () => {
               muscle: "peito",
               reps: [10, 10, 8],
               badges: ["falha"],
+              grip: "pronada",
               note: "cadência lenta",
-              superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], note: null, superset: null },
+              superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], grip: "supinada", note: null, superset: null },
             },
-            { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], note: null, superset: null },
+            { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], grip: null, note: null, superset: null },
           ],
         },
       ],
@@ -167,6 +169,34 @@ describe("parseSharedPlan", () => {
     expect(parseSharedPlan({ ...serialized, days: [{ ...serialized.days[0], exercises: [{ ...base, superset: { name: "" } }] }] })).toBeNull();
   });
 
+  it("keeps a valid grip, coerces an invalid or wrong-typed one to null, and defaults a missing one to null", () => {
+    const serialized = serializePlan(fullPlan);
+    const base = serialized.days[0].exercises[0];
+
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.days[0].exercises[0].grip).toBe("pronada");
+    expect(parsed.days[0].exercises[0].superset.grip).toBe("supinada");
+
+    const dayInvalid = { ...serialized.days[0], exercises: [{ ...base, grip: "canhoto" }] };
+    const parsedInvalid = parseSharedPlan({ ...serialized, days: [dayInvalid] });
+    expect(parsedInvalid).not.toBeNull();
+    expect(parsedInvalid.days[0].exercises[0].grip).toBeNull();
+
+    const dayWrongType = { ...serialized.days[0], exercises: [{ ...base, grip: 123 }] };
+    expect(parseSharedPlan({ ...serialized, days: [dayWrongType] }).days[0].exercises[0].grip).toBeNull();
+
+    const dayMissing = { ...serialized.days[0], exercises: [{ ...base, grip: undefined }] };
+    expect(parseSharedPlan({ ...serialized, days: [dayMissing] }).days[0].exercises[0].grip).toBeNull();
+  });
+
+  it("round-trips a 'peak' badge like any other free-string badge (no closed-set assumption)", () => {
+    const serialized = serializePlan(fullPlan);
+    const base = serialized.days[0].exercises[0];
+    const day = { ...serialized.days[0], exercises: [{ ...base, badges: ["peak", "drop"] }] };
+    const parsed = parseSharedPlan({ ...serialized, days: [day] });
+    expect(parsed.days[0].exercises[0].badges).toEqual(["peak", "drop"]);
+  });
+
   it("ignores injected extra/unknown fields instead of leaking them through", () => {
     const injected = {
       v: SHARE_VERSION,
@@ -191,7 +221,7 @@ describe("parseSharedPlan", () => {
           type: "A",
           label: "Day",
           exercises: [
-            { name: "Ex1", muscle: null, reps: [10], badges: [], note: null, superset: null },
+            { name: "Ex1", muscle: null, reps: [10], badges: [], grip: null, note: null, superset: null },
           ],
         },
       ],
