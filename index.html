@@ -189,16 +189,7 @@ window.SSSplash = (function(){
     <main class="wrap">
       <section id="panel" role="tabpanel" aria-live="polite"></section>
       <footer>
-        <div class="notes">
-          <h3>Notas gerais</h3>
-          <ul>
-            <li><span class="k">⏲</span><div><b>Descanso:</b> 1 a 1min30 entre as séries.</div></li>
-            <li><span class="k">▤</span><div><b>Prancha:</b> 3× por semana — 4 séries até a falha.</div></li>
-            <li><span class="k">⏱</span><div><b>Isometria 2s:</b> contrair 2 segundos em cada pico de contração.</div></li>
-            <li><span class="k">⚡</span><div><b>Acelerar na fadiga:</b> aumentar a velocidade do movimento ao fadigar.</div></li>
-          </ul>
-        </div>
-        <p class="sig">12 · 10 · 8 — pirâmide descendente de carga</p>
+        <div class="notes" id="generalNotes"></div>
       </footer>
     </main>
   </div>
@@ -240,6 +231,10 @@ window.SSSplash = (function(){
   <!-- MODAL: Editor de plano -->
   <div class="modal-overlay" id="planModal">
     <div class="modal" id="planModalInner"></div>
+  </div>
+  <!-- MODAL: Montar treino guiado (plan builder wizard) -->
+  <div class="modal-overlay" id="planBuilderModal">
+    <div class="modal" id="planBuilderModalInner"></div>
   </div>
   <!-- MODAL: Aplicar plano (mapeamento de dias) -->
   <div class="modal-overlay" id="applyPlanModal">

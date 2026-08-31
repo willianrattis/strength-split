@@ -7,6 +7,7 @@ const fullPlan = {
   active: true,
   createdAt: { seconds: 1 },
   name: "Push Pull Legs",
+  notes: ["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"],
   days: [
     {
       type: "A",
@@ -18,9 +19,10 @@ const fullPlan = {
           muscle: "peito",
           reps: [10, 10, 8],
           badges: ["falha"],
+          grip: "pronada",
           note: "cadência lenta",
           fromSug: true,
-          superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], note: null },
+          superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], grip: "supinada", note: null },
         },
         { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], note: null, superset: null },
       ],
@@ -34,6 +36,7 @@ describe("serializePlan", () => {
     expect(out).toEqual({
       v: 1,
       name: "Push Pull Legs",
+      notes: ["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"],
       days: [
         {
           type: "A",
@@ -44,10 +47,11 @@ describe("serializePlan", () => {
               muscle: "peito",
               reps: [10, 10, 8],
               badges: ["falha"],
+              grip: "pronada",
               note: "cadência lenta",
-              superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], note: null, superset: null },
+              superset: { name: "Crucifixo", muscle: "peito", reps: [12, 12], badges: [], grip: "supinada", note: null, superset: null },
             },
-            { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], note: null, superset: null },
+            { name: "Desenvolvimento", muscle: "ombro", reps: [8, 8, 8], badges: [], grip: null, note: null, superset: null },
           ],
         },
       ],
@@ -167,6 +171,59 @@ describe("parseSharedPlan", () => {
     expect(parseSharedPlan({ ...serialized, days: [{ ...serialized.days[0], exercises: [{ ...base, superset: { name: "" } }] }] })).toBeNull();
   });
 
+  it("keeps a valid grip, coerces an invalid or wrong-typed one to null, and defaults a missing one to null", () => {
+    const serialized = serializePlan(fullPlan);
+    const base = serialized.days[0].exercises[0];
+
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.days[0].exercises[0].grip).toBe("pronada");
+    expect(parsed.days[0].exercises[0].superset.grip).toBe("supinada");
+
+    const dayInvalid = { ...serialized.days[0], exercises: [{ ...base, grip: "canhoto" }] };
+    const parsedInvalid = parseSharedPlan({ ...serialized, days: [dayInvalid] });
+    expect(parsedInvalid).not.toBeNull();
+    expect(parsedInvalid.days[0].exercises[0].grip).toBeNull();
+
+    const dayWrongType = { ...serialized.days[0], exercises: [{ ...base, grip: 123 }] };
+    expect(parseSharedPlan({ ...serialized, days: [dayWrongType] }).days[0].exercises[0].grip).toBeNull();
+
+    const dayMissing = { ...serialized.days[0], exercises: [{ ...base, grip: undefined }] };
+    expect(parseSharedPlan({ ...serialized, days: [dayMissing] }).days[0].exercises[0].grip).toBeNull();
+  });
+
+  it("round-trips a 'peak' badge like any other free-string badge (no closed-set assumption)", () => {
+    const serialized = serializePlan(fullPlan);
+    const base = serialized.days[0].exercises[0];
+    const day = { ...serialized.days[0], exercises: [{ ...base, badges: ["peak", "drop"] }] };
+    const parsed = parseSharedPlan({ ...serialized, days: [day] });
+    expect(parsed.days[0].exercises[0].badges).toEqual(["peak", "drop"]);
+  });
+
+  it("round-trips valid notes, defaults a non-array to [], and drops bad entries instead of rejecting the plan", () => {
+    const serialized = serializePlan(fullPlan);
+    expect(serialized.notes).toEqual(["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"]);
+
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.notes).toEqual(["Descanso: 1 a 1min30 entre as séries.", "Hidratar bem durante o treino"]);
+
+    expect(parseSharedPlan({ ...serialized, notes: "not-an-array" }).notes).toEqual([]);
+    expect(parseSharedPlan({ ...serialized, notes: undefined }).notes).toEqual([]);
+    expect(parseSharedPlan({ ...serialized, notes: null }).notes).toEqual([]);
+
+    // non-string / empty entries are dropped, not rejected
+    const mixed = parseSharedPlan({ ...serialized, notes: ["ok", 42, "", "   ", null, "also ok"] });
+    expect(mixed).not.toBeNull();
+    expect(mixed.notes).toEqual(["ok", "also ok"]);
+
+    // oversized count is capped, not rejected
+    const many = parseSharedPlan({ ...serialized, notes: Array(25).fill("n") });
+    expect(many.notes.length).toBe(20);
+
+    // oversized individual line is capped, not rejected
+    const huge = parseSharedPlan({ ...serialized, notes: ["x".repeat(500)] });
+    expect(huge.notes[0].length).toBeLessThanOrEqual(200);
+  });
+
   it("ignores injected extra/unknown fields instead of leaking them through", () => {
     const injected = {
       v: SHARE_VERSION,
@@ -186,12 +243,13 @@ describe("parseSharedPlan", () => {
     expect(parsed).toEqual({
       v: 1,
       name: "Test",
+      notes: [],
       days: [
         {
           type: "A",
           label: "Day",
           exercises: [
-            { name: "Ex1", muscle: null, reps: [10], badges: [], note: null, superset: null },
+            { name: "Ex1", muscle: null, reps: [10], badges: [], grip: null, note: null, superset: null },
           ],
         },
       ],

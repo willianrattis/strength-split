@@ -1,5 +1,5 @@
 import { stripDiacritics, esc } from "../../domain/text.js";
-import { MUSCLE_LABEL, BADGE_LABEL } from "../../data/labels.js";
+import { MUSCLE_LABEL, BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { DAY_NAMES_SHORT } from "../../data/days.js";
 import { EXERCISE_CATALOG } from "../../data/exercise-catalog.js";
 import { state } from "../../core/state.js";
@@ -18,9 +18,9 @@ export function openExEditor(docId, opts = {}){
   const isNew = isPlanMode ? !planEx?.name : !docId;
   const showDelete = !isPlanMode && !isNew;
   const ex = isPlanMode
-    ? { name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null, superset:null, ...planEx }
+    ? { name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null, grip:null, superset:null, ...planEx }
     : (isNew ? {
-        name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null,
+        name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null, grip:null,
         active:true, days:[...preselectDays], orderByDay:{}, superset:null,
       } : {...state.exercisesCatalog.get(docId)});
 
@@ -57,7 +57,16 @@ export function openExEditor(docId, opts = {}){
   html += `<div class="modal-field">
     <label>Badges</label>
     <div class="badge-toggles" id="mfBadges">
-      ${["drop","iso","fast"].map(b => `<span class="badge-toggle ${(ex.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+      ${Object.keys(BADGE_LABEL).map(b => `<span class="badge-toggle ${(ex.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+    </div>
+  </div>`;
+
+  // Pegada — single-select, tap the active chip to clear (mirrors the profile
+  // form's Experiência toggle-to-clear behavior).
+  html += `<div class="modal-field">
+    <label>Pegada</label>
+    <div class="badge-toggles" id="mfGrip">
+      ${Object.keys(GRIP_LABEL).map(g => `<span class="badge-toggle ${ex.grip===g?'selected':''}" data-grip="${g}">${GRIP_LABEL[g]}</span>`).join("")}
     </div>
   </div>`;
 
@@ -84,7 +93,7 @@ export function openExEditor(docId, opts = {}){
   }
 
   // Supersérie
-  const sup = ex.superset || {name:"",muscle:"ombro",reps:[12,10,8],badges:[],note:null};
+  const sup = ex.superset || {name:"",muscle:"ombro",reps:[12,10,8],badges:[],note:null,grip:null};
   const hasSup = !!ex.superset;
   html += `<div class="modal-field">
     <button class="superset-toggle" type="button" id="mfSupToggle">
@@ -114,7 +123,13 @@ export function openExEditor(docId, opts = {}){
       <div class="modal-field">
         <label>Badges</label>
         <div class="badge-toggles" id="mfSupBadges">
-          ${["drop","iso","fast"].map(b => `<span class="badge-toggle ${(sup.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+          ${Object.keys(BADGE_LABEL).map(b => `<span class="badge-toggle ${(sup.badges||[]).includes(b)?'selected':''}" data-badge="${b}">${BADGE_LABEL[b]}</span>`).join("")}
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Pegada</label>
+        <div class="badge-toggles" id="mfSupGrip">
+          ${Object.keys(GRIP_LABEL).map(g => `<span class="badge-toggle ${sup.grip===g?'selected':''}" data-grip="${g}">${GRIP_LABEL[g]}</span>`).join("")}
         </div>
       </div>
       <div class="modal-field">
@@ -168,6 +183,19 @@ export function openExEditor(docId, opts = {}){
   };
   bindBadges("mfBadges");
   bindBadges("mfSupBadges");
+
+  // grip toggles — single-select, tap the active chip again to clear it
+  const bindGrip = (containerId) => {
+    document.getElementById(containerId).querySelectorAll(".badge-toggle").forEach(el => {
+      el.addEventListener("click", () => {
+        const wasSelected = el.classList.contains("selected");
+        el.parentNode.querySelectorAll(".badge-toggle").forEach(c => c.classList.remove("selected"));
+        if(!wasSelected) el.classList.add("selected");
+      });
+    });
+  };
+  bindGrip("mfGrip");
+  bindGrip("mfSupGrip");
 
   // day chips
   if(!hideDaysActive){
@@ -251,6 +279,8 @@ export function openExEditor(docId, opts = {}){
     const muscle = document.getElementById("mfMuscle").value;
     const reps = [...document.querySelectorAll("#mfReps .rep-input")].map(i => Math.max(1, parseInt(i.value)||1));
     const badges = [...document.querySelectorAll("#mfBadges .badge-toggle.selected")].map(el => el.dataset.badge);
+    const gripEl = document.querySelector("#mfGrip .badge-toggle.selected");
+    const grip = gripEl ? gripEl.dataset.grip : null;
     const note = document.getElementById("mfNote").value.trim() || null;
 
     // superset
@@ -258,11 +288,13 @@ export function openExEditor(docId, opts = {}){
     const supName = document.getElementById("mfSupName").value.trim();
     let superset = null;
     if(supOpen && supName){
+      const supGripEl = document.querySelector("#mfSupGrip .badge-toggle.selected");
       superset = {
         name: supName,
         muscle: document.getElementById("mfSupMuscle").value,
         reps: [...document.querySelectorAll("#mfSupReps .rep-input")].map(i => Math.max(1, parseInt(i.value)||1)),
         badges: [...document.querySelectorAll("#mfSupBadges .badge-toggle.selected")].map(el => el.dataset.badge),
+        grip: supGripEl ? supGripEl.dataset.grip : null,
         note: document.getElementById("mfSupNote").value.trim() || null,
       };
     }
@@ -272,7 +304,7 @@ export function openExEditor(docId, opts = {}){
     if(reps.length < 1){ errEl.textContent = "Adicione ao menos 1 série."; errEl.style.display = ""; return; }
 
     if(isPlanMode){
-      onSave({ name, muscle, reps, badges, note, superset });
+      onSave({ name, muscle, reps, badges, grip, note, superset });
       closeExEditor();
       return;
     }
@@ -299,7 +331,7 @@ export function openExEditor(docId, opts = {}){
       if(!days.includes(Number(k))) delete orderByDay[k];
     });
 
-    const data = { name, muscle, reps, badges, note, active, days, orderByDay, superset };
+    const data = { name, muscle, reps, badges, grip, note, active, days, orderByDay, superset };
 
     try {
       const id = await saveExerciseDoc(docId, data);

@@ -98,7 +98,7 @@ export function presentSharedPlan(plan, opts = {}){
     const $saveBtn = document.getElementById("sharedPlanSave");
     $saveBtn.disabled = true;
     try{
-      const data = { name: plan.name, source: "shared", days: plan.days };
+      const data = { name: plan.name, source: "shared", notes: plan.notes || [], days: plan.days };
       const id = await savePlanDoc(null, data);
       state.plansCache.set(id, { ...data });
       renderPlansSection();

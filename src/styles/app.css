@@ -38,6 +38,7 @@
   }
   [data-theme="light"] .badge.iso{color:#3A50C0;border-color:#B9C2EE;background:#EBEEFB}
   [data-theme="light"] .badge.fast{color:#9A6B12;border-color:#E6D2A0;background:#FBF4E3}
+  [data-theme="light"] .badge.peak{color:#1F7A5C;border-color:#BEE6D5;background:#E8F7F1}
   .wrap{max-width:780px;margin:0 auto;padding:0 16px}
 
   /* topo */
@@ -461,9 +462,11 @@
   .badge.drop{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
   .badge.iso{background:var(--surface-2);color:#9FB4FF;border-color:#39406b}
   .badge.fast{background:var(--surface-2);color:#FFD27A;border-color:#5e4d28}
+  .badge.peak{background:var(--surface-2);color:#7EE0B8;border-color:#2f5e4d}
   .badge.drop::before{content:"▼ ";font-weight:700}
   .badge.iso::before{content:"⏱ ";font-weight:700}
   .badge.fast::before{content:"⚡ ";font-weight:700}
+  .badge.peak::before{content:"▲ ";font-weight:700}
 
   /* supersérie */
   .superset{margin:0 16px 15px 60px;border-left:2px solid var(--accent);padding:12px 0 2px 14px}
@@ -704,6 +707,10 @@
   .flag-machines .machine-tag{display:inline-block}
   .machine-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-2);color:var(--muted);margin-left:6px;border:1px solid var(--border)}
 
+  /* grip (pegada) tag — same look as .machine-tag, but never flag-gated: grip
+     is a plain exercise attribute, not a feature-flagged one. */
+  .grip-tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--surface-2);color:var(--muted);margin-left:6px;border:1px solid var(--border)}
+
   /* modal */
   .modal-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;
@@ -807,6 +814,7 @@
   .modal-btn.secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
   .modal-btn.secondary:hover{border-color:var(--faint);color:var(--text)}
   .modal-btn.danger{background:none;border:1px solid #F87171;color:#F87171;margin-left:auto}
+  .modal-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
   #settingsThemeToggle svg{width:20px;height:20px;flex-shrink:0}
   #settingsModal .modal-btn.danger{margin-left:0}
   .modal-btn.danger:hover{background:rgba(248,113,113,.1)}
@@ -1207,6 +1215,16 @@
     z-index:2;
   }
 
+  /* Generic .modal-scroll body padding — every modal is 20px horizontally, but
+     overflow-y:auto also clips overflow-x, cutting off focus rings on inputs
+     near the edge. Push the clip edge out to the modal border (net content
+     position unchanged) and give the last card breathing room above the
+     pinned footer. */
+  .modal-scroll{
+    margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px;
+    padding-bottom:16px;
+  }
+
   /* 4c. Exercise editor — flex column with a scrollable field area, so the
      sticky footer above can't float over the superset fields when they expand
      and grow the modal past the viewport. Same pattern as the onboarding
@@ -1220,6 +1238,35 @@
   #planModalInner{display:flex;flex-direction:column;overflow:hidden}
   #planModalInner .modal-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
   #planModalInner .modal-footer{position:static}
+
+  /* Plan builder wizard — wider than the base .modal on desktop (max-width only
+     caps larger viewports, so mobile still gets the full-width bottom sheet).
+     #pbBody (not a nested .modal-scroll) is the direct flex child here — mirrors
+     #wizBody in the onboarding wizard above. A .modal-scroll wrapper nested inside
+     #pbBody would sit inside a plain block, not the flex column, so its flex/
+     overflow rules would never take effect and tall steps would overflow the
+     modal's max-height, pushing the footer out of view. */
+  #planBuilderModalInner{max-width:760px;display:flex;flex-direction:column;overflow:hidden}
+  #planBuilderModalInner #pbBody{
+    flex:1 1 auto;min-height:0;overflow-y:auto;
+    margin-left:-20px;margin-right:-20px;
+    padding-left:20px;padding-right:20px;padding-bottom:16px;
+  }
+  #planBuilderModalInner .modal-footer{position:static}
+
+  /* Plan builder — multi-column week grid (Step 2): one card per chosen day,
+     side by side when there's room, collapsing to a single column when narrow. */
+  .pb-week-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:16px;align-items:start;
+  }
+  .pb-week-grid > *{min-width:0}
+  /* Step 2's per-day column — same card look as Step 3's .plan-day-type so the
+     two steps read as the same "one card per day" layout. */
+  .pb-day-col{
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;
+  }
 
   /* 5. Day strip scroll-snap mandatory + edge fade */
   .days-inner{scroll-snap-type:x mandatory}
