@@ -1,5 +1,6 @@
 import { signInWithPopup, signOut } from "firebase/auth";
 import { state } from "../core/state.js";
+import { todayWeekdayIdx } from "../domain/dates.js";
 import { $loginBtn, $settingsLogoutBtn, $panel, $strip } from "../core/dom.js";
 import { auth, provider } from "../core/firebase.js";
 import { initializeFeatureFlags } from "../core/flags.js";
@@ -22,6 +23,7 @@ export async function initApp(u){
     loadPlans(),
   ]);
   rebuildUserDays();
+  state.current = todayWeekdayIdx();
   renderStrip();
   await loadDay(state.current);
 

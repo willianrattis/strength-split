@@ -1,5 +1,5 @@
 import { esc } from "../../domain/text.js";
-import { formatDate, shortDate, getWeekMonday } from "../../domain/dates.js";
+import { formatDate, shortDate, getWeekMonday, todayWeekdayIdx } from "../../domain/dates.js";
 import { equipmentOf } from "../../domain/equipment.js";
 import { UNIT_CYCLE, UNIT_ABBR, UNIT_BTN, UNIT_STEP } from "../../domain/units.js";
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
@@ -26,7 +26,7 @@ import { trainEndCardHTML } from "../train/summary.js";
 
 const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
-const todayIdx = (()=>{ const g=new Date().getDay(); return g===0?6:g-1; })();
+const todayIdx = todayWeekdayIdx();
 
 export function exDone(ex){
   const mainOk = ex.main.every(s => s.done);
@@ -755,8 +755,6 @@ export function updateWeekLabel(){
 }
 
 export function init(){
-  state.current = todayIdx;
-
   $weekPrev.addEventListener("click", async () => {
     state.weekOffset--;
     renderStrip();
