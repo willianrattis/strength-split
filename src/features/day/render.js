@@ -451,6 +451,14 @@ export function displayedLoadFor(row, si){
   if(!grid) return null;
   const num = t => { const v = parseFloat(String(t).replace(",", ".")); return isNaN(v) ? null : v; };
 
+  // Highest priority: repeat the load from the nearest earlier set in this exercise, this session.
+  for(let j = si - 1; j >= 0; j--){
+    const pIdx = row.querySelector(`.set-idx[data-si="${j}"]`);
+    const pGrid = pIdx ? pIdx.closest(".series-grid") : null;
+    const pInp = pGrid ? pGrid.querySelector(".weight-input") : null;
+    if(pInp){ const v = num(pInp.value); if(v != null) return v; }
+  }
+
   const cell = grid.querySelector(".load-cell");
   if(cell && cell.classList.contains("sug-ph")){
     const inp = cell.querySelector(".weight-input");
@@ -468,6 +476,12 @@ export function displayedLoadFor(row, si){
   if(hint && hint.classList.contains("set-hint")){
     const b = hint.querySelector("b");
     if(b){ const v = num(b.textContent); if(v != null) return v; }
+  }
+
+  // Last resort: last session's weight for this same set number (the "ÚLTIMA" row).
+  if(block && block.classList.contains("prev-block")){
+    const prevWs = block.querySelectorAll(".pp-prev .pv-w");
+    if(prevWs[si]){ const v = num(prevWs[si].textContent); if(v != null) return v; }
   }
   return null;
 }
