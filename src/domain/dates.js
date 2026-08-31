@@ -1,3 +1,8 @@
+export function todayWeekdayIdx(d = new Date()){
+  const g = d.getDay(); // 0=Sun,1=Mon...6=Sat
+  return g === 0 ? 6 : g - 1; // Mon=0 … Sun=6
+}
+
 export function todayStr(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;

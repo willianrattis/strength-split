@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { formatDate, getWeekMonday, dateForDay, sessionId, shortDate, todayStr, fmtDateBR } from "../src/domain/dates.js";
+import { formatDate, getWeekMonday, dateForDay, sessionId, shortDate, todayStr, fmtDateBR, todayWeekdayIdx } from "../src/domain/dates.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -81,6 +81,20 @@ describe("todayStr", () => {
     vi.setSystemTime(new Date(2026, 2, 5, 9)); // 2026-03-05
     expect(todayStr()).toBe("2026-03-05");
     expect(todayStr()).toBe(formatDate(new Date()));
+  });
+});
+
+describe("todayWeekdayIdx", () => {
+  it("maps Monday to 0", () => {
+    expect(todayWeekdayIdx(new Date(2026, 0, 5))).toBe(0); // Monday 2026-01-05
+  });
+
+  it("maps Saturday to 5", () => {
+    expect(todayWeekdayIdx(new Date(2026, 0, 10))).toBe(5); // Saturday 2026-01-10
+  });
+
+  it("maps Sunday to 6", () => {
+    expect(todayWeekdayIdx(new Date(2026, 0, 4))).toBe(6); // Sunday 2026-01-04
   });
 });
 
