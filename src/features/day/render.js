@@ -168,7 +168,7 @@ function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
         const v = projectLoad(src.weight, src.repsDone, s.reps, equip, u, step, gap);
         if(v != null && v !== src.weight){
           const arrow = v > src.weight ? "↑" : "↓";
-          html += `<div class="set-hint">sugerido <b>${v}</b> ${UNIT_ABBR[u]} ${arrow}</div>`;
+          html += `<button type="button" class="set-hint" data-si="${si}" data-v="${v}" aria-label="Aplicar carga sugerida de ${v} kg">sugerido <b>${v}</b> ${UNIT_ABBR[u]} ${arrow}</button>`;
         }
       }
     }
@@ -435,7 +435,23 @@ export function syncSetRow(row, si, set){
     if(has && w.value === "") w.value = set.weight;
     w.parentElement.classList.toggle("filled", has);
     w.parentElement.classList.toggle("from-sug", has && !!set.fromSug);
-    if(has) w.parentElement.classList.remove("sug-ph");
+    if(has){
+      w.parentElement.classList.remove("sug-ph");
+      // The set now has a weight, so its autoreg suggestion is stale — drop it in place.
+      // renderDaySoft() would regenerate the HTML without it, but it skips its rebuild
+      // while focus is inside a weight/reps input, which is the common case here.
+      const hint = row.querySelector(`.set-hint[data-si="${si}"]`);
+      if(hint){
+        // Disable synchronously so it can't receive a phantom click if a touch/click
+        // sequence from an adjacent tap is still resolving this frame, but defer the
+        // space-collapsing removal to a macrotask so the layout shift happens only after
+        // the browser finished dispatching the current gesture — not mid-touch (which
+        // would land a phantom click on the shifted content). The next-tick removal
+        // closes the gap almost instantly instead of waiting on the debounced re-render.
+        hint.style.pointerEvents = "none";
+        setTimeout(() => hint.remove(), 0);
+      }
+    }
   }
 }
 
@@ -450,6 +466,14 @@ export function displayedLoadFor(row, si){
   const grid = idx ? idx.closest(".series-grid") : null;
   if(!grid) return null;
   const num = t => { const v = parseFloat(String(t).replace(",", ".")); return isNaN(v) ? null : v; };
+
+  // Highest priority: repeat the load from the nearest earlier set in this exercise, this session.
+  for(let j = si - 1; j >= 0; j--){
+    const pIdx = row.querySelector(`.set-idx[data-si="${j}"]`);
+    const pGrid = pIdx ? pIdx.closest(".series-grid") : null;
+    const pInp = pGrid ? pGrid.querySelector(".weight-input") : null;
+    if(pInp){ const v = num(pInp.value); if(v != null) return v; }
+  }
 
   const cell = grid.querySelector(".load-cell");
   if(cell && cell.classList.contains("sug-ph")){
@@ -468,6 +492,12 @@ export function displayedLoadFor(row, si){
   if(hint && hint.classList.contains("set-hint")){
     const b = hint.querySelector("b");
     if(b){ const v = num(b.textContent); if(v != null) return v; }
+  }
+
+  // Last resort: last session's weight for this same set number (the "ÚLTIMA" row).
+  if(block && block.classList.contains("prev-block")){
+    const prevWs = block.querySelectorAll(".pp-prev .pv-w");
+    if(prevWs[si]){ const v = num(prevWs[si].textContent); if(v != null) return v; }
   }
   return null;
 }
@@ -547,6 +577,18 @@ function attachHandlers(){
         syncSetRow(row, si, set);
         renderStrip(); renderTrainBar();
         renderDaySoft();
+      });
+    });
+    row.querySelectorAll(".set-hint[data-si]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const si = +btn.dataset.si;
+        const v = parseFloat(btn.dataset.v);
+        const set = target()[si];
+        if(!set || isNaN(v) || (set.weight != null && set.weight !== "")) return;
+        set.weight = v;
+        set.fromSug = true;
+        syncSetRow(row, si, set);
+        scheduleSave(); renderStrip(); renderTrainBar(); renderDaySoft();
       });
     });
   });

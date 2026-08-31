@@ -162,8 +162,16 @@
   .evo-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .note{font-size:12.5px;color:var(--muted);margin-top:4px}
   .superset .prev-meta{margin-top:6px}
-  .set-hint{display:none;font-family:var(--body);font-size:11px;color:var(--faint);text-align:right;margin:-3px 0 1px;letter-spacing:.02em}
-  .set-hint b{color:var(--muted);font-weight:600}
+  .set-hint{
+    display:none;box-sizing:border-box;width:100%;
+    background:none;border:none;
+    padding:9px 0;margin:-3px 0 1px;min-height:36px;
+    font-family:var(--body);font-size:13px;font-weight:600;
+    color:var(--faint);text-align:right;letter-spacing:.02em;cursor:pointer;
+  }
+  .set-hint b{color:var(--accent);font-weight:700;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+  .set-hint:active{opacity:.6}
+  .set-hint:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .flag-autoreg .set-hint{display:block}
   .compact .set-hint{display:none !important}
   .suggest-apply{
