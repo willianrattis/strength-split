@@ -29,6 +29,7 @@ import { initOnboarding } from "./features/onboarding.js";
 import { initHowItWorks } from "./features/how-it-works.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
 import { capturePendingSharedPlan, initPlanImport } from "./features/plans/plan-import.js";
+import { initPlanBuilder } from "./features/plans/plan-builder.js";
 
 // Captured before auth resolves — a shared link must survive login, and the
 // fragment needs to be off the URL before anything else runs.
@@ -85,6 +86,7 @@ flagState.init();
 initOnboarding();
 initHowItWorks();
 initPlanImport();
+initPlanBuilder();
 
 applyTheme();
 applyModeButtons();

@@ -8,6 +8,7 @@ import { savePref } from "../prefs.js";
 import { openPlanEditor } from "./editor.js";
 import { openApplyPlanModal, activeProgramAsPlan } from "./apply-modal.js";
 import { sharePlan } from "./share.js";
+import { openPlanBuilder } from "./plan-builder.js";
 
 export async function loadPlans(){
   if(!state.user) return;
@@ -46,6 +47,7 @@ export function renderPlansSection(){
   }
 
   html += `<button class="ex-new-btn" id="newPlanBtn" style="margin-bottom:14px">+ Novo plano</button>`;
+  html += `<button class="modal-btn secondary" id="newPlanBuilderBtn" style="width:100%;margin-bottom:14px">+ Novo plano guiado</button>`;
 
   if(state.exercisesCatalog.size > 0){
     html += `<button class="modal-btn secondary" id="shareCurrentBtn" style="width:100%;margin-bottom:14px">↗ Compartilhar meu treino atual</button>`;
@@ -96,6 +98,7 @@ export function renderPlansSection(){
   $plansSection.innerHTML = html;
 
   document.getElementById("newPlanBtn").addEventListener("click", () => openPlanEditor(null));
+  document.getElementById("newPlanBuilderBtn").addEventListener("click", openPlanBuilder);
 
   const $shareCurrentBtn = document.getElementById("shareCurrentBtn");
   if($shareCurrentBtn) $shareCurrentBtn.addEventListener("click", () => sharePlan(activeProgramAsPlan()));
