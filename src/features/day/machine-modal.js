@@ -46,9 +46,10 @@ export function openMachineModal(exIdx, isSup){
   $machineModal.classList.add("open");
 
   function applyMachine(val){
-    const v = val ? String(val).trim() : null;
-    if(isSup) ex.supMachine = v || null;
-    else ex.machine = v || null;
+    // "" means the user cleared it on purpose — reconcileSession must not re-inherit.
+    const v = val ? String(val).trim() : "";
+    if(isSup) ex.supMachine = v;
+    else ex.machine = v;
     scheduleSave(); renderDay(); closeMachineModal();
   }
 

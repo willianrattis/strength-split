@@ -47,6 +47,22 @@ describe("emptySession", () => {
     expect(s.exercises[0].machine).toBeNull();
   });
 
+  it("stamps unit from the plan exercise, defaulting to kg when absent", () => {
+    const day = makeDay({ ex: [
+      makeExercise({ _id: "e1", name: "Supino", reps: [10], unit: "lb" }),
+      { _id: "e2", name: "Agachamento", reps: [10], superset: null }
+    ] });
+    const s = emptySession(0, baseOpts({ day }));
+    expect(s.exercises[0].unit).toBe("lb");
+    expect(s.exercises[1].unit).toBe("kg");
+  });
+
+  it("sets supUnit to null when there is no superset", () => {
+    const day = makeDay({ ex: [makeExercise({ _id: "e1", name: "Supino", reps: [10] })] });
+    const s = emptySession(0, baseOpts({ day }));
+    expect(s.exercises[0].supUnit).toBeNull();
+  });
+
   it("machinesActive:true fills machine/supMachine from the most recent logged machine", () => {
     const day = makeDay({ ex: [
       makeExercise({ _id: "e1", name: "Leg press", reps: [10], superset: { name: "Cadeira extensora", reps: [12] } })
@@ -190,6 +206,69 @@ describe("reconcileSession", () => {
     const day = makeDay({ ex: [makeExercise({ _id: "e1", name: "Supino", reps: [10] })] });
     const opts = baseOpts({ day });
     expect(reconcileSession({ exercises: "not-an-array" }, 0, opts)).toEqual(emptySession(0, opts));
+  });
+
+  it("preserves the old unit even when the plan unit changed since", () => {
+    const day = makeDay({ ex: [makeExercise({ _id: "e1", name: "Supino", reps: [10], unit: "kg" })] });
+    const prev = makeSession({ exercises: [
+      makeEntry({ exId: "e1", name: "Supino", unit: "lb", main: [{ done: true, reps: 10, weight: 100, repsDone: 10, doneAt: null, fromSug: false }] })
+    ] });
+    const fresh = reconcileSession(prev, 0, baseOpts({ day }));
+    expect(fresh.exercises[0].unit).toBe("lb");
+  });
+
+  it("falls back to the plan unit when the old entry has no unit (legacy doc)", () => {
+    const day = makeDay({ ex: [makeExercise({ _id: "e1", name: "Supino", reps: [10], unit: "lb" })] });
+    const prev = makeSession({ exercises: [
+      { ...makeEntry({ exId: "e1", name: "Supino", main: [{ done: true, reps: 10, weight: 60, repsDone: 10, doneAt: null, fromSug: false }] }), unit: undefined }
+    ] });
+    const fresh = reconcileSession(prev, 0, baseOpts({ day }));
+    expect(fresh.exercises[0].unit).toBe("lb");
+  });
+
+  it("inherits the history-seeded machine when the old entry has machine:null (main and sup)", () => {
+    const day = makeDay({ ex: [
+      makeExercise({ _id: "e1", name: "Leg press", reps: [10], superset: { name: "Cadeira extensora", reps: [12] } })
+    ] });
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", machine: "Life Fitness", supName: "Cadeira extensora", supMachine: "Technogym" })
+    ] })];
+    const prev = makeSession({ exercises: [
+      makeEntry({ exId: "e1", name: "Leg press", machine: null, supName: "Cadeira extensora", supMachine: null, main: [{ done: true, reps: 10, weight: 100, repsDone: 10, doneAt: null, fromSug: false }] })
+    ] });
+    const fresh = reconcileSession(prev, 0, baseOpts({ day, sessions, machinesActive: true }));
+    expect(fresh.exercises[0].machine).toBe("Life Fitness");
+    expect(fresh.exercises[0].supMachine).toBe("Technogym");
+  });
+
+  it("keeps an intentionally cleared machine (\"\") and does not re-inherit (main and sup)", () => {
+    const day = makeDay({ ex: [
+      makeExercise({ _id: "e1", name: "Leg press", reps: [10], superset: { name: "Cadeira extensora", reps: [12] } })
+    ] });
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", machine: "Life Fitness", supName: "Cadeira extensora", supMachine: "Technogym" })
+    ] })];
+    const prev = makeSession({ exercises: [
+      makeEntry({ exId: "e1", name: "Leg press", machine: "", supName: "Cadeira extensora", supMachine: "", main: [{ done: true, reps: 10, weight: 100, repsDone: 10, doneAt: null, fromSug: false }] })
+    ] });
+    const fresh = reconcileSession(prev, 0, baseOpts({ day, sessions, machinesActive: true }));
+    expect(fresh.exercises[0].machine).toBe("");
+    expect(fresh.exercises[0].supMachine).toBe("");
+  });
+
+  it("keeps an explicit old machine over the history-seeded value (main and sup)", () => {
+    const day = makeDay({ ex: [
+      makeExercise({ _id: "e1", name: "Leg press", reps: [10], superset: { name: "Cadeira extensora", reps: [12] } })
+    ] });
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", machine: "Life Fitness", supName: "Cadeira extensora", supMachine: "Technogym" })
+    ] })];
+    const prev = makeSession({ exercises: [
+      makeEntry({ exId: "e1", name: "Leg press", machine: "Hammer", supName: "Cadeira extensora", supMachine: "Cybex", main: [{ done: true, reps: 10, weight: 100, repsDone: 10, doneAt: null, fromSug: false }] })
+    ] });
+    const fresh = reconcileSession(prev, 0, baseOpts({ day, sessions, machinesActive: true }));
+    expect(fresh.exercises[0].machine).toBe("Hammer");
+    expect(fresh.exercises[0].supMachine).toBe("Cybex");
   });
 
   it("discards unknown fields on the stored entry", () => {

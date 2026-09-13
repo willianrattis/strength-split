@@ -7,6 +7,7 @@ import { openMachineModal } from "./machine-modal.js";
 import { openSubModal } from "./substitution-modal.js";
 import { openEvolucaoFor } from "../evolution.js";
 import { renderDay, ICON_TREND } from "./render.js";
+import { scheduleSave } from "./session-io.js";
 
 export function closeExActions(){ $exActionsModal.classList.remove("open"); }
 
@@ -16,6 +17,11 @@ export async function setUnit(exIdx, isSup, next){
   if(!exDoc) return;
   if(isSup){ exDoc.superset.unit = next; await window._saveExerciseDoc(id, {superset:{unit:next}}); }
   else     { exDoc.unit = next;          await window._saveExerciseDoc(id, {unit:next}); }
+  const sess = state.session && state.session.exercises[exIdx];
+  if(sess){
+    if(isSup) sess.supUnit = next; else sess.unit = next;
+    scheduleSave();
+  }
   window._rebuildUserDays(); renderDay();
 }
 
