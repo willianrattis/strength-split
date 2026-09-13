@@ -154,15 +154,13 @@ window.SSSplash = (function(){
   <!-- VIEW: TREINO -->
   <div id="viewTreino">
     <nav class="days" aria-label="Dias da semana">
-      <div class="wrap" style="padding-bottom:0">
-        <div class="week-nav" id="weekNav">
-          <button class="week-nav-btn" id="weekPrev" aria-label="Semana anterior">&#8592;</button>
-          <span class="week-nav-label" id="weekLabel">Semana atual</span>
-          <button class="week-nav-btn" id="weekNext" aria-label="Próxima semana" disabled>&#8594;</button>
-        </div>
-      </div>
       <div class="wrap">
+        <div class="week-nav-label" id="weekLabel">Semana atual</div>
+      </div>
+      <div class="wrap days-row">
+        <button class="week-nav-btn" id="weekPrev" type="button" aria-label="Semana anterior">&#8592;</button>
         <div class="days-inner" id="dayStrip" role="tablist"></div>
+        <button class="week-nav-btn" id="weekNext" type="button" aria-label="Próxima semana" disabled>&#8594;</button>
       </div>
       <div class="wrap days-toolbar" id="daysToolbar">
         <span class="days-toolbar-label">Visualização</span>
@@ -171,12 +169,7 @@ window.SSSplash = (function(){
           <button id="modeLoad" type="button">Carga</button>
         </div>
       </div>
-      <div class="wrap">
-        <div class="day-progress" id="dayProgress" aria-hidden="true">
-          <div class="day-progress-track"><span id="dayProgressFill" style="width:0%"></span></div>
-          <span class="day-progress-pct" id="dayProgressPct">0%</span>
-        </div>
-      </div>
+      <div class="day-progress" id="dayProgress" aria-hidden="true"><span id="dayProgressFill" style="width:0%"></span></div>
     </nav>
     <div class="train-bar" id="trainBar">
       <div class="train-bar-row">
@@ -382,6 +375,8 @@ window.SSSplash = (function(){
   <div class="modal-overlay" id="machineModal">
     <div class="modal modal-tall" id="machineModalInner"></div>
   </div>
+  <!-- MODAL: Ações do exercício -->
+  <div class="modal-overlay" id="exActionsModal"><div class="modal" id="exActionsModalInner"></div></div>
   <!-- MODAL: Progresso (gamificação) -->
   <div class="modal-overlay" id="gamifModal">
     <div class="modal">
@@ -421,6 +416,12 @@ window.SSSplash = (function(){
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         <span>Exercícios</span>
       </button>
+      <div class="bn-fab-slot">
+        <button class="train-fab" id="trainFab" type="button" aria-label="Iniciar treino">
+          <svg id="trainFabIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+        </button>
+        <span class="train-fab-label" id="trainFabLabel">Iniciar</span>
+      </div>
       <button class="bottom-nav-btn" id="bnEvolucao" type="button" role="tab" aria-selected="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <span>Evolução</span>

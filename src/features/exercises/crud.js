@@ -42,9 +42,8 @@ export function rebuildUserDays(){
   state.EXERCISES = buildExerciseList();
   state.evoInitialized = false;
 }
-// Exposed so features/day/render.js's unit-toggle handler can rebuild the plan after an
-// exercise-doc edit without importing this exercises-cluster code — day/render.js isn't
-// touched in this phase, so the window hook mechanism from 0.d-3a/3b stays.
+// Exposed so features/day/exercise-actions.js's setUnit() can rebuild the plan after an
+// exercise-doc edit without importing this exercises-cluster code.
 window._rebuildUserDays = rebuildUserDays;
 
 // Load exercises from Firestore. An empty catalog on a first login is left empty —

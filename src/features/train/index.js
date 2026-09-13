@@ -11,7 +11,8 @@ export function trainExCount(){ return activeDays()[state.current].ex.length; }
 export function firstIncompleteIdx(){
   if(!state.session) return 0;
   const i = state.session.exercises.findIndex(ex => !exDone(ex));
-  return i < 0 ? 0 : i;
+  // Every exercise done → the summary card, which lives at index trainExCount().
+  return i < 0 ? trainExCount() : i;
 }
 
 export function enterTrainMode(){
@@ -26,6 +27,7 @@ export function enterTrainMode(){
   // before reading, as the authoritative check.
   ensureSessionsLoaded("ALL");
   renderDay();
+  if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
 }
 
 export function exitTrainMode(){
@@ -40,6 +42,7 @@ export function exitTrainMode(){
 // Exposed so shell.js's showTab (which owns tab-switching) can exit train mode
 // without importing this day-view code, which isn't extracted in this phase.
 window._exitTrainMode = exitTrainMode;
+window._enterTrainMode = enterTrainMode;
 
 export function renderTrainBar(){
   if(!state.trainMode || !state.session) return;
