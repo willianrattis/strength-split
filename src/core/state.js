@@ -8,10 +8,16 @@ function makeInitialState(){
     prevSession: null,  // sessão anterior para o mesmo dia (referência de carga)
     saveTimer: null,
     viewMode: "load",   // "load" | "compact" — preferência de visualização
+    restDefaultSec: 120,   // rest countdown default, in seconds; 0 = off. Persisted.
     // Train mode — ephemeral session UI state. NEVER persisted (not in savePref/loadPref).
     trainMode: false,
     trainIdx: 0,
     _trainScrollT: null,
+    // Rest countdown — ephemeral session UI state. NEVER persisted (not in savePref/loadPref).
+    restDeadline: null,   // ms epoch when the countdown ends, or null when idle
+    restTotalSec: 0,      // the duration it started with, for the progress bar
+    _restTick: null,      // setInterval handle
+    _restHideT: null,     // setTimeout handle for the post-alert auto-hide
     // Set when a brand-new account's exercise catalog is empty, to show the onboarding
     // picker. Ephemeral UI state — NEVER persisted (not in savePref/loadPref).
     needsOnboarding: false,
@@ -99,6 +105,8 @@ export function resetUserState(){
   clearTimeout(state.saveTimer);
   clearTimeout(state._profileSaveTimer);
   clearTimeout(state._trainScrollT);
+  clearInterval(state._restTick);
+  clearTimeout(state._restHideT);
   clearTimeout(state._gamifToastTimer);
   clearTimeout(state._softRenderT);
   state.evoChart?.destroy();

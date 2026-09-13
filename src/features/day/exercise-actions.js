@@ -1,6 +1,8 @@
 import { esc } from "../../domain/text.js";
 import { UNIT_CYCLE, UNIT_BTN } from "../../domain/units.js";
 import { convertSetWeights } from "../../domain/session.js";
+import { parseRest, formatRest, effectiveRestSec } from "../../domain/rest-timer.js";
+import { startRest } from "../train/rest-timer.js";
 import { state } from "../../core/state.js";
 import { $exActionsModal, $exActionsModalInner } from "../../core/dom.js";
 import { activeDays } from "../../core/adapters.js";
@@ -37,6 +39,16 @@ export async function setUnit(exIdx, isSup, next){
   window._rebuildUserDays(); renderDay();
 }
 
+// `next` is seconds, or null to clear the override back to the global default.
+export async function setRest(exIdx, next){
+  const e = activeDays()[state.current].ex[exIdx];
+  const exDoc = state.exercisesCatalog.get(e._id);
+  if(!exDoc) return;
+  exDoc.restSec = next;
+  await window._saveExerciseDoc(e._id, { restSec: next });
+  window._rebuildUserDays();
+}
+
 export function openExActions(exIdx, isSup){
   const e = activeDays()[state.current].ex[exIdx];
   const ex = state.session.exercises[exIdx];
@@ -66,6 +78,25 @@ export function openExActions(exIdx, isSup){
     ).join("")}</span>
   </div>`;
 
+  if(!isSup){
+    const restSec = effectiveRestSec(e, state.restDefaultSec);
+    const overridden = typeof e.restSec === "number" && isFinite(e.restSec);
+    html += `<div class="sheet-item" data-act="rest">
+      <span class="sheet-ico">⏱</span>
+      <span class="sheet-txt"><span class="si-t">Descanso</span><span class="si-s">${overridden ? "Só para este exercício" : "Usando o padrão dos Ajustes"}</span></span>
+      <input class="modal-input rest-input" id="exRestInput" type="text" inputmode="numeric" maxlength="5"
+             value="${overridden ? formatRest(e.restSec) : ""}" placeholder="${formatRest(restSec)}"
+             aria-label="Tempo de descanso deste exercício (MM:SS)">
+    </div>`;
+    if(restSec > 0){
+      html += `<button class="sheet-item" data-act="restStart">
+        <span class="sheet-ico">▶</span>
+        <span class="sheet-txt"><span class="si-t">Iniciar descanso</span><span class="si-s">Começa a contagem agora</span></span>
+        <span class="sheet-val">${formatRest(restSec)}</span>
+      </button>`;
+    }
+  }
+
   html += `<button class="sheet-item" data-act="evo">
     <span class="sheet-ico">${ICON_TREND}</span>
     <span class="sheet-txt"><span class="si-t">Ver evolução</span><span class="si-s">Histórico e progresso</span></span>
@@ -86,6 +117,19 @@ export function openExActions(exIdx, isSup){
       await setUnit(exIdx, isSup, btn.dataset.unit);
       openExActions(exIdx, isSup);
     });
+  });
+  const restInp = document.getElementById("exRestInput");
+  if(restInp) restInp.addEventListener("change", async () => {
+    const raw = restInp.value.trim();
+    if(raw === ""){ await setRest(exIdx, null); return; }   // back to inheriting
+    const sec = parseRest(raw);
+    if(sec == null){ restInp.value = ""; return; }
+    await setRest(exIdx, sec);
+  });
+  const restStartBtn = $exActionsModalInner.querySelector('[data-act="restStart"]');
+  if(restStartBtn) restStartBtn.addEventListener("click", () => {
+    startRest(effectiveRestSec(e, state.restDefaultSec));
+    closeExActions();
   });
   $exActionsModalInner.querySelector('[data-act="evo"]').addEventListener("click", () => {
     closeExActions();

@@ -5,6 +5,7 @@ import { applyPrevLayoutState } from "../settings.js";
 import { exDone, renderDay } from "../day/render.js";
 import { ensureSessionsLoaded } from "../day/session-io.js";
 import { refreshTrainEndCard } from "./summary.js";
+import { stopRest } from "./rest-timer.js";
 
 export function trainExCount(){ return activeDays()[state.current].ex.length; }
 
@@ -33,6 +34,7 @@ export function enterTrainMode(){
 export function exitTrainMode(){
   const back = state.trainIdx;
   state.trainMode = false;
+  stopRest();
   document.body.classList.remove("mode-train");
   applyPrevLayoutState();
   renderDay();

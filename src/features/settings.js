@@ -1,4 +1,5 @@
 import { todayStr } from "../domain/dates.js";
+import { parseRest, formatRest } from "../domain/rest-timer.js";
 import { state } from "../core/state.js";
 import { $settingsModal, $settingsThemeToggle, $bnConfig, $viewTreino } from "../core/dom.js";
 import { toggleTheme } from "./shell.js";
@@ -32,6 +33,10 @@ export function syncMachinesToggle(){
   const $off = document.querySelector('#machinesToggle [data-mach="off"]');
   $on.classList.toggle("active", state.machinesEnabled);
   $off.classList.toggle("active", !state.machinesEnabled);
+}
+export function syncRestDefaultInput(){
+  const el = document.getElementById("restDefaultInput");
+  if(el) el.value = formatRest(state.restDefaultSec);
 }
 export function syncProfileToggle(){
   const $on = document.querySelector('#profileToggle [data-prof="on"]');
@@ -71,6 +76,7 @@ export function openSettings(){
   syncPrevLayoutToggle();
   syncPeriodToggle();
   syncMachinesToggle();
+  syncRestDefaultInput();
   syncProfileToggle();
   syncAutoregToggle();
   syncAutoregSensToggle();
@@ -132,6 +138,14 @@ export function init(){
     savePref();
     applyMachinesState();
     if($viewTreino.style.display !== "none") renderDay();
+  });
+  document.getElementById("restDefaultInput").addEventListener("change", e => {
+    const sec = parseRest(e.target.value);
+    // Unparseable input reverts to the stored value rather than silently becoming 0.
+    if(sec == null){ syncRestDefaultInput(); return; }
+    state.restDefaultSec = sec;
+    syncRestDefaultInput();
+    savePref();
   });
   document.getElementById("profileToggle").addEventListener("click", e => {
     const btn = e.target.closest("[data-prof]");

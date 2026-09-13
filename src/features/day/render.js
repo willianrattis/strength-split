@@ -2,6 +2,7 @@ import { esc } from "../../domain/text.js";
 import { formatDate, shortDate, getWeekMonday, todayWeekdayIdx } from "../../domain/dates.js";
 import { equipmentOf } from "../../domain/equipment.js";
 import { UNIT_ABBR, UNIT_STEP } from "../../domain/units.js";
+import { restUnitComplete, effectiveRestSec } from "../../domain/rest-timer.js";
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { DELOAD_FACTOR } from "../../core/config.js";
 import { state } from "../../core/state.js";
@@ -21,6 +22,7 @@ import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay, ensureSessionsLoaded } from "./session-io.js";
 import { openExActions } from "./exercise-actions.js";
 import { exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
+import { startRest } from "../train/rest-timer.js";
 import { trainEndCardHTML } from "../train/summary.js";
 
 export const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
@@ -482,11 +484,12 @@ export function renderDay(){
 // Single write path for set completion. Stamps doneAt only on the false→true edge, so
 // editing weight/reps on an already-completed set never moves the timestamp.
 export function setDoneState(set, val){
-  if(!set) return;
+  if(!set) return false;
   const was = !!set.done;
   set.done = !!val;
   if(!val) set.doneAt = null;
   else if(!was || !set.doneAt) set.doneAt = new Date().toISOString();
+  return !was && !!val;   // false→true edge, for callers that act only on completion
 }
 
 // In-place feedback for a single set row. renderDay() rebuilds the whole panel and would
@@ -589,6 +592,22 @@ export function adoptSuggestedLoad(row, si, set){
 
 export function markExecStart(ei){ const ex = state.session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
 
+// Auto-start the rest countdown when a set completes. Train mode only: the bar is chrome
+// that exists only there, so starting one from the normal day view would run invisibly.
+function maybeStartRest(ei, si){
+  if(!state.trainMode) return;
+  const ex = state.session && state.session.exercises[ei];
+  const day = activeDays()[state.current];
+  const e = day && day.ex[ei];
+  if(!ex || !e) return;
+  // A superset is two movements performed back to back — the rest belongs after the
+  // pair, so restUnitComplete holds the countdown until both halves of this set index
+  // are done. Order doesn't matter: whichever half closes last triggers it.
+  if(!restUnitComplete(ex, si)) return;
+  // startRest is already a no-op at 0, which is the configured "off".
+  startRest(effectiveRestSec(e, state.restDefaultSec));
+}
+
 function attachHandlers(){
   $panel.querySelectorAll(".series-table").forEach(row => {
     const ei = +row.dataset.ex;
@@ -599,9 +618,10 @@ function attachHandlers(){
       btn.addEventListener("click", () => {
         const si = +btn.dataset.si;
         const toggling = !target()[si].done;
-        setDoneState(target()[si], toggling);
+        const flipped = setDoneState(target()[si], toggling);
         if(toggling) markExecStart(ei);
         scheduleSave(); renderDay(); renderStrip();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".set-idx").forEach(btn => {
@@ -611,7 +631,7 @@ function attachHandlers(){
         const period = document.body.classList.contains("flag-periodization");
         const turningOn = !set.done;
         if (turningOn) adoptSuggestedLoad(row, si, set);
-        setDoneState(set, turningOn);
+        const flipped = setDoneState(set, turningOn);
         if (turningOn) {
           if (period && (set.repsDone == null || set.repsDone === "")) set.repsDone = set.reps;
           markExecStart(ei);
@@ -619,6 +639,7 @@ function attachHandlers(){
           set.repsDone = null;
         }
         scheduleSave(); renderDay(); renderStrip();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".weight-input").forEach(inp => {
@@ -647,11 +668,12 @@ function attachHandlers(){
         const set = target()[si];
         const on = set.repsDone != null;
         if(on) adoptSuggestedLoad(row, si, set);
-        setDoneState(set, on);
+        const flipped = setDoneState(set, on);
         scheduleSave();
         syncSetRow(row, si, set);
         renderStrip(); renderTrainBar();
         renderDaySoft();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".set-hint[data-si]").forEach(btn => {

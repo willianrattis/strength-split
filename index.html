@@ -179,6 +179,14 @@ window.SSSplash = (function(){
       </div>
       <div class="train-segs" id="trainSegs" aria-label="Exercícios do treino"></div>
     </div>
+    <div class="rest-bar" id="restBar" role="status" aria-live="polite">
+      <div class="rest-bar-row">
+        <span class="rest-lbl" id="restLbl">Descanso</span>
+        <span class="rest-clock" id="restClock">0:00</span>
+        <span class="rest-actions" id="restActions"></span>
+      </div>
+      <div class="rest-prog"><i id="restProgFill"></i></div>
+    </div>
     <main class="wrap">
       <section id="panel" role="tabpanel" aria-live="polite"></section>
       <footer>
@@ -293,6 +301,14 @@ window.SSSplash = (function(){
           <button type="button" data-mach="on">Ligada</button>
           <button type="button" data-mach="off">Desligada</button>
         </div>
+      </div>
+      <div id="settingsRestRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
+        <div class="setting-text">
+          <span class="period-label">Descanso entre séries</span>
+          <span class="setting-desc">Contagem regressiva ao concluir uma série. 0:00 desliga.</span>
+        </div>
+        <input class="modal-input rest-input" id="restDefaultInput" type="text"
+               inputmode="numeric" maxlength="5" placeholder="2:00" aria-label="Tempo de descanso padrão (MM:SS)">
       </div>
       <div id="settingsProfileRow" class="modal-btn" style="width:100%;min-height:48px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:default">
         <div class="setting-text">
