@@ -1,5 +1,5 @@
 import { normMachine } from "./text.js";
-import { UNIT_STEP, convertWeight } from "./units.js";
+import { convertWeight, roundForDisplay } from "./units.js";
 
 // Cross-machine average for an exercise: one entry per machine variant (most recent
 // session per machine), converted to a common unit, then averaged set-by-set.
@@ -31,8 +31,8 @@ export function avgAcrossMachines(sessions, name, opts = {}){
   }
   if(!byMachine.size) return null;
 
-  // Convert every candidate to targetUnit, dropping any whose unit can't convert
-  // (a "placas" / kg-lb mismatch) rather than partially averaging mismatched units.
+  // Convert every candidate to targetUnit, dropping any whose unit string convertWeight
+  // doesn't recognize rather than partially averaging an uninterpretable value.
   const survivors = [];
   for(const cand of byMachine.values()){
     const unit = cand.unit || targetUnit;
@@ -55,7 +55,6 @@ export function avgAcrossMachines(sessions, name, opts = {}){
   }
   if(!survivors.length) return null;
 
-  const step = UNIT_STEP[targetUnit] || 2.5;
   const maxLen = Math.max(...survivors.map(e => e.sets.length));
   const perSet = [];
   for(let i = 0; i < maxLen; i++){
@@ -69,8 +68,7 @@ export function avgAcrossMachines(sessions, name, opts = {}){
     });
     if(!weights.length){ perSet.push(null); continue; }
     const mean = weights.reduce((a, b) => a + b, 0) / weights.length;
-    let w = Math.round(mean / step) * step;
-    w = Math.round(w * 100) / 100;
+    const w = roundForDisplay(mean, targetUnit);
     perSet.push({
       weight: w,
       reps: repsArr.length ? Math.round(repsArr.reduce((a, b) => a + b, 0) / repsArr.length) : null,

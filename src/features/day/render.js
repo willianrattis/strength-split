@@ -7,7 +7,7 @@ import { DELOAD_FACTOR } from "../../core/config.js";
 import { state } from "../../core/state.js";
 import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes, $trainFab, $trainFabIcon, $trainFabLabel } from "../../core/dom.js";
 import {
-  activeDays, machineFilterActive, prevLoadData, suggestLoads,
+  activeDays, machineFilterActive, prevLoadData, suggestLoads, avgAcrossMachines,
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
@@ -62,19 +62,25 @@ function prevRepsHTML(ps){
   return `<span class="pv-reps${over}">×${ps.repsDone}</span>`;
 }
 
-function prevBlockHTML(prev, sug, unit, exIdx, isSup){
-  if(!prev && !sug) return "";
+function prevBlockHTML(prev, avg, sug, unit, exIdx, isSup){
+  if(!prev && !avg && !sug) return "";
   const u = unit || "kg";
   const ua = UNIT_ABBR[u];
-  const n = Math.max(prev ? prev.perSet.length : 0, sug ? sug.loads.length : 0);
+  const n = Math.max(prev ? prev.perSet.length : 0, avg ? avg.perSet.length : 0, sug ? sug.loads.length : 0);
   if(!n) return "";
 
   const rank = (prev && prev.execRank != null) ? ` · ${prev.execRank}º` : "";
+  const machTxt = avg
+    ? (avg.machines.length > 2
+        ? `${avg.machines.slice(0,2).join(" · ")} +${avg.machines.length - 2}`
+        : avg.machines.join(" · "))
+    : "";
   const dateTxt = prev
     ? `Último treino <b>${shortDate(prev.date)}</b>${rank}`
+    : avg ? `Média de <b>${esc(machTxt)}</b>`
     : `Sem histórico`;
   const applyBtn = sug
-    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar sugestão ${sug.dir}</button>`
+    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""} ${sug.estimated?'data-avg="1"':""}>${sug.estimated ? "aplicar média" : `aplicar sugestão ${sug.dir}`}</button>`
     : "";
 
   let html = `<div class="prev-block">`;
@@ -94,8 +100,18 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
         : `<span class="pp-val">—</span>`;
     }
     html += `</div>`;
+  } else if(avg){
+    html += `<div class="pp-row pp-avg"><span class="pp-lbl">MÉDIA</span>`;
+    for(let i = 0; i < n; i++){
+      const ps = avg.perSet[i] || null;
+      const w = ps ? ps.weight : null;
+      html += w != null
+        ? `<span class="pp-val"><span class="pv-w">${w}</span>${prevRepsHTML(ps)}</span>`
+        : `<span class="pp-val">—</span>`;
+    }
+    html += `</div>`;
   }
-  if(sug){
+  if(sug && !sug.estimated){
     html += `<div class="pp-row pp-sug"><span class="pp-lbl">SUGESTÃO</span>`;
     for(let i = 0; i < n; i++){
       const v = sug.loads[i];
@@ -112,7 +128,7 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
 
 // Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
 // now lives here so the panel row, the apply button and the input placeholders agree.
-function suggestData(name, unit, isSup, exIdx){
+function suggestData(name, unit, isSup, exIdx, avg){
   if(!document.body.classList.contains("flag-periodization")) return null;
   if(!state.session || !state.session.exercises[exIdx]) return null;
   const ex = state.session.exercises[exIdx];
@@ -121,7 +137,14 @@ function suggestData(name, unit, isSup, exIdx){
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
   const planEx = activeDays()[state.current] && activeDays()[state.current].ex[exIdx];
   const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
-  return suggestLoads(name, unit, machine, {muscle}) || null;
+  const s = suggestLoads(name, unit, machine, {muscle});
+  if(s) return s;
+  if(!avg) return null;
+  // The average IS the suggestion here. Deliberately no projectLoad on top: a machine the
+  // user has never touched gives zero evidence about whether the load should go up or
+  // down, and the number is already an estimate. Start here; progress from the real
+  // session next time.
+  return { loads: avg.perSet.map(p => p ? p.weight : null), dir: "→", date: null, estimated: true };
 }
 
 function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
@@ -388,8 +411,12 @@ export function renderDay(){
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
     const isSub = !!ex.subName;
     const effectiveName = ex.subName || e.name;
-    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined);
-    const sugMain = suggestData(effectiveName, e.unit, false, i);
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit);
+    // No history for this machine variant: fall back to the average across the machines this
+    // exercise HAS been logged on. Null when it never had one, so an untagged exercise
+    // (agachamento) keeps the plain last-session behaviour with no extra condition.
+    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, e.unit) : null;
+    const sugMain = suggestData(effectiveName, e.unit, false, i, avgMain);
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
@@ -401,15 +428,16 @@ export function renderDay(){
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
       </button>
     </div>`;
-    html += prevBlockHTML(prevMain, sugMain, e.unit, i, false);
+    html += prevBlockHTML(prevMain, avgMain, sugMain, e.unit, i, false);
     html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
       const isSupSub = !!ex.supSubName;
       const supEffName = ex.supSubName || e.superset.name;
-      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined);
-      const sugSup = suggestData(supEffName, e.superset.unit, true, i);
+      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit);
+      const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, e.superset.unit) : null;
+      const sugSup = suggestData(supEffName, e.superset.unit, true, i, avgSup);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname">
@@ -419,7 +447,7 @@ export function renderDay(){
           </button>
         </div>
         <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
-        ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
+        ${prevBlockHTML(prevSup, avgSup, sugSup, e.superset.unit, i, true)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
     }
@@ -640,9 +668,14 @@ function attachHandlers(){
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
       const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
-      if(!result) return;
+      let loads = result ? result.loads : null;
+      if(!loads && btn.dataset.avg === "1"){
+        const avg = avgAcrossMachines(name, isSup, unit);
+        if(avg) loads = avg.perSet.map(p => p ? p.weight : null);
+      }
+      if(!loads) return;
       const sets = isSup ? state.session.exercises[ei].sup : state.session.exercises[ei].main;
-      result.loads.forEach((v, si) => {
+      loads.forEach((v, si) => {
         if(v != null && sets[si]) sets[si].weight = v;
       });
       scheduleSave(); renderDay(); renderStrip();

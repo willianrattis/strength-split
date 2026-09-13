@@ -1,11 +1,19 @@
 import { matchVariant } from "./machines.js";
 import { orderFactor } from "./autoreg.js";
 import { STALL_SESSIONS } from "./tuning.js";
+import { convertWeight, roundForDisplay } from "./units.js";
 
-export function pickSets(entry, name, machine, machineFilter) {
-  if ((entry.subName || entry.name) === name && matchVariant(entry.machine, machine, machineFilter)) return entry.main;
-  if ((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine, machineFilter)) return entry.sup;
+// Which side of the entry matches `name` for this machine variant: "main", "sup", or
+// null. Single source of the matching rules — pickSets is defined in terms of it.
+export function matchSide(entry, name, machine, machineFilter){
+  if ((entry.subName || entry.name) === name && matchVariant(entry.machine, machine, machineFilter)) return "main";
+  if ((entry.supSubName || entry.supName) === name && matchVariant(entry.supMachine, machine, machineFilter)) return "sup";
   return null;
+}
+
+export function pickSets(entry, name, machine, machineFilter){
+  const side = matchSide(entry, name, machine, machineFilter);
+  return side === "main" ? entry.main : side === "sup" ? entry.sup : null;
 }
 
 // Groups sessions by exercise name, mirroring pickSets' matching exactly (main:
@@ -54,27 +62,42 @@ export function execShiftMap(sess){
 // perSet is INDEX-ALIGNED with the logged set rows: empty sets are preserved as null so
 // callers can map values 1:1 onto the current set rows. Returns null when there's no history.
 export function prevLoadData(sessions, name, machine, opts){
-  const { currentKey = null, machineFilter = false, execOrder = false } = opts;
+  const { currentKey = null, machineFilter = false, execOrder = false, targetUnit = null } = opts;
   if(!sessions || !sessions.length) return null;
   let bestDate = "";
   let bestSets = null;
   let bestSess = null;
   let bestEntryIdx = -1;
+  let bestUnit = null;
   for(const sess of sessions){
     if(currentKey && (sess.date + "_" + sess.dayKey) === currentKey) continue;
     if(!sess.exercises || !sess.date) continue;
     for(let ei = 0; ei < sess.exercises.length; ei++){
       const entry = sess.exercises[ei];
-      const sets = pickSets(entry, name, machine, machineFilter);
+      const side = matchSide(entry, name, machine, machineFilter);
+      if(!side) continue;
+      const sets = side === "main" ? entry.main : entry.sup;
       if(!sets || !sets.length) continue;
       if(!sets.some(s => s && s.weight != null && s.weight !== "")) continue;
-      if(sess.date > bestDate){ bestDate = sess.date; bestSets = sets; bestSess = sess; bestEntryIdx = ei; }
+      if(sess.date > bestDate){
+        bestDate = sess.date; bestSets = sets; bestSess = sess; bestEntryIdx = ei;
+        bestUnit = side === "main" ? entry.unit : entry.supUnit;
+      }
     }
   }
   if(!bestSets) return null;
 
+  // Stored weights are unit-less numbers; the entry's own unit is the truth. A legacy
+  // entry has none — assume it was already logged in the unit being rendered.
+  const conv = w => {
+    if(w == null || w === "") return null;
+    if(!targetUnit || typeof w !== "number") return w;
+    const c = convertWeight(w, bestUnit || targetUnit, targetUnit);
+    return c == null ? null : roundForDisplay(c, targetUnit);
+  };
+
   const perSet = bestSets.map(s => ({
-    weight:   (s && s.weight   != null && s.weight !== "") ? s.weight   : null,
+    weight:   conv(s ? s.weight : null),
     reps:     (s && s.reps     != null) ? s.reps     : null,
     repsDone: (s && s.repsDone != null) ? s.repsDone : null
   }));

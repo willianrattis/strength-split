@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { avgAcrossMachines } from "../src/domain/machine-average.js";
-import { LB_TO_KG } from "../src/domain/units.js";
 import { makeEntry, makeSession, makeSet } from "./fixtures.js";
 
 describe("avgAcrossMachines", () => {
@@ -34,7 +33,7 @@ describe("avgAcrossMachines", () => {
       makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Supino", machine: "Life Fitness", main: [makeSet({ weight: 45, reps: 8, repsDone: 6 })] })] })
     ];
     const res = avgAcrossMachines(sessions, "Supino");
-    // (40+45)/2 = 42.5, already a multiple of the 2.5kg step
+    // (40+45)/2 = 42.5, already a multiple of the half-kg display step
     expect(res.perSet).toEqual([{ weight: 42.5, reps: 9, repsDone: 8 }]);
     // most-recently-used machine first
     expect(res.machines).toEqual(["Life Fitness", "Hammer"]);
@@ -46,32 +45,41 @@ describe("avgAcrossMachines", () => {
       makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Supino", machine: "Life Fitness", unit: "kg", main: [makeSet({ weight: 50, reps: 10, repsDone: 10 })] })] })
     ];
     const res = avgAcrossMachines(sessions, "Supino", { targetUnit: "kg" });
-    // 95 lb -> ~43.09 kg, averaged with 50 kg -> ~46.55 kg raw mean (the epic's ballpark
-    // "46.5 kg"), then snapped to the nearest 2.5kg step per the documented formula.
-    const rawMean = (95 * LB_TO_KG + 50) / 2;
-    const expected = Math.round(Math.round(rawMean / 2.5) * 2.5 * 100) / 100;
-    expect(res.perSet[0].weight).toBe(expected);
+    // 95 lb -> ~43.09 kg, averaged with 50 kg -> ~46.55 kg, rounded to the nearest half kg.
+    expect(res.perSet[0].weight).toBe(46.5);
     expect(res.unit).toBe("kg");
   });
 
-  it("drops a placas entry when targetUnit is kg", () => {
+  it("converts across units before averaging, targetUnit lb", () => {
+    const sessions = [
+      makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Supino", machine: "Hammer", unit: "lb", main: [makeSet({ weight: 95, reps: 10, repsDone: 10 })] })] }),
+      makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Supino", machine: "Life Fitness", unit: "kg", main: [makeSet({ weight: 50, reps: 10, repsDone: 10 })] })] })
+    ];
+    const res = avgAcrossMachines(sessions, "Supino", { targetUnit: "lb" });
+    expect(res.perSet[0].weight).toBe(102.5);
+    expect(res.unit).toBe("lb");
+  });
+
+  it("converts a placas entry into the average when targetUnit is kg", () => {
     const sessions = [
       makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "kg", main: [makeSet({ weight: 40 })] })] }),
       makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Leg press", machine: "Cybex", unit: "placas", main: [makeSet({ weight: 5 })] })] })
     ];
     const res = avgAcrossMachines(sessions, "Leg press", { targetUnit: "kg" });
-    expect(res.machines).toEqual(["Hammer"]);
-    expect(res.perSet).toEqual([{ weight: 40, reps: 10, repsDone: null }]);
+    // Hammer 40 kg + Cybex 5 placas (= 25 kg) -> mean 32.5 kg
+    expect(res.machines.slice().sort()).toEqual(["Cybex", "Hammer"]);
+    expect(res.perSet).toEqual([{ weight: 32.5, reps: 10, repsDone: null }]);
   });
 
-  it("keeps only placas entries when targetUnit is placas", () => {
+  it("converts a kg entry into the average when targetUnit is placas", () => {
     const sessions = [
       makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "kg", main: [makeSet({ weight: 40 })] })] }),
       makeSession({ date: "2026-01-02", exercises: [makeEntry({ name: "Leg press", machine: "Cybex", unit: "placas", main: [makeSet({ weight: 5 })] })] })
     ];
     const res = avgAcrossMachines(sessions, "Leg press", { targetUnit: "placas" });
-    expect(res.machines).toEqual(["Cybex"]);
-    expect(res.perSet).toEqual([{ weight: 5, reps: 10, repsDone: null }]);
+    // Hammer 40 kg = 8 placas, Cybex 5 placas -> mean 6.5 -> 7
+    expect(res.machines.slice().sort()).toEqual(["Cybex", "Hammer"]);
+    expect(res.perSet).toEqual([{ weight: 7, reps: 10, repsDone: null }]);
     expect(res.unit).toBe("placas");
   });
 

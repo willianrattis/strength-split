@@ -223,6 +223,8 @@
   }
   .pv-reps.over{color:var(--accent);font-weight:600}
   .pp-head .pp-val{font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--faint)}
+  .pp-avg .pp-val{color:var(--faint);font-style:italic}
+  .pp-avg .pv-w{font-style:italic}
   .pp-prev{margin-top:6px}
   .pp-sug{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
   .pp-sug .pp-val{color:var(--faint)}

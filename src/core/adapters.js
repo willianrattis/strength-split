@@ -15,6 +15,7 @@ import {
   bestWeightEver as domainBestWeightEver, buildSessionsByName
 } from "../domain/history.js";
 import { suggestLoads as domainSuggestLoads } from "../domain/suggestion.js";
+import { avgAcrossMachines as domainAvgAcrossMachines } from "../domain/machine-average.js";
 import { isDeloadActive as domainIsDeloadActive, deloadDue as domainDeloadDue } from "../domain/deload.js";
 import { buildMuscleIndex as domainBuildMuscleIndex } from "../domain/muscles.js";
 import { computeWrapped as domainComputeWrapped } from "../domain/wrapped.js";
@@ -65,7 +66,8 @@ function sessionsFor(name){
   return _sbn.get(name) || [];
 }
 
-export const prevLoadData = (name, machine) => domainPrevLoadData(sessionsFor(name), name, machine, histCtx());
+export const prevLoadData = (name, machine, unit) =>
+  domainPrevLoadData(sessionsFor(name), name, machine, { ...histCtx(), targetUnit: unit || null });
 export const exerciseTopHistory = (name, since = null, machine) => domainExerciseTopHistory(sessionsFor(name), name, { ...histCtx(), since, machine });
 export const bestWeightEver = (name, machine) => domainBestWeightEver(sessionsFor(name), name, machine, histCtx());
 
@@ -73,8 +75,16 @@ export const suggestLoads = (name, unit, machine, opts) => domainSuggestLoads(se
   ...histCtx(),
   muscle: opts && opts.muscle,
   profileActive: profileActive(),
-  profile: state.profile
+  profile: state.profile,
+  targetUnit: unit || null
 });
+
+export const avgAcrossMachines = (name, isSup, unit) =>
+  domainAvgAcrossMachines(sessionsFor(name), name, {
+    isSup: !!isSup,
+    currentKey: histCtx().currentKey,
+    targetUnit: unit || "kg"
+  });
 
 export const isDeloadActive = () => domainIsDeloadActive(state.lastDeloadDate, formatDate(new Date()));
 export const deloadDue = () => domainDeloadDue(state.allSessions, {
