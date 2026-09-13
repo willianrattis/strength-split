@@ -1257,7 +1257,7 @@
   .bottom-nav-btn[aria-selected="true"]{color:var(--accent)}
   .bn-fab-slot{flex:1;position:relative}
   .train-fab{
-    position:absolute;left:50%;top:-18px;transform:translateX(-50%);
+    position:absolute;left:50%;top:-24px;transform:translateX(-50%);
     width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;
     background:var(--accent);color:#fff;display:grid;place-items:center;
     box-shadow:0 6px 18px var(--accent-soft),0 0 0 5px var(--ink);
@@ -1267,7 +1267,7 @@
   .train-fab:active{transform:translateX(-50%) scale(.93)}
   .train-fab svg{width:26px;height:26px}
   .train-fab-label{
-    position:absolute;left:50%;transform:translateX(-50%);bottom:7px;
+    position:absolute;left:50%;transform:translateX(-50%);bottom:6px;
     font-family:var(--body);font-size:9px;font-weight:700;letter-spacing:.08em;
     text-transform:uppercase;color:var(--accent);white-space:nowrap;pointer-events:none;
   }
@@ -1329,7 +1329,7 @@
     #viewTreino footer,
     #viewExercicios main.wrap,
     #viewEvolucao main.wrap{
-      padding-bottom:calc(72px + env(safe-area-inset-bottom));
+      padding-bottom:calc(80px + env(safe-area-inset-bottom));
     }
     .ex-list-footer{padding-bottom:0}
   }

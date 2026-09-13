@@ -11,7 +11,8 @@ export function trainExCount(){ return activeDays()[state.current].ex.length; }
 export function firstIncompleteIdx(){
   if(!state.session) return 0;
   const i = state.session.exercises.findIndex(ex => !exDone(ex));
-  return i < 0 ? 0 : i;
+  // Every exercise done → the summary card, which lives at index trainExCount().
+  return i < 0 ? trainExCount() : i;
 }
 
 export function enterTrainMode(){
@@ -26,6 +27,7 @@ export function enterTrainMode(){
   // before reading, as the authoritative check.
   ensureSessionsLoaded("ALL");
   renderDay();
+  if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
 }
 
 export function exitTrainMode(){
