@@ -17,6 +17,25 @@ export function lastMachineFor(sessions, name, isSup=false){
   return null;
 }
 
+// The unit this exercise was last logged in ON THIS MACHINE. Derived, not stored — it
+// mirrors lastMachineFor exactly, so a user who has ever logged the exercise on that
+// machine gets their unit back without a new Firestore structure or a migration.
+export function lastUnitFor(sessions, name, machine, isSup = false){
+  if(!sessions || !sessions.length || !machine) return null;
+  const sorted = [...sessions].sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  for(const sess of sorted){
+    if(!sess.exercises) continue;
+    for(const entry of sess.exercises){
+      if(isSup){
+        if((entry.supSubName || entry.supName) === name && sameMachine(entry.supMachine, machine) && entry.supUnit) return entry.supUnit;
+      } else {
+        if((entry.subName || entry.name) === name && sameMachine(entry.machine, machine) && entry.unit) return entry.unit;
+      }
+    }
+  }
+  return null;
+}
+
 // All machines the user ever tagged, ranked by frequency desc. Returns display strings, deduped via normMachine.
 export function usedMachinesRanked(sessions){
   const count = new Map();

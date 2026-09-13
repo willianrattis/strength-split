@@ -62,6 +62,15 @@ function prevRepsHTML(ps){
   return `<span class="pv-reps${over}">×${ps.repsDone}</span>`;
 }
 
+// A card's unit is the session entry's own stamp, falling back to the plan exercise's.
+// Never read e.unit directly in the day view — a past session logged in another unit
+// would render under the wrong label.
+export function unitFor(ex, e, isSup){
+  const stamped = isSup ? (ex && ex.supUnit) : (ex && ex.unit);
+  const planned = isSup ? (e && e.superset && e.superset.unit) : (e && e.unit);
+  return stamped || planned || "kg";
+}
+
 function prevBlockHTML(prev, avg, sug, unit, exIdx, isSup){
   if(!prev && !avg && !sug) return "";
   const u = unit || "kg";
@@ -411,12 +420,13 @@ export function renderDay(){
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
     const isSub = !!ex.subName;
     const effectiveName = ex.subName || e.name;
-    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, e.unit);
+    const unitMain = unitFor(ex, e, false);
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, unitMain);
     // No history for this machine variant: fall back to the average across the machines this
     // exercise HAS been logged on. Null when it never had one, so an untagged exercise
     // (agachamento) keeps the plain last-session behaviour with no extra condition.
-    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, e.unit) : null;
-    const sugMain = suggestData(effectiveName, e.unit, false, i, avgMain);
+    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, unitMain) : null;
+    const sugMain = suggestData(effectiveName, unitMain, false, i, avgMain);
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
@@ -428,16 +438,17 @@ export function renderDay(){
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
       </button>
     </div>`;
-    html += prevBlockHTML(prevMain, avgMain, sugMain, e.unit, i, false);
-    html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
+    html += prevBlockHTML(prevMain, avgMain, sugMain, unitMain, i, false);
+    html += seriesHTML(ex.main, i, false, unitMain, effectiveName, prevMain, sugMain);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
       const isSupSub = !!ex.supSubName;
       const supEffName = ex.supSubName || e.superset.name;
-      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, e.superset.unit);
-      const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, e.superset.unit) : null;
-      const sugSup = suggestData(supEffName, e.superset.unit, true, i, avgSup);
+      const unitSup = unitFor(ex, e, true);
+      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, unitSup);
+      const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, unitSup) : null;
+      const sugSup = suggestData(supEffName, unitSup, true, i, avgSup);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname">
@@ -447,8 +458,8 @@ export function renderDay(){
           </button>
         </div>
         <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
-        ${prevBlockHTML(prevSup, avgSup, sugSup, e.superset.unit, i, true)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
+        ${prevBlockHTML(prevSup, avgSup, sugSup, unitSup, i, true)}`;
+      html += seriesHTML(ex.sup, i, true, unitSup, supEffName, prevSup, sugSup);
       html += `</div>`;
     }
     html += `</article>`;
@@ -664,7 +675,7 @@ function attachHandlers(){
       const e = activeDays()[state.current].ex[ei];
       const ex = state.session.exercises[ei];
       const name = isSup ? (ex.supSubName || e.superset.name) : (ex.subName || e.name);
-      const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
+      const unit = unitFor(ex, e, isSup);
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
       const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
@@ -750,8 +761,8 @@ function attachHandlers(){
       const mainName = ex.subName || e.name;
       const mainMachine = machineFilterActive() ? ex.machine : undefined;
       const supMachine = machineFilterActive() ? ex.supMachine : undefined;
-      applyDeload(ex.main, mainName, e.unit, mainMachine);
-      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, e.superset.unit, supMachine);
+      applyDeload(ex.main, mainName, unitFor(ex, e, false), mainMachine);
+      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, unitFor(ex, e, true), supMachine);
     });
     const today = formatDate(new Date());
     state.lastDeloadDate = today;
