@@ -1,11 +1,11 @@
 import { esc } from "../../domain/text.js";
 import { formatDate, shortDate, getWeekMonday, todayWeekdayIdx } from "../../domain/dates.js";
 import { equipmentOf } from "../../domain/equipment.js";
-import { UNIT_CYCLE, UNIT_ABBR, UNIT_BTN, UNIT_STEP } from "../../domain/units.js";
+import { UNIT_ABBR, UNIT_STEP } from "../../domain/units.js";
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { DELOAD_FACTOR } from "../../core/config.js";
 import { state } from "../../core/state.js";
-import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes } from "../../core/dom.js";
+import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes, $trainFab, $trainFabIcon, $trainFabLabel } from "../../core/dom.js";
 import {
   activeDays, machineFilterActive, prevLoadData, suggestLoads,
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
@@ -19,14 +19,14 @@ import { openOnboarding } from "../onboarding.js";
 import { openExEditor } from "../exercises/editor.js";
 import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay, ensureSessionsLoaded } from "./session-io.js";
-import { openSubModal } from "./substitution-modal.js";
-import { openMachineModal } from "./machine-modal.js";
-import { enterTrainMode, exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
+import { openExActions } from "./exercise-actions.js";
+import { exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
 import { trainEndCardHTML } from "../train/summary.js";
 
-const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+export const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
 
 const todayIdx = todayWeekdayIdx();
+let _firstRunHint = false;
 
 export function exDone(ex){
   const mainOk = ex.main.every(s => s.done);
@@ -43,6 +43,12 @@ function setPct(){
     if(ex.sup){ total += ex.sup.length; done += ex.sup.filter(s => s.done).length; }
   }
   return total ? Math.round(done / total * 100) : 0;
+}
+
+export function updateDayProgress(){
+  const fill = document.getElementById("dayProgressFill");
+  if(!fill) return;
+  fill.style.width = (state.session ? setPct() : 0) + "%";
 }
 
 // Legacy single-line renderer. Output is intentionally unchanged; stage B replaces it.
@@ -209,7 +215,6 @@ export function skeletonStrip(){
   for(let i=0;i<5;i++){
     h += `<button class="day-btn" disabled>
       <span class="abbr"><div class="skeleton" style="width:28px;height:14px;margin:0 auto"></div></span>
-      <span class="focus"><div class="skeleton" style="width:44px;height:10px;margin:0 auto"></div></span>
     </button>`;
   }
   return h;
@@ -242,6 +247,28 @@ export function skeletonPanel(n=5){
 // next — the tap never lands and the field looks uneditable. Defer one task, then skip the
 // rebuild if focus moved to another field inside the panel. State was already written by
 // the `input` handler, so nothing is lost; the panel refreshes when focus leaves the table.
+export function updateTrainFab(){
+  if(!$trainFab) return;
+  const day = state.session ? activeDays()[state.current] : null;
+  const total = day ? day.ex.length : 0;
+  const done = total > 0 ? countDone() : 0;
+  let mode = "ready";
+  if(total === 0) mode = "rest";
+  else if(done >= total) mode = "done";
+  else if(done > 0) mode = "running";
+  const CFG = {
+    ready:   { cls:"",           lbl:"Iniciar",  aria:"Iniciar treino",  icon:'<path d="M8 5.5v13l11-6.5z"/>' },
+    running: { cls:"is-running", lbl:"Continuar",aria:"Continuar treino",icon:'<rect x="7.5" y="5.5" width="3.4" height="13" rx="1"/><rect x="13.1" y="5.5" width="3.4" height="13" rx="1"/>' },
+    done:    { cls:"is-done",    lbl:"Feito",    aria:"Treino concluído — revisar", icon:'<path d="M9.6 16.2 5.4 12 4 13.4l5.6 5.6L20.4 7.8 19 6.4z"/>' },
+    rest:    { cls:"is-rest",    lbl:"Descanso", aria:"Dia de descanso", icon:'<path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/>' },
+  }[mode];
+  $trainFab.className = "train-fab " + CFG.cls + (_firstRunHint && mode === "ready" ? " is-hint" : "");
+  $trainFab.setAttribute("aria-label", CFG.aria);
+  $trainFab.disabled = mode === "rest";
+  $trainFabIcon.innerHTML = CFG.icon;
+  $trainFabLabel.textContent = CFG.lbl;
+}
+
 export function renderDaySoft(){
   clearTimeout(state._softRenderT);
   state._softRenderT = setTimeout(() => {
@@ -262,8 +289,7 @@ export function renderDay(){
 
   if(total === 0){
     if(state.trainMode){ state.trainMode = false; document.body.classList.remove("mode-train"); applyPrevLayoutState(); }
-    document.getElementById("dayProgressFill").style.width = "0%";
-    document.getElementById("dayProgressPct").textContent = "0%";
+    updateDayProgress();
 
     if(state.exercisesCatalog.size === 0){
       $panel.innerHTML = `
@@ -277,6 +303,8 @@ export function renderDay(){
         </div>`;
       document.getElementById("setupApplyPlanBtn").addEventListener("click", openOnboarding);
       document.getElementById("setupAddExBtn").addEventListener("click", () => openExEditor(null));
+      _firstRunHint = false;
+      updateTrainFab();
       return;
     }
 
@@ -285,6 +313,8 @@ export function renderDay(){
         <span class="big">Descanso</span>
         Nenhum exercício programado para hoje. Aproveite para recuperar!
       </div>`;
+    _firstRunHint = false;
+    updateTrainFab();
     return;
   }
 
@@ -308,6 +338,8 @@ export function renderDay(){
   }
   const showFirstRunHint = !state.showProgramReviewHint && !state.trainMode && completed === 0 &&
     !hasSeenTip("firstRun") && state.sessionsLoadedSince === "ALL" && (state.allSessions?.length ?? 0) === 0;
+  _firstRunHint = showFirstRunHint;
+  updateTrainFab();
 
   let head = `
     <div class="panel-head">
@@ -319,12 +351,11 @@ export function renderDay(){
         <span><span class="count">${completed}</span>/${total} concluídos</span>
         <button class="reset" id="resetBtn">Limpar</button>
       </div>
-      <button class="train-start ${showFirstRunHint ? 'pulse-hint' : ''}" id="trainStartBtn" type="button">${completed > 0 ? "▶ Retomar treino" : "▶ Iniciar treino"}</button>
     </div>
   `;
   if(showFirstRunHint){
     head += `<div class="first-run-hint" id="firstRunHint">
-      <span>Tudo pronto! Toque em <b>Iniciar treino</b> para fazer seu primeiro treino.</span>
+      <span>Tudo pronto! Toque no botão <b>▶</b> laranja na barra inferior para fazer seu primeiro treino.</span>
       <button class="first-run-hint-close" id="firstRunHintClose" title="Dispensar" type="button">×</button>
     </div>`;
   }
@@ -348,9 +379,7 @@ export function renderDay(){
       </div>
     </div>`;
   }
-  const barPct = setPct();
-  document.getElementById("dayProgressFill").style.width = barPct + "%";
-  document.getElementById("dayProgressPct").textContent = barPct + "%";
+  updateDayProgress();
 
   day.ex.forEach((e, i) => {
     const ex = state.session.exercises[i];
@@ -364,12 +393,13 @@ export function renderDay(){
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
-        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span>${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}${e.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.grip])}</span>`:''}</div>
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span></div>
+        <div class="ex-meta">${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}${e.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.grip])}</span>`:''}</div>
         ${!isSub && e.note?`<div class="note">${esc(e.note)}</div>`:""}
       </div>
-      <button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="0" title="Indicar máquina (opcional)">🏷</button>
-      <button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="0" title="Trocar exercício (só hoje)">⇄</button>
-      <button class="unit-toggle" data-ex="${i}" data-sup="0" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.unit||"kg"]}</button>
+      <button class="ex-kebab" data-i="${i}" data-sup="0" type="button" aria-label="Ações do exercício">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+      </button>
     </div>`;
     html += prevBlockHTML(prevMain, sugMain, e.unit, i, false);
     html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
@@ -382,7 +412,13 @@ export function renderDay(){
       const sugSup = suggestData(supEffName, e.superset.unit, true, i);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
-        <div class="sname"><span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span>${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</span><button class="ex-icon-btn machine-btn" data-i="${i}" data-sup="1" title="Indicar máquina (opcional)">🏷</button><button class="ex-icon-btn sub-btn" data-i="${i}" data-sup="1" title="Trocar exercício (só hoje)">⇄</button><button class="unit-toggle" data-ex="${i}" data-sup="1" title="Trocar unidade (KG/LB/Placas)">${UNIT_BTN[e.superset.unit||"kg"]}</button></div>
+        <div class="sname">
+          <span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span></span>
+          <button class="ex-kebab" data-i="${i}" data-sup="1" type="button" aria-label="Ações do exercício">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+          </button>
+        </div>
+        <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
         ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
       html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
       html += `</div>`;
@@ -593,26 +629,6 @@ function attachHandlers(){
     });
   });
 
-  $panel.querySelectorAll(".unit-toggle").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const ei = +btn.dataset.ex;
-      const isSup = btn.dataset.sup === "1";
-      const id = activeDays()[state.current].ex[ei]._id;
-      const exDoc = state.exercisesCatalog.get(id);
-      if(!exDoc) return;
-      const cur = isSup ? (exDoc.superset && exDoc.superset.unit || "kg") : (exDoc.unit || "kg");
-      const next = UNIT_CYCLE[(UNIT_CYCLE.indexOf(cur) + 1) % 3];
-      if(isSup){
-        exDoc.superset.unit = next;
-        await window._saveExerciseDoc(id, {superset: {unit: next}});
-      } else {
-        exDoc.unit = next;
-        await window._saveExerciseDoc(id, {unit: next});
-      }
-      window._rebuildUserDays(); renderDay();
-    });
-  });
-
   $panel.querySelectorAll(".suggest-apply").forEach(btn => {
     btn.addEventListener("click", () => {
       const ei = +btn.dataset.ex;
@@ -650,12 +666,8 @@ function attachHandlers(){
     });
   });
 
-  $panel.querySelectorAll(".sub-btn").forEach(btn => {
-    btn.addEventListener("click", () => openSubModal(+btn.dataset.i, btn.dataset.sup === "1"));
-  });
-
-  $panel.querySelectorAll(".machine-btn").forEach(btn => {
-    btn.addEventListener("click", () => openMachineModal(+btn.dataset.i, btn.dataset.sup === "1"));
+  $panel.querySelectorAll(".ex-kebab").forEach(btn => {
+    btn.addEventListener("click", () => openExActions(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
   const $reset = document.getElementById("resetBtn");
@@ -714,13 +726,6 @@ function attachHandlers(){
     scheduleSave(); renderDay(); renderStrip();
   });
 
-  const $ts = document.getElementById("trainStartBtn");
-  if($ts) $ts.addEventListener("click", () => {
-    // Starting the first session retires the hint immediately, so it can't
-    // flicker back before the first set is saved.
-    markTipSeen("firstRun");
-    enterTrainMode();
-  });
   const $tf = document.getElementById("trainFinish");
   if($tf) $tf.addEventListener("click", exitTrainMode);
 
@@ -752,11 +757,8 @@ export function renderStrip(){
     const isRest = d.ex.length === 0;
     return `
       <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
-              role="tab" aria-selected="${i===state.current}" data-i="${i}">
+              role="tab" aria-selected="${i===state.current}" data-i="${i}" title="${esc(isRest ? 'Descanso' : d.focus)}">
         <span class="abbr">${d.abbr}</span>
-        <span class="focus">${isRest ? 'Descanso' : esc(d.tag || d.focus.split('·')[0].trim())}</span>
-        <span class="today">Hoje</span>
-        <span class="dot"></span>
       </button>`;
   }).join("");
 
@@ -774,9 +776,12 @@ export function renderStrip(){
 
   updateWeekLabel();
   centerActiveDay();
+  updateDayProgress();
+  updateTrainFab();
 }
 
 export function updateWeekLabel(){
+  $weekLabel.classList.toggle("is-current", state.weekOffset === 0);
   if(state.weekOffset === 0){
     $weekLabel.textContent = "Semana atual";
   } else {

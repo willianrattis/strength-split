@@ -40,6 +40,7 @@ export function exitTrainMode(){
 // Exposed so shell.js's showTab (which owns tab-switching) can exit train mode
 // without importing this day-view code, which isn't extracted in this phase.
 window._exitTrainMode = exitTrainMode;
+window._enterTrainMode = enterTrainMode;
 
 export function renderTrainBar(){
   if(!state.trainMode || !state.session) return;
