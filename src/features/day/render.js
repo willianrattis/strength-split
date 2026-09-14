@@ -4,7 +4,7 @@ import { equipmentOf } from "../../domain/equipment.js";
 import { UNIT_ABBR, UNIT_STEP } from "../../domain/units.js";
 import { restUnitComplete, effectiveRestSec } from "../../domain/rest-timer.js";
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
-import { DELOAD_FACTOR } from "../../core/config.js";
+import { DELOAD_FACTOR, WEEK_OFFSET_MAX } from "../../core/config.js";
 import { state } from "../../core/state.js";
 import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes, $trainFab, $trainFabIcon, $trainFabLabel } from "../../core/dom.js";
 import {
@@ -864,7 +864,7 @@ export function updateWeekLabel(){
       $weekLabel.textContent = `${monDay} ${monMonth} – ${sunDay} ${sunMonth}`;
     }
   }
-  $weekNext.disabled = state.weekOffset >= 0;
+  $weekNext.disabled = state.weekOffset >= WEEK_OFFSET_MAX;
 }
 
 export function init(){
@@ -877,7 +877,7 @@ export function init(){
   });
 
   $weekNext.addEventListener("click", async () => {
-    if(state.weekOffset >= 0) return;
+    if(state.weekOffset >= WEEK_OFFSET_MAX) return;
     state.weekOffset++;
     renderStrip();
     $panel.innerHTML = skeletonPanel();
