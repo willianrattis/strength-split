@@ -7,7 +7,7 @@ import { countDone } from "../day/render.js";
 import { ensureSessionsLoaded } from "../day/session-io.js";
 import { trainExCount, exitTrainMode } from "./index.js";
 
-function fmtDur(ms, withSecs){
+export function fmtDur(ms, withSecs){
   const t = Math.max(0, Math.round(ms / 1000));
   const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
   if(h) return `${h}h${String(m).padStart(2,"0")}`;
@@ -18,7 +18,7 @@ function fmtNum(v){ return (Math.round(v * 10) / 10).toLocaleString("pt-BR"); }
 function fmtKg(v){ return Math.round(v).toLocaleString("pt-BR"); }
 
 // Returns null when there is not enough data to say anything.
-function trainSummary(){
+export function trainSummary(){
   if(!state.session) return null;
   const day = activeDays()[state.current];
   const evts = [];
@@ -101,21 +101,10 @@ function trainSummary(){
   return { totalMs, gapMs, gapN: gaps.length, volKg, volSkipped, density, doneSets, prs, prsReady };
 }
 
-function trainEndInnerHTML(done, total){
-  const all = done >= total;
-  const sum = trainSummary();
-
-  if(!sum){
-    return `<div class="train-end-inner">
-      <span class="train-end-big">${done}/${total} exercícios</span>
-      <p class="train-end-sub">Ainda faltam exercícios — deslize de volta ou toque na barra para escolher.</p>
-      <button class="train-end-btn" id="trainFinish" type="button">Voltar à lista</button>
-    </div>`;
-  }
-
-  let h = `<div class="train-end-inner">`;
-  h += `<span class="train-end-big">${all ? "Treino concluído" : done + "/" + total + " exercícios"}</span>`;
-
+// The stats tiles + PR block, shared between the train-mode end card and the day
+// state card's "done" state — one place computing this markup for both.
+export function summaryStatsHTML(sum){
+  let h = "";
   h += `<div class="ts-grid">`;
   h += `<div class="ts-tile">
     <span class="ts-val">${fmtDur(sum.totalMs, false)}</span>
@@ -153,6 +142,25 @@ function trainEndInnerHTML(done, total){
     });
     h += `</div>`;
   }
+  return h;
+}
+
+function trainEndInnerHTML(done, total){
+  const all = done >= total;
+  const sum = trainSummary();
+
+  if(!sum){
+    return `<div class="train-end-inner">
+      <span class="train-end-big">${done}/${total} exercícios</span>
+      <p class="train-end-sub">Ainda faltam exercícios — deslize de volta ou toque na barra para escolher.</p>
+      <button class="train-end-btn" id="trainFinish" type="button">Voltar à lista</button>
+    </div>`;
+  }
+
+  let h = `<div class="train-end-inner">`;
+  h += `<span class="train-end-big">${all ? "Treino concluído" : done + "/" + total + " exercícios"}</span>`;
+
+  h += summaryStatsHTML(sum);
 
   if(!all) h += `<p class="train-end-sub">Faltam ${total - done} exercício${total - done > 1 ? "s" : ""}.</p>`;
   h += `<button class="train-end-btn" id="trainFinish" type="button">${all ? "Concluir" : "Voltar à lista"}</button>`;

@@ -9,7 +9,7 @@ import { state } from "../../core/state.js";
 import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes, $trainFab, $trainFabIcon, $trainFabLabel } from "../../core/dom.js";
 import {
   activeDays, machineFilterActive, prevLoadData, suggestLoads, avgAcrossMachines,
-  isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
+  isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant,
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
 import { saveDeloadDate } from "../prefs.js";
@@ -21,6 +21,8 @@ import { openExEditor } from "../exercises/editor.js";
 import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay, ensureSessionsLoaded } from "./session-io.js";
 import { openExActions } from "./exercise-actions.js";
+import { dayStateCardHTML, bindStateCard, refreshDayStateCard } from "./state-card.js";
+import { initAgendaDnd, consumeDragClick } from "./agenda-dnd.js";
 import { exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
 import { startRest } from "../train/rest-timer.js";
 import { trainEndCardHTML } from "../train/summary.js";
@@ -265,26 +267,138 @@ export function skeletonStrip(){
 }
 
 export function skeletonPanel(n=5){
-  let h = `<div class="panel-head"><div>
-    <div class="skeleton" style="width:120px;height:20px;margin-bottom:6px"></div>
-    <div class="skeleton" style="width:80px;height:12px"></div>
-  </div></div>
+  let h = `<div class="state-card">
+    <div class="sc-top">
+      <div class="skeleton" style="width:120px;height:16px"></div>
+      <div class="skeleton" style="width:28px;height:28px;border-radius:9px"></div>
+    </div>
+    <div class="skeleton" style="width:70%;height:13px;margin-top:2px"></div>
+  </div>
+  <div class="agenda-head"><div class="skeleton" style="width:100px;height:12px"></div></div>
 `;
   for(let i=0;i<n;i++){
-    h += `<article class="ex"><div class="ex-header">
-      <div class="num"><div class="skeleton" style="width:32px;height:32px;border-radius:8px"></div></div>
-      <div class="body">
+    h += `<div class="row" style="cursor:default">
+      <span class="row-num"><div class="skeleton" style="width:16px;height:14px"></div></span>
+      <span class="row-body">
         <div class="skeleton" style="width:60%;height:14px;margin-bottom:6px"></div>
         <div class="skeleton" style="width:40%;height:10px"></div>
-      </div>
-    </div>
-    <div class="series-table">
-      <div class="skeleton" style="width:100%;height:34px;margin-bottom:7px"></div>
-      <div class="skeleton" style="width:100%;height:34px;margin-bottom:7px"></div>
-      <div class="skeleton" style="width:100%;height:34px"></div>
-    </div></article>`;
+      </span>
+    </div>`;
   }
   return h;
+}
+
+// Full card: prev-block, series-table, badges, superset panel. Train-mode renderer —
+// the carousel depends on this exact output, byte for byte. Cut and pasted out of
+// renderDay()'s per-exercise loop; do not rewrite, reorder or "improve" it.
+function exCardHTML(e, ex, i){
+  let html = "";
+  const isDone = exDone(ex);
+
+  html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
+  const isSub = !!ex.subName;
+  const effectiveName = ex.subName || e.name;
+  const unitMain = unitFor(ex, e, false);
+  const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, unitMain);
+  // No history for this machine variant: fall back to the average across the machines this
+  // exercise HAS been logged on. Null when it never had one, so an untagged exercise
+  // (agachamento) keeps the plain last-session behaviour with no extra condition.
+  const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, unitMain) : null;
+  const sugMain = suggestData(effectiveName, unitMain, false, i, avgMain);
+  html += `<div class="ex-header">
+      <div class="num"><span class="n">${i+1}</span></div>
+      <div class="body">
+        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span></div>
+        <div class="ex-meta">${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}${e.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.grip])}</span>`:''}</div>
+        ${!isSub && e.note?`<div class="note">${esc(e.note)}</div>`:""}
+      </div>
+      <button class="ex-kebab" data-i="${i}" data-sup="0" type="button" aria-label="Ações do exercício">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+      </button>
+    </div>`;
+  html += prevBlockHTML(prevMain, avgMain, sugMain, unitMain, i, false);
+  html += seriesHTML(ex.main, i, false, unitMain, effectiveName, prevMain, sugMain);
+  html += !isSub ? badgesHTML(e.badges) : "";
+
+  if(e.superset){
+    const isSupSub = !!ex.supSubName;
+    const supEffName = ex.supSubName || e.superset.name;
+    const unitSup = unitFor(ex, e, true);
+    const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, unitSup);
+    const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, unitSup) : null;
+    const sugSup = suggestData(supEffName, unitSup, true, i, avgSup);
+    html += `<div class="superset">
+        <span class="tag">+ Supersérie</span>
+        <div class="sname">
+          <span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span></span>
+          <button class="ex-kebab" data-i="${i}" data-sup="1" type="button" aria-label="Ações do exercício">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+          </button>
+        </div>
+        <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
+        ${prevBlockHTML(prevSup, avgSup, sugSup, unitSup, i, true)}`;
+    html += seriesHTML(ex.sup, i, true, unitSup, supEffName, prevSup, sugSup);
+    html += `</div>`;
+  }
+  html += `</article>`;
+  return html;
+}
+
+// Compact read-only row for the day screen (agenda view). One row per exercise; the
+// superset half has no row of its own here — a `sup-tag` chip signals it exists, and
+// opening the exercise (train mode, later a detail sheet) shows the rest.
+function agendaRowHTML(e, ex, i){
+  const isDone = exDone(ex);
+  const isSub = !!ex.subName;
+  const effectiveName = ex.subName || e.name;
+  const unit = unitFor(ex, e, false);
+  const ua = UNIT_ABBR[unit];
+  const main = ex.main || [];
+  const sets = main.length;
+
+  const repsVals = main.map(s => s.reps).filter(r => r != null);
+  let repsTxt = "";
+  if(repsVals.length){
+    const minR = Math.min(...repsVals), maxR = Math.max(...repsVals);
+    repsTxt = minR === maxR ? `${minR}` : `${minR}–${maxR}`;
+  }
+
+  let metaTxt = "";
+  if(isDone){
+    // Taking weights from completed sets only: an exercise can be "done" with a mix of
+    // stamped weights and blanks if the user ticked a set without typing a load.
+    const doneWeights = main.filter(s => s.done && typeof s.weight === "number").map(s => s.weight);
+    if(doneWeights.length){
+      const minW = Math.min(...doneWeights), maxW = Math.max(...doneWeights);
+      const wTxt = minW === maxW ? `${minW}` : `${minW}–${maxW}`;
+      metaTxt = `${sets} séries · ${wTxt} ${ua}`;
+    } else {
+      metaTxt = `${sets} séries`;
+    }
+  } else {
+    metaTxt = repsTxt ? `${sets} × ${repsTxt}` : `${sets} séries`;
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, unit);
+    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, unit) : null;
+    const sugMain = suggestData(effectiveName, unit, false, i, avgMain);
+    const load = sugMain ? sugMain.loads.find(v => v != null) : null;
+    if(load != null) metaTxt += ` · ${load} ${ua} sugerido`;
+  }
+
+  const chips = `${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}${e.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.grip])}</span>`:''}${e.superset?'<span class="sup-tag">+ supersérie</span>':''}`;
+  const metaLine = metaTxt ? `<span>${metaTxt}</span>` : "";
+  const rowMeta = (metaLine || chips) ? `<span class="row-meta">${metaLine}${chips}</span>` : "";
+
+  return `<button class="row ${isDone?'done':''}" data-i="${i}" data-id="${esc(e._id ?? '')}" draggable="true" type="button">
+    <span class="row-num">${i+1}</span>
+    <span class="row-body">
+      <span class="row-name">${esc(effectiveName)}</span>
+      ${rowMeta}
+    </span>
+    <svg class="row-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span class="row-kebab" data-i="${i}" data-sup="0" role="button" tabindex="0" aria-label="Ações do exercício">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
+    </span>
+  </button>`;
 }
 
 // renderDay() replaces $panel.innerHTML, which destroys the element the user is tapping
@@ -385,18 +499,8 @@ export function renderDay(){
   _firstRunHint = showFirstRunHint;
   updateTrainFab();
 
-  let head = `
-    <div class="panel-head">
-      <div class="panel-head-title">
-        <div class="focus-tag">${esc(day.focus)}${_deloadActive ? '<span class="deload-tag">Descarga</span>' : ''}</div>
-        <button class="day-edit-btn" id="editDayBtn" type="button" title="Editar dia">✎</button>
-      </div>
-      <div class="progress">
-        <span><span class="count">${completed}</span>/${total} concluídos</span>
-        <button class="reset" id="resetBtn">Limpar</button>
-      </div>
-    </div>
-  `;
+  const isToday = state.weekOffset === 0 && state.current === todayIdx;
+  let head = dayStateCardHTML(day, isToday);
   if(showFirstRunHint){
     head += `<div class="first-run-hint" id="firstRunHint">
       <span>Tudo pronto! Toque no botão <b>▶</b> laranja na barra inferior para fazer seu primeiro treino.</span>
@@ -427,55 +531,12 @@ export function renderDay(){
 
   day.ex.forEach((e, i) => {
     const ex = state.session.exercises[i];
-    const isDone = exDone(ex);
-
-    html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
-    const isSub = !!ex.subName;
-    const effectiveName = ex.subName || e.name;
-    const unitMain = unitFor(ex, e, false);
-    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, unitMain);
-    // No history for this machine variant: fall back to the average across the machines this
-    // exercise HAS been logged on. Null when it never had one, so an untagged exercise
-    // (agachamento) keeps the plain last-session behaviour with no extra condition.
-    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, unitMain) : null;
-    const sugMain = suggestData(effectiveName, unitMain, false, i, avgMain);
-    html += `<div class="ex-header">
-      <div class="num"><span class="n">${i+1}</span></div>
-      <div class="body">
-        <div class="name"><span class="evo-link" data-evo-i="${i}" data-evo-sup="0" role="button" tabindex="0" title="Ver evolução">${esc(effectiveName)}${ICON_TREND}</span></div>
-        <div class="ex-meta">${isSub?'<span class="sub-tag">trocado</span>':''}${ex.machine?`<span class="machine-tag">${esc(ex.machine)}</span>`:''}${e.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.grip])}</span>`:''}</div>
-        ${!isSub && e.note?`<div class="note">${esc(e.note)}</div>`:""}
-      </div>
-      <button class="ex-kebab" data-i="${i}" data-sup="0" type="button" aria-label="Ações do exercício">
-        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
-      </button>
-    </div>`;
-    html += prevBlockHTML(prevMain, avgMain, sugMain, unitMain, i, false);
-    html += seriesHTML(ex.main, i, false, unitMain, effectiveName, prevMain, sugMain);
-    html += !isSub ? badgesHTML(e.badges) : "";
-
-    if(e.superset){
-      const isSupSub = !!ex.supSubName;
-      const supEffName = ex.supSubName || e.superset.name;
-      const unitSup = unitFor(ex, e, true);
-      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, unitSup);
-      const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, unitSup) : null;
-      const sugSup = suggestData(supEffName, unitSup, true, i, avgSup);
-      html += `<div class="superset">
-        <span class="tag">+ Supersérie</span>
-        <div class="sname">
-          <span class="sname-text"><span class="evo-link" data-evo-i="${i}" data-evo-sup="1" role="button" tabindex="0" title="Ver evolução">${esc(supEffName)}${ICON_TREND}</span></span>
-          <button class="ex-kebab" data-i="${i}" data-sup="1" type="button" aria-label="Ações do exercício">
-            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
-          </button>
-        </div>
-        <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
-        ${prevBlockHTML(prevSup, avgSup, sugSup, unitSup, i, true)}`;
-      html += seriesHTML(ex.sup, i, true, unitSup, supEffName, prevSup, sugSup);
-      html += `</div>`;
-    }
-    html += `</article>`;
+    html += state.trainMode ? exCardHTML(e, ex, i) : agendaRowHTML(e, ex, i);
   });
+
+  if(!state.trainMode){
+    html = `<div class="agenda-head"><span class="agenda-title">Exercícios do dia</span></div>` + html;
+  }
 
   if(state.trainMode){
     html += trainEndCardHTML(completed, total);
@@ -746,12 +807,26 @@ function attachHandlers(){
     btn.addEventListener("click", () => openExActions(+btn.dataset.i, btn.dataset.sup === "1"));
   });
 
-  const $reset = document.getElementById("resetBtn");
-  if($reset) $reset.addEventListener("click", () => {
-    if(!confirm("Limpar séries e cargas deste dia?")) return;
-    state.session = emptySession(state.current);
-    scheduleSave(); renderDay(); renderStrip();
+  $panel.querySelectorAll(".row-kebab").forEach(btn => {
+    btn.addEventListener("click", ev => { ev.stopPropagation(); openExActions(+btn.dataset.i, false); });
+    btn.addEventListener("keydown", ev => {
+      if(ev.key === "Enter" || ev.key === " "){
+        ev.preventDefault(); ev.stopPropagation(); openExActions(+btn.dataset.i, false);
+      }
+    });
   });
+  $panel.querySelectorAll(".row").forEach(row => {
+    row.addEventListener("click", () => {
+      if(consumeDragClick()) return;
+      const i = +row.dataset.i;
+      if(window._enterTrainMode) window._enterTrainMode(Number.isFinite(i) ? i : undefined);
+    });
+  });
+  if(!state.trainMode) initAgendaDnd();
+
+  bindStateCard();
+  const $stateCard = document.getElementById("dayStateCard");
+  if($stateCard && $stateCard.classList.contains("is-done")) refreshDayStateCard();
 
   const $skipBtn = $panel.querySelector(".deload-skip");
   if($skipBtn) $skipBtn.addEventListener("click", () => { state.deloadDismissed = true; renderDay(); });

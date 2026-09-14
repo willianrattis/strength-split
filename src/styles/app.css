@@ -127,23 +127,15 @@
     font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:.08em;
     text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;
   }
-  .week-nav-btn{width:32px;height:36px;border-radius:10px;flex:0 0 auto}
+  .week-nav-btn{width:44px;height:44px;border-radius:10px;flex:0 0 auto}
 
   /* painel */
-  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
-  .panel-head h2{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:24px;letter-spacing:.02em}
-  .panel-head .focus-tag{color:var(--muted);font-size:13px;font-weight:500}
-  .panel-head-title{display:flex;align-items:center;gap:8px;min-width:0}
   .day-edit-btn{
     flex:0 0 auto;background:none;border:1px solid var(--border);color:var(--muted);
     border-radius:9px;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;
     font-size:12px;transition:.15s;
   }
   .day-edit-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .progress{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--muted)}
-  .progress .count{color:var(--text)}
-  .reset{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--body);font-size:11px;font-weight:600;border-radius:8px;padding:5px 9px;cursor:pointer;transition:.15s}
-  .reset:hover{border-color:var(--accent);color:var(--accent)}
   .bar{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:18px}
   .bar span{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
 
@@ -154,6 +146,87 @@
   }
   .day-progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
 
+  /* day state card (ready / running / done) */
+  .state-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:16px;margin:14px 0 16px;min-height:104px;transition:.18s;
+  }
+  .state-card.is-running{
+    border-color:var(--accent);background:var(--accent-ghost);cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .state-card.is-done{border-color:var(--accent-soft)}
+  .sc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+  .sc-focus{
+    font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--text);min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;
+  }
+  .sc-badge{
+    flex:0 0 auto;font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.02em;
+    color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:4px 9px;
+    white-space:nowrap;
+  }
+  .sc-stats{display:flex;flex-wrap:wrap;gap:5px 14px;font-family:var(--body);font-size:13px;color:var(--muted)}
+  .sc-eta{margin-top:6px;font-family:var(--body);font-size:12px;color:var(--faint)}
+  .sc-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+  .sc-count{font-family:var(--body);font-size:13px;color:var(--text);min-width:0}
+  .sc-count b{font-family:var(--display);font-weight:700;color:var(--accent)}
+  .sc-cta{
+    flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:13px;
+    letter-spacing:.03em;color:var(--accent);white-space:nowrap;
+  }
+
+  /* .ts-grid/.ts-tile/.ts-prs (and their children) are otherwise defined only inside
+     the mobile-only @media(max-width:600px) train-mode block, since the end-of-workout
+     card is a mobile-only surface. The day state card's "done" body reuses that same
+     markup on the always-visible day screen, so it needs the identical look at every
+     width — these mirror those rules verbatim, scoped under .state-card, rather than
+     widening the original (shared) definitions. */
+  .state-card .ts-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .state-card .ts-tile{
+    background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+    padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  .state-card .ts-wide{grid-column:1 / -1}
+  .state-card .ts-val{
+    font-family:var(--display);font-weight:700;font-size:24px;line-height:1.05;
+    color:var(--text);font-variant-numeric:tabular-nums;
+  }
+  .state-card .ts-val em{font-style:normal;font-size:13px;font-weight:500;color:var(--muted);margin-left:3px}
+  .state-card .ts-lbl{
+    font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--faint);line-height:1.2;
+  }
+  .state-card .ts-sub{font-size:10.5px;color:var(--muted);line-height:1.3}
+  .state-card .ts-prs{
+    background:var(--accent-ghost);border:1px solid var(--accent-soft);border-radius:12px;
+    padding:11px 12px;display:flex;flex-direction:column;gap:7px;text-align:left;margin-top:8px;
+  }
+  .state-card .ts-prs-title{
+    font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);
+  }
+  .state-card .ts-pr{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .state-card .ts-pr-name{
+    font-size:13px;color:var(--text);min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .state-card .ts-pr-w{
+    flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:14px;
+    color:var(--accent);font-variant-numeric:tabular-nums;
+  }
+  .state-card .ts-pr-w em{font-style:normal;font-weight:500;font-size:11px;color:var(--muted)}
+  .state-card .ts-prs.loading{background:var(--surface-2);border-color:var(--border)}
+  .state-card .ts-prs.loading .ts-prs-title{color:var(--muted)}
+
+  /* agenda section label (day screen, above the rows) */
+  .agenda-head{margin:2px 2px 10px}
+  .agenda-title{
+    font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);
+  }
+
   /* cartões */
   .ex{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:.18s}
   .ex.done{border-color:var(--accent);opacity:.72}
@@ -162,6 +235,40 @@
   .ex.done .num{background:var(--accent-soft)}
   .ex.done .num::after{content:"✓"}
   .ex.done .num .n{display:none}
+
+  /* agenda rows (day screen) */
+  .row{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:12px 8px 12px 14px;margin-bottom:8px;cursor:pointer;min-height:68px;
+    font-family:var(--body);color:var(--text);-webkit-tap-highlight-color:transparent;transition:.15s;
+  }
+  .row:active{background:var(--surface-2)}
+  .row.done{border-color:var(--accent-soft)}
+  .row-num{
+    flex:0 0 auto;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;
+    background:var(--surface-3);color:var(--accent);font-family:var(--display);font-weight:700;font-size:14px;
+  }
+  .row.done .row-num{background:var(--accent-soft)}
+  .row-body{flex:1 1 auto;min-width:0}
+  .row-name{
+    display:block;font-family:var(--display);font-weight:500;font-size:16px;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .row.done .row-name{color:var(--muted)}
+  .row-meta{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .row-meta b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+  .row.done .row-meta b{color:var(--accent)}
+  .row-check{flex:0 0 auto;width:20px;height:20px;color:var(--accent);display:none}
+  .row.done .row-check{display:block}
+  .row-kebab{flex:0 0 auto;width:44px;height:44px;border-radius:11px;color:var(--faint);display:grid;place-items:center}
+  .row-kebab svg{width:17px;height:17px}
+  .sup-tag{font:600 10px var(--body);border-radius:6px;padding:2px 6px;background:var(--accent-soft);color:var(--accent)}
+  .row.dragging{opacity:.5}
+  .row.drag-over-top{box-shadow:inset 0 2px 0 var(--accent)}
+  .row.drag-over-bottom{box-shadow:inset 0 -2px 0 var(--accent)}
+  .row{touch-action:pan-y}
+
   .body{flex:1 1 auto;min-width:0}
   .name{font-family:var(--display);font-weight:500;font-size:18px;line-height:1.15;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .evo-link{display:inline-flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:100%;overflow:hidden}
@@ -504,7 +611,6 @@
   .sig{text-align:center;color:var(--faint);font-size:11px;margin-top:18px;letter-spacing:.06em}
 
   @media(max-width:480px){
-    .panel-head h2{font-size:21px}
     .superset{margin-left:46px}
     .series-table{padding-left:46px}
     .series-table:not([data-sup]) .set-done-row{margin-left:-30px;padding-left:30px}
@@ -888,7 +994,7 @@
   .hiw-desc{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
 
   /* generic one-time coach popover (contextual tips), e.g. the compacto/carga toggle.
-     Anchored via position:relative on the caller's container (see .days-toolbar). */
+     Anchored via position:relative on the caller's container (see .train-mode-toggle). */
   .coach-popover{
     position:absolute;top:100%;right:16px;margin-top:8px;z-index:5;
     max-width:230px;width:max-content;
@@ -1139,12 +1245,9 @@
   /* Share PDF wrapper — flag system sets display:"" (removes inline), so CSS display:flex takes over */
   .share-pdf-wrap{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 14px}
 
-  /* Toolbar row (mode-toggle relocated into nav.days) */
-  .days-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:8px;padding-bottom:0;position:relative}
-  .days-toolbar-label{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-
   @media(max-width:600px){
-    .days-toolbar-label{display:none}
+    /* Full-width mode-toggle, shared with the settings modal's own toggles (which
+       opt back out via #settingsModal .mode-toggle{flex-shrink:0;width:auto}). */
     .mode-toggle{width:100%;display:flex}
     .mode-toggle button{flex:1;justify-content:center}
   }
@@ -1303,11 +1406,9 @@
     .theme-btn{width:44px;height:44px}
     .ex-icon-btn{width:44px;height:44px;border-radius:11px}
     .ex-kebab{width:44px;height:44px}
-    .week-nav-btn{width:44px;height:44px;border-radius:11px}
     .rep-add,.rep-remove{width:44px;height:44px;border-radius:10px}
     .plan-ex-remove{width:44px;height:44px;border-radius:10px}
     .plan-remove-day{width:44px;height:44px;border-radius:10px}
-    .reset{min-height:44px;padding:10px 14px}
     .day-custom-actions button{min-height:44px;padding:10px 14px}
     .plan-apply-btn{min-height:44px;padding:10px 14px}
     .plan-add-ex-btn{min-height:44px;padding:10px 14px}
@@ -1343,7 +1444,6 @@
       -webkit-mask-image:none;mask-image:none;
       justify-content:safe center;
     }
-    .days-toolbar{padding-top:16px}
     .bottom-nav{display:none !important}
   }
 
@@ -1388,6 +1488,13 @@
       flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);
     }
+    .train-bar .mode-toggle{
+      flex:0 0 auto;width:auto;padding:2px;border-radius:9px;
+    }
+    .train-bar .mode-toggle button{
+      flex:0 0 auto;font-size:10px;letter-spacing:.05em;padding:6px 9px;min-height:32px;
+    }
+    .train-mode-toggle{position:relative}   /* coach-mark anchor */
     .train-count{
       flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:12px;
       letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums;

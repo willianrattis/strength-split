@@ -162,19 +162,16 @@ window.SSSplash = (function(){
         <div class="days-inner" id="dayStrip" role="tablist"></div>
         <button class="week-nav-btn" id="weekNext" type="button" aria-label="Próxima semana">&#8594;</button>
       </div>
-      <div class="wrap days-toolbar" id="daysToolbar">
-        <span class="days-toolbar-label">Visualização</span>
-        <div class="mode-toggle" role="group" aria-label="Modo de visualização">
-          <button id="modeCompact" type="button">Compacto</button>
-          <button id="modeLoad" type="button">Carga</button>
-        </div>
-      </div>
       <div class="day-progress" id="dayProgress" aria-hidden="true"><span id="dayProgressFill" style="width:0%"></span></div>
     </nav>
     <div class="train-bar" id="trainBar">
       <div class="train-bar-row">
         <button class="train-exit" id="trainExit" type="button" aria-label="Sair do modo treino">&#10005;</button>
         <span class="train-focus" id="trainFocus"></span>
+        <div class="mode-toggle train-mode-toggle" id="trainModeToggle" role="group" aria-label="Modo de visualização">
+          <button id="modeCompact" type="button">Comp</button>
+          <button id="modeLoad" type="button">Carga</button>
+        </div>
         <span class="train-count" id="trainCount">1/1</span>
       </div>
       <div class="train-segs" id="trainSegs" aria-label="Exercícios do treino"></div>
