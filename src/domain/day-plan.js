@@ -127,5 +127,7 @@ export function remainingMs(counts, pace){
 // new Date(now + ms); null when ms is null.
 export function etaAt(now, ms){
   if(ms == null) return null;
-  return new Date(now + ms);
+  const t = now instanceof Date ? now.getTime() : now;
+  if(typeof t !== "number" || !isFinite(t)) return null;
+  return new Date(t + ms);
 }

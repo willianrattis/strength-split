@@ -232,4 +232,15 @@ describe("etaAt", () => {
   it("returns null when ms is null", () => {
     expect(etaAt(Date.now(), null)).toBeNull();
   });
+
+  it("accepts a Date instance for now, matching its getTime() (the bug that shipped)", () => {
+    const now = new Date("2026-01-01T10:00:00.000Z");
+    expect(etaAt(now, 5 * 60000)).toEqual(etaAt(now.getTime(), 5 * 60000));
+  });
+
+  it("returns null for a non-numeric now", () => {
+    expect(etaAt("not a date", 5 * 60000)).toBeNull();
+    expect(etaAt(undefined, 5 * 60000)).toBeNull();
+    expect(etaAt(NaN, 5 * 60000)).toBeNull();
+  });
 });
