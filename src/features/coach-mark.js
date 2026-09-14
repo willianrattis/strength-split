@@ -1,5 +1,5 @@
 import { state } from "../core/state.js";
-import { $viewTreino, $daysToolbar, $modeCompact, $modeLoad } from "../core/dom.js";
+import { $trainModeToggle, $modeCompact, $modeLoad } from "../core/dom.js";
 import { hasSeenTip, markTipSeen } from "./tips.js";
 
 // Reusable one-time contextual popover. `anchorEl` must be `position:relative` in CSS —
@@ -39,7 +39,7 @@ export function showCoachPopover(id, anchorEl, html, dismissEls = []){
 
 export function maybeShowModeTip(){
   if(hasSeenTip("modeToggle") || state.needsOnboarding) return;
-  if($viewTreino.style.display === "none") return;
+  if(!state.trainMode) return;
   // Mutual exclusion with the first-session nudge (day/render.js's showFirstRunHint):
   // don't show if it's currently on screen, and don't race ahead of it while its own
   // "is this account really new?" full-history check is still unresolved — otherwise
@@ -47,7 +47,7 @@ export function maybeShowModeTip(){
   // chance.
   if(document.getElementById("firstRunHint")) return;
   if(!hasSeenTip("firstRun") && state.sessionsLoadedSince !== "ALL" && (state.allSessions?.length ?? 0) === 0) return;
-  showCoachPopover("modeToggle", $daysToolbar,
+  showCoachPopover("modeToggle", $trainModeToggle,
     "<b>Carga</b> registra peso e repetições — é o que gera sugestões e evolução.",
     [$modeCompact, $modeLoad]);
 }

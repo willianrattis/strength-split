@@ -6,6 +6,7 @@ import { exDone, renderDay } from "../day/render.js";
 import { ensureSessionsLoaded } from "../day/session-io.js";
 import { refreshTrainEndCard } from "./summary.js";
 import { armFinishedHide } from "./rest-timer.js";
+import { maybeShowModeTip } from "../coach-mark.js";
 
 export function trainExCount(){ return activeDays()[state.current].ex.length; }
 
@@ -16,10 +17,11 @@ export function firstIncompleteIdx(){
   return i < 0 ? trainExCount() : i;
 }
 
-export function enterTrainMode(){
+export function enterTrainMode(atIdx){
   if(!state.session || trainExCount() === 0) return;
   state.trainMode = true;
-  state.trainIdx = firstIncompleteIdx();
+  const n = trainExCount();
+  state.trainIdx = (Number.isInteger(atIdx) && atIdx >= 0 && atIdx < n) ? atIdx : firstIncompleteIdx();
   document.body.classList.add("mode-train");
   applyPrevLayoutState();
   // Fire-and-forget: the train-mode summary needs full history for bestWeightEver
@@ -29,7 +31,8 @@ export function enterTrainMode(){
   ensureSessionsLoaded("ALL");
   renderDay();
   armFinishedHide();
-  if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
+  if(state.trainIdx >= n) refreshTrainEndCard();
+  maybeShowModeTip();
 }
 
 export function exitTrainMode(){
@@ -42,7 +45,7 @@ export function exitTrainMode(){
   document.body.classList.remove("mode-train");
   applyPrevLayoutState();
   renderDay();
-  const art = $panel.querySelector(`.ex[data-i="${back}"]`);
+  const art = $panel.querySelector(`.row[data-i="${back}"]`);
   if(art) art.scrollIntoView({ block: "center" });
 }
 // Exposed so shell.js's showTab (which owns tab-switching) can exit train mode

@@ -12,8 +12,7 @@ export const SESSIONS_PAGE_SIZE = 300;
 // ensureSessionsLoaded() in features/day/session-io.js.
 export const RECENT_WINDOW_DAYS = 365;
 
-export const GAP_MIN_MS = 20 * 1000;      // below this the user is marking retroactively
-export const GAP_MAX_MS = 8 * 60 * 1000;  // above this the phone was abandoned
+export { GAP_MIN_MS, GAP_MAX_MS } from "../domain/day-plan.js";
 
 export const DELOAD_FACTOR = 0.55;
 
