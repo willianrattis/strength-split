@@ -1,4 +1,5 @@
 import { todayStr } from "../domain/dates.js";
+import { REST_MAX_SEC } from "../domain/rest-timer.js";
 import { MUSCLE_ORDER } from "../data/labels.js";
 import { state } from "../core/state.js";
 import * as repo from "../core/repo.js";
@@ -28,6 +29,8 @@ export async function loadPref(){
       if(["suave","mod","agr"].includes(d.autoregSensitivity)) state.autoregSensitivity = d.autoregSensitivity;
       if(typeof d.execOrderEnabled === "boolean") state.execOrderEnabled = d.execOrderEnabled;
       if(typeof d.gamificationEnabled === "boolean") state.gamificationEnabled = d.gamificationEnabled;
+      if(typeof d.restDefaultSec === "number" && isFinite(d.restDefaultSec) && d.restDefaultSec >= 0 && d.restDefaultSec <= REST_MAX_SEC)
+        state.restDefaultSec = Math.round(d.restDefaultSec);
       if(typeof d.gamifStartDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.gamifStartDate)) state.gamifStartDate = d.gamifStartDate;
       if(Array.isArray(d.tipsSeen)) state.tipsSeen = new Set(d.tipsSeen.filter(x => typeof x === "string"));
       else if(d.firstRunHintSeen === true) state.tipsSeen = new Set(["firstRun"]);
@@ -77,6 +80,7 @@ export async function savePref(){
       execOrderEnabled: state.execOrderEnabled,
       gamificationEnabled: state.gamificationEnabled,
       gamifStartDate: state.gamifStartDate || null,
+      restDefaultSec: state.restDefaultSec,
       tipsSeen: [...state.tipsSeen],
     });
   }catch(e){ console.warn("savePref:", e.message); }

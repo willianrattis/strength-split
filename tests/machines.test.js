@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lastMachineFor, usedMachinesRanked } from "../src/domain/machines.js";
+import { lastMachineFor, lastUnitFor, usedMachinesRanked } from "../src/domain/machines.js";
 import { makeEntry, makeSession } from "./fixtures.js";
 
 describe("lastMachineFor", () => {
@@ -45,6 +45,54 @@ describe("lastMachineFor", () => {
   it("returns null with no match", () => {
     const sessions = [makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "X", machine: "M1" })] })];
     expect(lastMachineFor(sessions, "Z")).toBeNull();
+  });
+});
+
+describe("lastUnitFor", () => {
+  it("returns null for null/empty sessions, and for a null machine", () => {
+    expect(lastUnitFor(null, "X", "Hammer")).toBeNull();
+    expect(lastUnitFor([], "X", "Hammer")).toBeNull();
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "X", machine: "Hammer", unit: "lb" })] })];
+    expect(lastUnitFor(sessions, "X", null)).toBeNull();
+  });
+
+  it("picks the most recent session by date, not array position", () => {
+    const sessions = [
+      makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "kg" })] }),
+      makeSession({ date: "2026-01-10", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "lb" })] }),
+      makeSession({ date: "2026-01-05", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "placas" })] })
+    ];
+    expect(lastUnitFor(sessions, "Leg press", "Hammer")).toBe("lb");
+  });
+
+  it("matches the machine case/accent-insensitively and returns that entry's unit", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", machine: "Máquina 3", unit: "lb" })
+    ] })];
+    expect(lastUnitFor(sessions, "Leg press", " maquina 3 ")).toBe("lb");
+  });
+
+  it("skips an entry with no unit and falls through to an older one that has one", () => {
+    const sessions = [
+      makeSession({ date: "2026-01-10", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: null })] }),
+      makeSession({ date: "2026-01-01", exercises: [makeEntry({ name: "Leg press", machine: "Hammer", unit: "lb" })] })
+    ];
+    expect(lastUnitFor(sessions, "Leg press", "Hammer")).toBe("lb");
+  });
+
+  it("isSup:true reads supSubName/supName + supMachine + supUnit", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ supName: "A", supSubName: "B", supMachine: "M1", supUnit: "lb" })
+    ] })];
+    expect(lastUnitFor(sessions, "B", "M1", true)).toBe("lb");
+    expect(lastUnitFor(sessions, "A", "M1", true)).toBeNull();
+  });
+
+  it("returns null when the exercise was never logged on that machine", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", machine: "Hammer", unit: "lb" })
+    ] })];
+    expect(lastUnitFor(sessions, "Leg press", "Technogym")).toBeNull();
   });
 });
 

@@ -1,9 +1,11 @@
 import { stripDiacritics, esc, normMachine } from "../../domain/text.js";
+import { lastUnitFor } from "../../domain/machines.js";
+import { convertSetWeights } from "../../domain/session.js";
 import { state } from "../../core/state.js";
 import { $machineModal, $machineModalInner } from "../../core/dom.js";
-import { usedMachinesRanked } from "../../core/adapters.js";
+import { usedMachinesRanked, activeDays } from "../../core/adapters.js";
 import { scheduleSave } from "./session-io.js";
-import { renderDay } from "./render.js";
+import { renderDay, unitFor } from "./render.js";
 
 const MACHINE_CATALOG = ["Hammer","Life Fitness","Technogym","Matrix Fitness","Cybex","Nautilus","Movement","Cimerian","Ipiranga","Righetto"];
 
@@ -46,9 +48,25 @@ export function openMachineModal(exIdx, isSup){
   $machineModal.classList.add("open");
 
   function applyMachine(val){
-    const v = val ? String(val).trim() : null;
-    if(isSup) ex.supMachine = v || null;
-    else ex.machine = v || null;
+    // "" means the user cleared it on purpose — reconcileSession must not re-inherit.
+    const v = val ? String(val).trim() : "";
+    if(isSup) ex.supMachine = v;
+    else ex.machine = v;
+
+    const e = activeDays()[state.current].ex[exIdx];
+    const name = isSup ? (ex.supSubName || (e.superset && e.superset.name)) : (ex.subName || e.name);
+    const remembered = v ? lastUnitFor(state.allSessions, name, v, isSup) : null;
+    if(remembered){
+      const prev = unitFor(ex, e, isSup);
+      if(remembered !== prev){
+        // This machine was always logged in `remembered`. Restore it, re-expressing whatever
+        // is already logged today so the physical load is preserved rather than relabelled.
+        if(isSup) ex.sup = convertSetWeights(ex.sup, prev, remembered);
+        else      ex.main = convertSetWeights(ex.main, prev, remembered);
+        if(isSup) ex.supUnit = remembered; else ex.unit = remembered;
+      }
+    }
+
     scheduleSave(); renderDay(); closeMachineModal();
   }
 

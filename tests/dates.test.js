@@ -31,6 +31,15 @@ describe("getWeekMonday", () => {
     expect(formatDate(getWeekMonday(-1))).toBe("2025-12-29");
     expect(formatDate(getWeekMonday(1))).toBe("2026-01-12");
   });
+
+  it("offset 1 is exactly 7 days after offset 0, and offset 4 exactly 28 days after", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 12)); // Monday 2026-01-05
+    const base = getWeekMonday(0).getTime();
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+    expect(getWeekMonday(1).getTime() - base).toBe(oneWeek);
+    expect(getWeekMonday(4).getTime() - base).toBe(4 * oneWeek);
+  });
 });
 
 describe("dateForDay", () => {
@@ -56,6 +65,27 @@ describe("dateForDay", () => {
     vi.setSystemTime(new Date(2026, 3, 29, 12)); // Wednesday 2026-04-29, week Mon 2026-04-27 .. Fri 2026-05-01
     expect(dateForDay(0, 0)).toBe("2026-04-27");
     expect(dateForDay(4, 0)).toBe("2026-05-01");
+  });
+
+  it("offset 1 reaches the Monday and Sunday of next week", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 12)); // Monday 2026-01-05
+    expect(dateForDay(0, 1)).toBe("2026-01-12"); // next Monday
+    expect(dateForDay(6, 1)).toBe("2026-01-18"); // next Sunday
+  });
+
+  it("a forward offset can cross a month boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 6, 12)); // Monday 2026-04-06, week+4 = Mon 2026-05-04 .. Sun 2026-05-10
+    expect(dateForDay(0, 4)).toBe("2026-05-04");
+    expect(dateForDay(6, 4)).toBe("2026-05-10");
+  });
+
+  it("a forward offset can cross a year boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 11, 15, 12)); // Monday 2025-12-15, week+4 = Mon 2026-01-12 .. Sun 2026-01-18
+    expect(dateForDay(0, 4)).toBe("2026-01-12");
+    expect(dateForDay(6, 4)).toBe("2026-01-18");
   });
 });
 

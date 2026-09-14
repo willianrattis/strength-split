@@ -2,12 +2,13 @@ import { esc } from "../../domain/text.js";
 import { formatDate, shortDate, getWeekMonday, todayWeekdayIdx } from "../../domain/dates.js";
 import { equipmentOf } from "../../domain/equipment.js";
 import { UNIT_ABBR, UNIT_STEP } from "../../domain/units.js";
+import { restUnitComplete, effectiveRestSec } from "../../domain/rest-timer.js";
 import { BADGE_LABEL, GRIP_LABEL } from "../../data/labels.js";
-import { DELOAD_FACTOR } from "../../core/config.js";
+import { DELOAD_FACTOR, WEEK_OFFSET_MAX } from "../../core/config.js";
 import { state } from "../../core/state.js";
 import { $panel, $strip, $weekPrev, $weekNext, $weekLabel, $generalNotes, $trainFab, $trainFabIcon, $trainFabLabel } from "../../core/dom.js";
 import {
-  activeDays, machineFilterActive, prevLoadData, suggestLoads,
+  activeDays, machineFilterActive, prevLoadData, suggestLoads, avgAcrossMachines,
   isDeloadActive, deloadDue, projectLoad, exerciseTopHistory, matchVariant, emptySession,
 } from "../../core/adapters.js";
 import { centerActiveDay } from "../../core/ui/sticky-header.js";
@@ -21,6 +22,7 @@ import { openDayQuickEdit } from "./quick-edit.js";
 import { scheduleSave, loadDay, ensureSessionsLoaded } from "./session-io.js";
 import { openExActions } from "./exercise-actions.js";
 import { exitTrainMode, renderTrainBar, bindTrainTrack, restoreTrainScroll } from "../train/index.js";
+import { startRest } from "../train/rest-timer.js";
 import { trainEndCardHTML } from "../train/summary.js";
 
 export const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
@@ -34,6 +36,16 @@ export function exDone(ex){
   return mainOk && supOk;
 }
 export function countDone(){ return state.session.exercises.filter(exDone).length; }
+
+// The FAB's "in progress" signal. countDone() counts fully finished exercises, which is
+// right for the progress counter and the summary card but wrong here: a workout is under
+// way from the first marked set, long before any exercise is complete.
+export function anySetDone(){
+  if(!state.session) return false;
+  return state.session.exercises.some(ex =>
+    (ex.main || []).some(s => s && s.done) ||
+    (ex.sup  || []).some(s => s && s.done));
+}
 
 function setPct(){
   let done = 0, total = 0;
@@ -62,19 +74,34 @@ function prevRepsHTML(ps){
   return `<span class="pv-reps${over}">×${ps.repsDone}</span>`;
 }
 
-function prevBlockHTML(prev, sug, unit, exIdx, isSup){
-  if(!prev && !sug) return "";
+// A card's unit is the session entry's own stamp, falling back to the plan exercise's.
+// Never read e.unit directly in the day view — a past session logged in another unit
+// would render under the wrong label.
+export function unitFor(ex, e, isSup){
+  const stamped = isSup ? (ex && ex.supUnit) : (ex && ex.unit);
+  const planned = isSup ? (e && e.superset && e.superset.unit) : (e && e.unit);
+  return stamped || planned || "kg";
+}
+
+function prevBlockHTML(prev, avg, sug, unit, exIdx, isSup){
+  if(!prev && !avg && !sug) return "";
   const u = unit || "kg";
   const ua = UNIT_ABBR[u];
-  const n = Math.max(prev ? prev.perSet.length : 0, sug ? sug.loads.length : 0);
+  const n = Math.max(prev ? prev.perSet.length : 0, avg ? avg.perSet.length : 0, sug ? sug.loads.length : 0);
   if(!n) return "";
 
   const rank = (prev && prev.execRank != null) ? ` · ${prev.execRank}º` : "";
+  const machTxt = avg
+    ? (avg.machines.length > 2
+        ? `${avg.machines.slice(0,2).join(" · ")} +${avg.machines.length - 2}`
+        : avg.machines.join(" · "))
+    : "";
   const dateTxt = prev
     ? `Último treino <b>${shortDate(prev.date)}</b>${rank}`
+    : avg ? `Média de <b>${esc(machTxt)}</b>`
     : `Sem histórico`;
   const applyBtn = sug
-    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""}>aplicar sugestão ${sug.dir}</button>`
+    ? `<button class="suggest-apply" data-ex="${exIdx}" ${isSup?'data-sup="1"':""} ${sug.estimated?'data-avg="1"':""}>${sug.estimated ? "aplicar média" : `aplicar sugestão ${sug.dir}`}</button>`
     : "";
 
   let html = `<div class="prev-block">`;
@@ -94,8 +121,18 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
         : `<span class="pp-val">—</span>`;
     }
     html += `</div>`;
+  } else if(avg){
+    html += `<div class="pp-row pp-avg"><span class="pp-lbl">MÉDIA</span>`;
+    for(let i = 0; i < n; i++){
+      const ps = avg.perSet[i] || null;
+      const w = ps ? ps.weight : null;
+      html += w != null
+        ? `<span class="pp-val"><span class="pv-w">${w}</span>${prevRepsHTML(ps)}</span>`
+        : `<span class="pp-val">—</span>`;
+    }
+    html += `</div>`;
   }
-  if(sug){
+  if(sug && !sug.estimated){
     html += `<div class="pp-row pp-sug"><span class="pp-lbl">SUGESTÃO</span>`;
     for(let i = 0; i < n; i++){
       const v = sug.loads[i];
@@ -112,7 +149,7 @@ function prevBlockHTML(prev, sug, unit, exIdx, isSup){
 
 // Suggestion payload, or null. Gating that used to live in `.flag-periodization .suggest`
 // now lives here so the panel row, the apply button and the input placeholders agree.
-function suggestData(name, unit, isSup, exIdx){
+function suggestData(name, unit, isSup, exIdx, avg){
   if(!document.body.classList.contains("flag-periodization")) return null;
   if(!state.session || !state.session.exercises[exIdx]) return null;
   const ex = state.session.exercises[exIdx];
@@ -121,7 +158,14 @@ function suggestData(name, unit, isSup, exIdx){
   const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
   const planEx = activeDays()[state.current] && activeDays()[state.current].ex[exIdx];
   const muscle = planEx ? (isSup ? (ex.supSubMuscle || (planEx.superset && planEx.superset.muscle) || planEx.muscle) : (ex.subMuscle || planEx.muscle)) : undefined;
-  return suggestLoads(name, unit, machine, {muscle}) || null;
+  const s = suggestLoads(name, unit, machine, {muscle});
+  if(s) return s;
+  if(!avg) return null;
+  // The average IS the suggestion here. Deliberately no projectLoad on top: a machine the
+  // user has never touched gives zero evidence about whether the load should go up or
+  // down, and the number is already an estimate. Start here; progress from the real
+  // session next time.
+  return { loads: avg.perSet.map(p => p ? p.weight : null), dir: "→", date: null, estimated: true };
 }
 
 function seriesHTML(sets, exIdx, isSup, unit, name, prev, sug){
@@ -255,7 +299,7 @@ export function updateTrainFab(){
   let mode = "ready";
   if(total === 0) mode = "rest";
   else if(done >= total) mode = "done";
-  else if(done > 0) mode = "running";
+  else if(anySetDone()) mode = "running";
   const CFG = {
     ready:   { cls:"",           lbl:"Iniciar",  aria:"Iniciar treino",  icon:'<path d="M8 5.5v13l11-6.5z"/>' },
     running: { cls:"is-running", lbl:"Continuar",aria:"Continuar treino",icon:'<rect x="7.5" y="5.5" width="3.4" height="13" rx="1"/><rect x="13.1" y="5.5" width="3.4" height="13" rx="1"/>' },
@@ -388,8 +432,13 @@ export function renderDay(){
     html += `<article class="ex ${isDone?'done':''}" data-i="${i}">`;
     const isSub = !!ex.subName;
     const effectiveName = ex.subName || e.name;
-    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined);
-    const sugMain = suggestData(effectiveName, e.unit, false, i);
+    const unitMain = unitFor(ex, e, false);
+    const prevMain = isSub ? null : prevLoadData(effectiveName, machineFilterActive() ? ex.machine : undefined, unitMain);
+    // No history for this machine variant: fall back to the average across the machines this
+    // exercise HAS been logged on. Null when it never had one, so an untagged exercise
+    // (agachamento) keeps the plain last-session behaviour with no extra condition.
+    const avgMain = (!isSub && !prevMain && machineFilterActive()) ? avgAcrossMachines(effectiveName, false, unitMain) : null;
+    const sugMain = suggestData(effectiveName, unitMain, false, i, avgMain);
     html += `<div class="ex-header">
       <div class="num"><span class="n">${i+1}</span></div>
       <div class="body">
@@ -401,15 +450,17 @@ export function renderDay(){
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>
       </button>
     </div>`;
-    html += prevBlockHTML(prevMain, sugMain, e.unit, i, false);
-    html += seriesHTML(ex.main, i, false, e.unit, effectiveName, prevMain, sugMain);
+    html += prevBlockHTML(prevMain, avgMain, sugMain, unitMain, i, false);
+    html += seriesHTML(ex.main, i, false, unitMain, effectiveName, prevMain, sugMain);
     html += !isSub ? badgesHTML(e.badges) : "";
 
     if(e.superset){
       const isSupSub = !!ex.supSubName;
       const supEffName = ex.supSubName || e.superset.name;
-      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined);
-      const sugSup = suggestData(supEffName, e.superset.unit, true, i);
+      const unitSup = unitFor(ex, e, true);
+      const prevSup = isSupSub ? null : prevLoadData(supEffName, machineFilterActive() ? ex.supMachine : undefined, unitSup);
+      const avgSup = (!isSupSub && !prevSup && machineFilterActive()) ? avgAcrossMachines(supEffName, true, unitSup) : null;
+      const sugSup = suggestData(supEffName, unitSup, true, i, avgSup);
       html += `<div class="superset">
         <span class="tag">+ Supersérie</span>
         <div class="sname">
@@ -419,8 +470,8 @@ export function renderDay(){
           </button>
         </div>
         <div class="ex-meta">${isSupSub?'<span class="sub-tag">trocado</span>':''}${ex.supMachine?`<span class="machine-tag">${esc(ex.supMachine)}</span>`:''}${e.superset.grip?`<span class="grip-tag">${esc(GRIP_LABEL[e.superset.grip])}</span>`:''}</div>
-        ${prevBlockHTML(prevSup, sugSup, e.superset.unit, i, true)}`;
-      html += seriesHTML(ex.sup, i, true, e.superset.unit, supEffName, prevSup, sugSup);
+        ${prevBlockHTML(prevSup, avgSup, sugSup, unitSup, i, true)}`;
+      html += seriesHTML(ex.sup, i, true, unitSup, supEffName, prevSup, sugSup);
       html += `</div>`;
     }
     html += `</article>`;
@@ -443,11 +494,12 @@ export function renderDay(){
 // Single write path for set completion. Stamps doneAt only on the false→true edge, so
 // editing weight/reps on an already-completed set never moves the timestamp.
 export function setDoneState(set, val){
-  if(!set) return;
+  if(!set) return false;
   const was = !!set.done;
   set.done = !!val;
   if(!val) set.doneAt = null;
   else if(!was || !set.doneAt) set.doneAt = new Date().toISOString();
+  return !was && !!val;   // false→true edge, for callers that act only on completion
 }
 
 // In-place feedback for a single set row. renderDay() rebuilds the whole panel and would
@@ -550,6 +602,22 @@ export function adoptSuggestedLoad(row, si, set){
 
 export function markExecStart(ei){ const ex = state.session.exercises[ei]; if(ex && !ex.firstSetAt){ ex.firstSetAt = new Date().toISOString(); } }
 
+// Auto-start the rest countdown when a set completes. Train mode only: the bar is chrome
+// that exists only there, so starting one from the normal day view would run invisibly.
+function maybeStartRest(ei, si){
+  if(!state.trainMode) return;
+  const ex = state.session && state.session.exercises[ei];
+  const day = activeDays()[state.current];
+  const e = day && day.ex[ei];
+  if(!ex || !e) return;
+  // A superset is two movements performed back to back — the rest belongs after the
+  // pair, so restUnitComplete holds the countdown until both halves of this set index
+  // are done. Order doesn't matter: whichever half closes last triggers it.
+  if(!restUnitComplete(ex, si)) return;
+  // startRest is already a no-op at 0, which is the configured "off".
+  startRest(effectiveRestSec(e, state.restDefaultSec));
+}
+
 function attachHandlers(){
   $panel.querySelectorAll(".series-table").forEach(row => {
     const ei = +row.dataset.ex;
@@ -560,9 +628,10 @@ function attachHandlers(){
       btn.addEventListener("click", () => {
         const si = +btn.dataset.si;
         const toggling = !target()[si].done;
-        setDoneState(target()[si], toggling);
+        const flipped = setDoneState(target()[si], toggling);
         if(toggling) markExecStart(ei);
         scheduleSave(); renderDay(); renderStrip();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".set-idx").forEach(btn => {
@@ -572,7 +641,7 @@ function attachHandlers(){
         const period = document.body.classList.contains("flag-periodization");
         const turningOn = !set.done;
         if (turningOn) adoptSuggestedLoad(row, si, set);
-        setDoneState(set, turningOn);
+        const flipped = setDoneState(set, turningOn);
         if (turningOn) {
           if (period && (set.repsDone == null || set.repsDone === "")) set.repsDone = set.reps;
           markExecStart(ei);
@@ -580,6 +649,7 @@ function attachHandlers(){
           set.repsDone = null;
         }
         scheduleSave(); renderDay(); renderStrip();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".weight-input").forEach(inp => {
@@ -608,11 +678,12 @@ function attachHandlers(){
         const set = target()[si];
         const on = set.repsDone != null;
         if(on) adoptSuggestedLoad(row, si, set);
-        setDoneState(set, on);
+        const flipped = setDoneState(set, on);
         scheduleSave();
         syncSetRow(row, si, set);
         renderStrip(); renderTrainBar();
         renderDaySoft();
+        if(flipped) maybeStartRest(ei, si);
       });
     });
     row.querySelectorAll(".set-hint[data-si]").forEach(btn => {
@@ -636,13 +707,18 @@ function attachHandlers(){
       const e = activeDays()[state.current].ex[ei];
       const ex = state.session.exercises[ei];
       const name = isSup ? (ex.supSubName || e.superset.name) : (ex.subName || e.name);
-      const unit = isSup ? (e.superset.unit || "kg") : (e.unit || "kg");
+      const unit = unitFor(ex, e, isSup);
       const machine = machineFilterActive() ? (isSup ? ex.supMachine : ex.machine) : undefined;
       const muscle = isSup ? (ex.supSubMuscle || (e.superset && e.superset.muscle) || e.muscle) : (ex.subMuscle || e.muscle);
       const result = suggestLoads(name, unit, machine, {muscle});
-      if(!result) return;
+      let loads = result ? result.loads : null;
+      if(!loads && btn.dataset.avg === "1"){
+        const avg = avgAcrossMachines(name, isSup, unit);
+        if(avg) loads = avg.perSet.map(p => p ? p.weight : null);
+      }
+      if(!loads) return;
       const sets = isSup ? state.session.exercises[ei].sup : state.session.exercises[ei].main;
-      result.loads.forEach((v, si) => {
+      loads.forEach((v, si) => {
         if(v != null && sets[si]) sets[si].weight = v;
       });
       scheduleSave(); renderDay(); renderStrip();
@@ -717,8 +793,8 @@ function attachHandlers(){
       const mainName = ex.subName || e.name;
       const mainMachine = machineFilterActive() ? ex.machine : undefined;
       const supMachine = machineFilterActive() ? ex.supMachine : undefined;
-      applyDeload(ex.main, mainName, e.unit, mainMachine);
-      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, e.superset.unit, supMachine);
+      applyDeload(ex.main, mainName, unitFor(ex, e, false), mainMachine);
+      if(e.superset && ex.sup) applyDeload(ex.sup, ex.supSubName || e.superset.name, unitFor(ex, e, true), supMachine);
     });
     const today = formatDate(new Date());
     state.lastDeloadDate = today;
@@ -798,7 +874,7 @@ export function updateWeekLabel(){
       $weekLabel.textContent = `${monDay} ${monMonth} – ${sunDay} ${sunMonth}`;
     }
   }
-  $weekNext.disabled = state.weekOffset >= 0;
+  $weekNext.disabled = state.weekOffset >= WEEK_OFFSET_MAX;
 }
 
 export function init(){
@@ -811,7 +887,7 @@ export function init(){
   });
 
   $weekNext.addEventListener("click", async () => {
-    if(state.weekOffset >= 0) return;
+    if(state.weekOffset >= WEEK_OFFSET_MAX) return;
     state.weekOffset++;
     renderStrip();
     $panel.innerHTML = skeletonPanel();

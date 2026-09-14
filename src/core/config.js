@@ -16,3 +16,9 @@ export const GAP_MIN_MS = 20 * 1000;      // below this the user is marking retr
 export const GAP_MAX_MS = 8 * 60 * 1000;  // above this the phone was abandoned
 
 export const DELOAD_FACTOR = 0.55;
+
+// How many weeks ahead the week strip may navigate. Forward navigation exists so a
+// weekday's program can be trained early (a holiday Monday done on Saturday) — the
+// session lands on the real date, which is the document that day will open. Bounded so
+// nobody wanders years out and leaves stray sessions behind.
+export const WEEK_OFFSET_MAX = 4;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickSets, execShiftMap, prevLoadData, exerciseTopHistory, isStalled, bestWeightEver, buildSessionsByName } from "../src/domain/history.js";
+import { pickSets, matchSide, execShiftMap, prevLoadData, exerciseTopHistory, isStalled, bestWeightEver, buildSessionsByName } from "../src/domain/history.js";
 import { suggestLoads } from "../src/domain/suggestion.js";
 import { autoregCfg, orderFactor } from "../src/domain/autoreg.js";
 import { makeEntry, makeSession } from "./fixtures.js";
@@ -40,6 +40,24 @@ describe("pickSets", () => {
   it("machine===undefined bypasses the filter even when machineFilter:true", () => {
     const entry = makeEntry({ name: "X", machine: "A", main: ["MAIN"] });
     expect(pickSets(entry, "X", undefined, true)).toEqual(["MAIN"]);
+  });
+});
+
+describe("matchSide", () => {
+  it("returns 'main' for a main-name match, 'sup' for a superset-name match, null otherwise", () => {
+    const entry = makeEntry({ name: "X", main: ["MAIN"], supName: "Y", sup: ["SUP"] });
+    expect(matchSide(entry, "X", undefined, false)).toBe("main");
+    expect(matchSide(entry, "Y", undefined, false)).toBe("sup");
+    expect(matchSide(entry, "Z", undefined, false)).toBeNull();
+  });
+
+  it("pickSets agrees with matchSide for every branch (subName/supSubName included)", () => {
+    const entry = makeEntry({ name: "X", subName: "SubX", main: ["MAIN"], supName: "Y", supSubName: "SubY", sup: ["SUP"] });
+    for(const name of ["SubX", "SubY", "Z"]){
+      const side = matchSide(entry, name, undefined, false);
+      const sets = pickSets(entry, name, undefined, false);
+      expect(sets).toEqual(side === "main" ? entry.main : side === "sup" ? entry.sup : null);
+    }
   });
 });
 
@@ -143,6 +161,45 @@ describe("prevLoadData", () => {
     ] })];
     const r = prevLoadData(sessions, "Supino", undefined, { execOrder: true });
     expect(r.execRank).toBe(1);
+  });
+
+  it("targetUnit omitted reproduces the raw stored number, even when the entry has a unit", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "lb", main: [{ weight: 95, reps: 10, repsDone: 10 }] })
+    ] })];
+    const r = prevLoadData(sessions, "Supino", undefined, {});
+    expect(r.perSet[0].weight).toBe(95);
+  });
+
+  it("converts an lb entry into targetUnit kg", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "lb", main: [{ weight: 95, reps: 10, repsDone: 10 }] })
+    ] })];
+    const r = prevLoadData(sessions, "Supino", undefined, { targetUnit: "kg" });
+    expect(r.perSet[0].weight).toBe(43); // roundForDisplay(95 * LB_TO_KG, "kg")
+  });
+
+  it("treats a legacy entry with no unit as already being in targetUnit", () => {
+    const legacy = { ...makeEntry({ name: "Supino", main: [{ weight: 60, reps: 10, repsDone: 10 }] }), unit: undefined };
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [legacy] })];
+    const r = prevLoadData(sessions, "Supino", undefined, { targetUnit: "kg" });
+    expect(r.perSet[0].weight).toBe(60);
+  });
+
+  it("converts a placas entry into targetUnit kg using PLATE_KG", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Leg press", unit: "placas", main: [{ weight: 12, reps: 10, repsDone: 10 }] })
+    ] })];
+    const r = prevLoadData(sessions, "Leg press", undefined, { targetUnit: "kg" });
+    expect(r.perSet[0].weight).toBe(60);
+  });
+
+  it("reads supUnit for a superset match, not the main entry's unit", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "kg", supName: "Voador", supUnit: "lb", sup: [{ weight: 95, reps: 12, repsDone: 12 }] })
+    ] })];
+    const r = prevLoadData(sessions, "Voador", undefined, { targetUnit: "kg" });
+    expect(r.perSet[0].weight).toBe(43); // converted using supUnit "lb", proving unit isn't used here
   });
 });
 

@@ -223,6 +223,8 @@
   }
   .pv-reps.over{color:var(--accent);font-weight:600}
   .pp-head .pp-val{font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--faint)}
+  .pp-avg .pp-val{color:var(--faint);font-style:italic}
+  .pp-avg .pv-w{font-style:italic}
   .pp-prev{margin-top:6px}
   .pp-sug{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
   .pp-sug .pp-val{color:var(--faint)}
@@ -751,6 +753,7 @@
     border-radius:10px;padding:10px 12px;outline:none;transition:.15s;
   }
   .modal-input:focus,.modal-select:focus,.modal-textarea:focus{border-color:var(--accent)}
+  .rest-input{width:72px;text-align:center;flex:0 0 auto}
   .ac-wrap{position:relative}
   .ac-list{position:absolute;left:0;right:0;top:100%;z-index:120;max-height:220px;overflow-y:auto;
     background:var(--surface-2);border:1px solid var(--border);border-radius:10px;margin-top:4px;
@@ -1402,6 +1405,35 @@
     .train-seg.is-current::after{background:var(--accent);opacity:1;height:4px;top:5px}
     .train-seg-end{flex:0 0 10px}
 
+    /* ---- rest countdown bar: fixed to the bottom so the ±15/skip controls sit
+       under the thumb; constant height across all states so the card never shifts
+       (see features/train/rest-timer.js) ---- */
+    .rest-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;
+      background:var(--ink);border-top:1px solid var(--border);
+      padding-bottom:env(safe-area-inset-bottom)}
+    body.mode-train.rest-active .rest-bar{display:block}
+    .rest-bar-row{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px}
+    .rest-lbl{
+      font-family:var(--body);font-size:9.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:.08em;color:var(--faint);
+    }
+    .rest-clock{
+      font-family:var(--display);font-weight:700;font-size:26px;min-width:66px;
+      font-variant-numeric:tabular-nums;color:var(--text);
+    }
+    .rest-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+    .rest-actions button{
+      height:32px;min-width:42px;padding:0 10px;border-radius:10px;
+      background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+      font-family:var(--body);font-weight:600;font-size:13px;cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .rest-prog{height:2px;background:var(--surface-3)}
+    .rest-prog i{display:block;height:100%;width:0%;background:var(--accent)}
+    .rest-bar.is-warn .rest-clock{color:var(--accent)}
+    .rest-bar.is-done{background:var(--accent-soft)}
+    .rest-bar.is-done .rest-clock{color:var(--accent)}
+
     /* ---- carousel viewport ----
        top = safe-area + 8 + 34 + 8 + 1px border + 14px strip = safe-area + 65 */
     body.mode-train #viewTreino > main.wrap{padding:0}
@@ -1410,6 +1442,7 @@
       top:calc(env(safe-area-inset-top) + 65px);
       bottom:env(safe-area-inset-bottom);
     }
+    body.mode-train.rest-active #panel{bottom:calc(env(safe-area-inset-bottom) + 54px)}
     .train-track{
       display:flex;height:100%;
       overflow-x:auto;overflow-y:hidden;

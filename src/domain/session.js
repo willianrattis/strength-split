@@ -1,4 +1,18 @@
-import { lastMachineFor } from "./machines.js";
+import { lastMachineFor, lastUnitFor } from "./machines.js";
+import { convertWeight, roundForDisplay } from "./units.js";
+
+// Re-expresses a set array's weights in another unit. Returns a NEW array — callers
+// assign it back — so the pure-domain no-mutation style holds. Every non-weight field
+// (done, reps, repsDone, doneAt, fromSug) is carried through untouched; see known trap
+// #1 — a field dropped here is dropped from the session.
+export function convertSetWeights(sets, from, to){
+  if(!Array.isArray(sets) || !from || !to || from === to) return sets;
+  return sets.map(s => {
+    if(!s || typeof s.weight !== "number") return s;
+    const c = convertWeight(s.weight, from, to);
+    return c == null ? s : { ...s, weight: roundForDisplay(c, to) };
+  });
+}
 
 export function emptySession(dayKey, { day, date, sessions = null, machinesActive = false }){
   if(!day.ex.length) return { date, dayKey, dayName: day.name, exercises: [] };
@@ -9,16 +23,20 @@ export function emptySession(dayKey, { day, date, sessions = null, machinesActiv
     exercises: day.ex.map(e => {
       const effectiveName = e.name;
       const supName = e.superset ? e.superset.name : null;
+      const machine = machinesActive ? lastMachineFor(sessions, effectiveName) : null;
+      const supMachine = machinesActive && supName ? lastMachineFor(sessions, supName, true) : null;
       return {
         exId: e._id ?? null,
         name: e.name,
         subName: null,
         subMuscle: null,
-        machine: machinesActive ? lastMachineFor(sessions, effectiveName) : null,
+        machine,
+        unit: (machinesActive && lastUnitFor(sessions, effectiveName, machine)) || e.unit || "kg",
         supName,
         supSubName: null,
         supSubMuscle: null,
-        supMachine: machinesActive && supName ? lastMachineFor(sessions, supName, true) : null,
+        supMachine,
+        supUnit: e.superset ? ((machinesActive && lastUnitFor(sessions, supName, supMachine, true)) || e.superset.unit || "kg") : null,
         firstSetAt: null,
         main: e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false})),
         sup: e.superset ? e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false})) : null
@@ -31,6 +49,7 @@ export function reconcileSession(prev, dayKey, opts){
   const { day } = opts;
   const fresh = emptySession(dayKey, opts);
   if(!day.ex.length) return fresh;
+  const seeded = fresh.exercises;
   if(!prev || !Array.isArray(prev.exercises)) return fresh;
 
   const olds = prev.exercises;
@@ -80,11 +99,13 @@ export function reconcileSession(prev, dayKey, opts){
       name: e.name,
       subName: old && old.subName ? old.subName : null,
       subMuscle: old && old.subMuscle ? old.subMuscle : null,
-      machine: old && old.machine != null ? old.machine : null,
+      machine: (old && old.machine != null) ? old.machine : (seeded[i] ? seeded[i].machine : null),
+      unit: (old && old.unit) ? old.unit : (e.unit || "kg"),
       supName: e.superset ? e.superset.name : null,
       supSubName: e.superset && old && old.supSubName ? old.supSubName : null,
       supSubMuscle: e.superset && old && old.supSubMuscle ? old.supSubMuscle : null,
-      supMachine: old && old.supMachine != null ? old.supMachine : null,
+      supMachine: (old && old.supMachine != null) ? old.supMachine : (seeded[i] ? seeded[i].supMachine : null),
+      supUnit: e.superset ? ((old && old.supUnit) ? old.supUnit : (e.superset.unit || "kg")) : null,
       firstSetAt: old && old.firstSetAt ? old.firstSetAt : null,
       main: merge(e.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false}))),
       sup: e.superset ? mergeSup(e.superset.reps.map(r => ({done:false, reps:r, weight:null, repsDone:null, doneAt:null, fromSug:false}))) : null

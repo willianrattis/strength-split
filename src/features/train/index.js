@@ -5,6 +5,7 @@ import { applyPrevLayoutState } from "../settings.js";
 import { exDone, renderDay } from "../day/render.js";
 import { ensureSessionsLoaded } from "../day/session-io.js";
 import { refreshTrainEndCard } from "./summary.js";
+import { armFinishedHide } from "./rest-timer.js";
 
 export function trainExCount(){ return activeDays()[state.current].ex.length; }
 
@@ -27,12 +28,17 @@ export function enterTrainMode(){
   // before reading, as the authoritative check.
   ensureSessionsLoaded("ALL");
   renderDay();
+  armFinishedHide();
   if(state.trainIdx >= trainExCount()) refreshTrainEndCard();
 }
 
 export function exitTrainMode(){
   const back = state.trainIdx;
   state.trainMode = false;
+  // The countdown deliberately survives leaving train mode — the user's rest is still
+  // running in the real world. The bar hides itself via CSS (`body.mode-train.rest-active`),
+  // so nothing leaks onto the normal day view, and re-entering shows the correct remaining
+  // time because the countdown is deadline-based, not tick-accumulated.
   document.body.classList.remove("mode-train");
   applyPrevLayoutState();
   renderDay();

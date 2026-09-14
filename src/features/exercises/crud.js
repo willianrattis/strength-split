@@ -32,6 +32,7 @@ export function rebuildUserDays(){
         grip: ex.grip || null,
         note: ex.note || null,
         unit: ex.unit || "kg",
+        restSec: (typeof ex.restSec === "number" && isFinite(ex.restSec)) ? ex.restSec : null,
         superset: sup,
       });
     });

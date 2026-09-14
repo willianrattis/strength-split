@@ -159,6 +159,47 @@ describe("suggestLoads", () => {
     expect(r.loads[0]).not.toBe(60);
   });
 
+  it("targetUnit omitted keeps projecting from the raw stored number, regardless of the entry's unit", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "lb", main: [{ weight: 60, reps: 10, repsDone: 12, done: true }] })
+    ] })];
+    const r = suggestLoads(sessions, "Supino", "kg", undefined, { cfg: mod });
+    const expected = projectLoad(60, 12, 10, "outro", "kg", 2.5, 0, mod);
+    expect(r.loads).toEqual([expected]);
+  });
+
+  it("converts an lb baseline into kg before projecting, when targetUnit is kg", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "lb", main: [{ weight: 95, reps: 10, repsDone: 12, done: true }] })
+    ] })];
+    const r = suggestLoads(sessions, "Supino", "kg", undefined, { cfg: mod, targetUnit: "kg" });
+    const converted = 43; // roundForDisplay(95 * LB_TO_KG, "kg")
+    const expected = projectLoad(converted, 12, 10, "outro", "kg", 2.5, 0, mod);
+    expect(r.loads).toEqual([expected]);
+    expect(r.loads[0]).not.toBe(projectLoad(95, 12, 10, "outro", "kg", 2.5, 0, mod));
+  });
+
+  it("adv gate freezes the CONVERTED baseline, not the raw lb number", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Supino", unit: "lb", main: [{ weight: 95, reps: 10, repsDone: 6, done: true }] })
+    ] })];
+    const r = suggestLoads(sessions, "Supino", "kg", undefined, {
+      cfg: mod, profileActive: true, profile: { experience: "adv", injuries: {} }, targetUnit: "kg"
+    });
+    expect(r.dir).toBe("→");
+    expect(r.loads).toEqual([43]); // frozen at the converted kg baseline, not raw 95
+  });
+
+  it("injury gate holds the CONVERTED baseline verbatim, not the raw lb number", () => {
+    const sessions = [makeSession({ date: "2026-01-01", exercises: [
+      makeEntry({ name: "Desenvolvimento", unit: "lb", main: [{ weight: 95, reps: 10, repsDone: 12, done: true }] })
+    ] })];
+    const r = suggestLoads(sessions, "Desenvolvimento", "kg", undefined, {
+      cfg: mod, muscle: "ombro", profileActive: true, profile: { injuries: { ombro: true } }, targetUnit: "kg"
+    });
+    expect(r).toEqual({ loads: [43], dir: "→", date: "2026-01-01", limited: true });
+  });
+
   it("preserves index alignment, mapping non-numeric weights to null", () => {
     const sessions = [makeSession({ date: "2026-01-01", exercises: [
       makeEntry({ name: "Supino", main: [

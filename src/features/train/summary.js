@@ -1,13 +1,11 @@
 import { esc } from "../../domain/text.js";
-import { UNIT_ABBR } from "../../domain/units.js";
+import { UNIT_ABBR, LB_TO_KG } from "../../domain/units.js";
 import { GAP_MIN_MS, GAP_MAX_MS } from "../../core/config.js";
 import { state } from "../../core/state.js";
 import { activeDays, machineFilterActive, bestWeightEver } from "../../core/adapters.js";
 import { countDone } from "../day/render.js";
 import { ensureSessionsLoaded } from "../day/session-io.js";
 import { trainExCount, exitTrainMode } from "./index.js";
-
-const LB_TO_KG = 0.45359237;
 
 function fmtDur(ms, withSecs){
   const t = Math.max(0, Math.round(ms / 1000));
