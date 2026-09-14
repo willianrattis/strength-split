@@ -114,6 +114,18 @@ function finish(){
   playAlertSound();
   vibrate();
   renderDone();
+  // Only run the 3s auto-hide while the bar is actually on screen. A rest that ends
+  // outside train mode must leave "Pode ir" waiting, so the user sees 0:00 on return.
+  if(document.body.classList.contains("mode-train")){
+    state._restHideT = setTimeout(hide, FINISH_HIDE_MS);
+  }
+}
+
+// Entering train mode arms the auto-hide for a rest that finished while the bar was
+// off screen. No-op unless the bar is in its finished state with no hide pending.
+export function armFinishedHide(){
+  if(!$restBar.classList.contains("is-done")) return;
+  if(state._restHideT) return;
   state._restHideT = setTimeout(hide, FINISH_HIDE_MS);
 }
 

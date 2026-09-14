@@ -37,6 +37,16 @@ export function exDone(ex){
 }
 export function countDone(){ return state.session.exercises.filter(exDone).length; }
 
+// The FAB's "in progress" signal. countDone() counts fully finished exercises, which is
+// right for the progress counter and the summary card but wrong here: a workout is under
+// way from the first marked set, long before any exercise is complete.
+export function anySetDone(){
+  if(!state.session) return false;
+  return state.session.exercises.some(ex =>
+    (ex.main || []).some(s => s && s.done) ||
+    (ex.sup  || []).some(s => s && s.done));
+}
+
 function setPct(){
   let done = 0, total = 0;
   for(const ex of state.session.exercises){
@@ -289,7 +299,7 @@ export function updateTrainFab(){
   let mode = "ready";
   if(total === 0) mode = "rest";
   else if(done >= total) mode = "done";
-  else if(done > 0) mode = "running";
+  else if(anySetDone()) mode = "running";
   const CFG = {
     ready:   { cls:"",           lbl:"Iniciar",  aria:"Iniciar treino",  icon:'<path d="M8 5.5v13l11-6.5z"/>' },
     running: { cls:"is-running", lbl:"Continuar",aria:"Continuar treino",icon:'<rect x="7.5" y="5.5" width="3.4" height="13" rx="1"/><rect x="13.1" y="5.5" width="3.4" height="13" rx="1"/>' },
