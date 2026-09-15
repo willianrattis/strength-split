@@ -2,6 +2,7 @@ import { matchVariant } from "./machines.js";
 import { orderFactor } from "./autoreg.js";
 import { STALL_SESSIONS } from "./tuning.js";
 import { convertWeight, roundForDisplay } from "./units.js";
+import { effectiveStartAt } from "./session.js";
 
 // Which side of the entry matches `name` for this machine variant: "main", "sup", or
 // null. Single source of the matching rules — pickSets is defined in terms of it.
@@ -45,7 +46,7 @@ export function execShiftMap(sess){
   const map = new Map();
   if(!sess || !sess.exercises) return map;
   const executed = [];
-  sess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
+  sess.exercises.forEach((e, i) => { const ts = effectiveStartAt(e); if(ts != null) executed.push({i, ts}); });
   if(!executed.length) return map;
   const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
   const execIndices = executed.map(e => e.i).sort((a, b) => a - b);
@@ -109,7 +110,7 @@ export function prevLoadData(sessions, name, machine, opts){
     const shift = sm.get(bestEntryIdx);
     if(shift != null && shift !== 0){
       const executed = [];
-      bestSess.exercises.forEach((e, i) => { if(e.firstSetAt) executed.push({i, ts: e.firstSetAt}); });
+      bestSess.exercises.forEach((e, i) => { const ts = effectiveStartAt(e); if(ts != null) executed.push({i, ts}); });
       const byTime = [...executed].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
       const r = byTime.findIndex(x => x.i === bestEntryIdx);
       if(r >= 0) execRank = r + 1;

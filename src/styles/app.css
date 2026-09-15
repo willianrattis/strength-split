@@ -186,7 +186,8 @@
   .state-card .ts-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .state-card .ts-tile{
     background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
-    padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;gap:3px;
   }
   .state-card .ts-wide{grid-column:1 / -1}
   .state-card .ts-val{
@@ -1611,7 +1612,8 @@
     .ts-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .ts-tile{
       background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
-      padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:12px 10px 11px;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;text-align:center;gap:3px;
     }
     .ts-wide{grid-column:1 / -1}
     .ts-val{

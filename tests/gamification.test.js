@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { computeGamification, gamifTitle, gamifXpForLevel, BADGE_IDS } from "../src/domain/gamification.js";
 import { makeEntry, makeSession } from "./fixtures.js";
 
-const set = (over = {}) => ({ done: false, reps: 10, weight: null, repsDone: null, ...over });
+const set = (over = {}) => ({ done: false, reps: 10, weight: null, repsDone: null, doneAt: null, ...over });
 
 describe("computeGamification — empty input", () => {
   it("no sessions -> level 1, Novato, 0 XP, all badges unearned in BADGE_IDS order", () => {
@@ -135,9 +135,12 @@ describe("computeGamification — badges", () => {
     expect(badge.earned).toBe(true);
   });
 
+  // effectiveStartAt (domain/session.js) trusts firstSetAt only when a completed set backs
+  // it up with a matching doneAt — a bare firstSetAt with no completed set doesn't count as
+  // executed at all, so these fixtures need a done set stamped at the same time.
   it("firstSetAt before 06:00 local earns madrugador", () => {
     const sessions = [makeSession({ date: "2026-01-01", exercises: [
-      makeEntry({ name: "Supino", firstSetAt: "2026-01-01T05:00:00", main: [set({ done: true })] })
+      makeEntry({ name: "Supino", firstSetAt: "2026-01-01T05:00:00", main: [set({ done: true, doneAt: "2026-01-01T05:00:00" })] })
     ] })];
     const g = computeGamification(sessions, "2026-01-01", new Date(2026, 0, 1));
     const badge = g.badges.find(b => b.id === "madrugador");
@@ -146,7 +149,7 @@ describe("computeGamification — badges", () => {
 
   it("day keys are local: a late-evening firstSetAt does not earn madrugador", () => {
     const sessions = [makeSession({ date: "2026-01-01", exercises: [
-      makeEntry({ name: "Supino", firstSetAt: "2026-01-01T23:30:00", main: [set({ done: true })] })
+      makeEntry({ name: "Supino", firstSetAt: "2026-01-01T23:30:00", main: [set({ done: true, doneAt: "2026-01-01T23:30:00" })] })
     ] })];
     const g = computeGamification(sessions, "2026-01-01", new Date(2026, 0, 1));
     const badge = g.badges.find(b => b.id === "madrugador");
