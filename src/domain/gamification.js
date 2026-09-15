@@ -1,3 +1,5 @@
+import { effectiveStartAt } from "./session.js";
+
 export const GAMIF_TITLES = [
   [1,"Novato"],[6,"Iniciante"],[11,"Praticante"],[16,"Dedicado"],
   [21,"Consistente"],[26,"Avançado"],[31,"Veterano"],[36,"Mestre"],
@@ -24,10 +26,12 @@ export function computeGamification(sessions, startDate, today = new Date()){
     if(!dateMap[s.date]) dateMap[s.date] = { done:0, total:0, volume:0, earliestHour:24 };
     const entry = dateMap[s.date];
     for(const ex of s.exercises){
-      // firstSetAt → earliestHour
-      if(ex.firstSetAt){
-        const d = new Date(ex.firstSetAt);
-        if(!isNaN(d.getTime())){ const h = d.getHours(); if(h < entry.earliestHour) entry.earliestHour = h; }
+      // effectiveStartAt → earliestHour: null when the exercise was never executed
+      // (a stray keystroke with no completed set doesn't count).
+      const startAt = effectiveStartAt(ex);
+      if(startAt != null){
+        const h = new Date(startAt).getHours();
+        if(h < entry.earliestHour) entry.earliestHour = h;
       }
       const countSets = (sets) => {
         if(!sets) return;

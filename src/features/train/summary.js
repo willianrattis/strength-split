@@ -69,16 +69,6 @@ export function trainSummary(){
   if(!evts.length) return null;
   evts.sort((a, b) => a.t - b.t);
 
-  // Start = earliest firstSetAt (stamped on the first keystroke, before any set completes).
-  let startT = null;
-  state.session.exercises.forEach(ex => {
-    if(!ex.firstSetAt) return;
-    const t = Date.parse(ex.firstSetAt);
-    if(!isNaN(t) && (startT == null || t < startT)) startT = t;
-  });
-  if(startT == null || startT > evts[0].t) startT = evts[0].t;
-  const totalMs = Math.max(0, evts[evts.length - 1].t - startT);
-
   // Consecutive completions. Superset-internal transitions carry no rest by design.
   const gaps = [];
   for(let k = 1; k < evts.length; k++){
@@ -95,8 +85,13 @@ export function trainSummary(){
     gapMs = gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid-1] + gaps[mid]) / 2);
   }
 
-  const mins = totalMs / 60000;
-  const density = (volKg > 0 && mins >= 1) ? volKg / mins : null;
+  // Time under training, not wall-clock: the sum of the same gaps the interval tile uses.
+  // last − firstSetAt breaks the moment the user opens the day and types something hours
+  // before actually training — firstSetAt is stamped on the first keystroke and never cleared.
+  const totalMs = gaps.length ? gaps.reduce((a, b) => a + b, 0) : null;
+
+  const mins = totalMs != null ? totalMs / 60000 : 0;
+  const density = (totalMs != null && mins >= 1 && volKg > 0) ? volKg / mins : null;
 
   return { totalMs, gapMs, gapN: gaps.length, volKg, volSkipped, density, doneSets, prs, prsReady };
 }
@@ -107,13 +102,13 @@ export function summaryStatsHTML(sum){
   let h = "";
   h += `<div class="ts-grid">`;
   h += `<div class="ts-tile">
-    <span class="ts-val">${fmtDur(sum.totalMs, false)}</span>
+    <span class="ts-val">${sum.totalMs != null ? fmtDur(sum.totalMs, false) : "—"}</span>
     <span class="ts-lbl">Tempo total</span>
   </div>`;
   h += `<div class="ts-tile">
     <span class="ts-val">${sum.gapMs != null ? fmtDur(sum.gapMs, true) : "—"}</span>
-    <span class="ts-lbl">Intervalo entre séries</span>
-    <span class="ts-sub">${sum.gapMs != null ? "mediana de " + sum.gapN : "poucos dados"}</span>
+    <span class="ts-lbl">Entre séries</span>
+    <span class="ts-sub">${sum.gapMs != null ? sum.gapN + (sum.gapN === 1 ? " intervalo" : " intervalos") : "poucos dados"}</span>
   </div>`;
   if(sum.density != null){
     const skipped = sum.volSkipped

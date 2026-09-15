@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { pickSets, matchSide, execShiftMap, prevLoadData, exerciseTopHistory, isStalled, bestWeightEver, buildSessionsByName } from "../src/domain/history.js";
 import { suggestLoads } from "../src/domain/suggestion.js";
 import { autoregCfg, orderFactor } from "../src/domain/autoreg.js";
-import { makeEntry, makeSession } from "./fixtures.js";
+import { makeEntry, makeSession, makeSet } from "./fixtures.js";
 
 describe("pickSets", () => {
   it("matches the main branch before the superset branch", () => {
@@ -67,11 +67,14 @@ describe("execShiftMap", () => {
     expect(execShiftMap(sess).size).toBe(0);
   });
 
+  // effectiveStartAt (domain/session.js) trusts firstSetAt only when a completed set backs
+  // it up — these fixtures need a done set with a matching doneAt, or the exercise doesn't
+  // count as executed at all and contributes nothing to the map.
   it("yields shift 0 for every entry executed in plan order", () => {
     const sess = makeSession({ exercises: [
-      makeEntry({ firstSetAt: "2026-01-03T09:00:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:05:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:10:00" })
+      makeEntry({ firstSetAt: "2026-01-03T09:00:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:00:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:05:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:05:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:10:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:10:00" })] })
     ] });
     const map = execShiftMap(sess);
     expect(map.get(0)).toBe(0);
@@ -81,8 +84,8 @@ describe("execShiftMap", () => {
 
   it("swapping two exercises' execution timestamps yields +1/-1", () => {
     const sess = makeSession({ exercises: [
-      makeEntry({ firstSetAt: "2026-01-03T09:05:00" }), // index 0, executed second
-      makeEntry({ firstSetAt: "2026-01-03T09:00:00" })  // index 1, executed first
+      makeEntry({ firstSetAt: "2026-01-03T09:05:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:05:00" })] }), // index 0, executed second
+      makeEntry({ firstSetAt: "2026-01-03T09:00:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:00:00" })] })  // index 1, executed first
     ] });
     const map = execShiftMap(sess);
     expect(map.get(0)).toBe(1);
@@ -91,11 +94,11 @@ describe("execShiftMap", () => {
 
   it("clamps the shift to ±3", () => {
     const sess = makeSession({ exercises: [
-      makeEntry({ firstSetAt: "2026-01-03T09:01:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:02:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:03:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:04:00" }),
-      makeEntry({ firstSetAt: "2026-01-03T09:00:00" }) // index 4, executed first of all
+      makeEntry({ firstSetAt: "2026-01-03T09:01:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:01:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:02:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:02:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:03:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:03:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:04:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:04:00" })] }),
+      makeEntry({ firstSetAt: "2026-01-03T09:00:00", main: [makeSet({ done: true, doneAt: "2026-01-03T09:00:00" })] }) // index 4, executed first of all
     ] });
     const map = execShiftMap(sess);
     expect(map.get(4)).toBe(-3);
@@ -156,8 +159,8 @@ describe("prevLoadData", () => {
 
   it("execRank is a 1-based rank when the entry ran out of order", () => {
     const sessions = [makeSession({ date: "2026-01-03", exercises: [
-      makeEntry({ name: "Agachamento", firstSetAt: "2026-01-03T09:05:00", main: [{ weight: 100, reps: 10, repsDone: 10 }] }),
-      makeEntry({ name: "Supino", firstSetAt: "2026-01-03T09:00:00", main: [{ weight: 60, reps: 10, repsDone: 10 }] })
+      makeEntry({ name: "Agachamento", firstSetAt: "2026-01-03T09:05:00", main: [{ weight: 100, reps: 10, repsDone: 10, done: true, doneAt: "2026-01-03T09:05:00" }] }),
+      makeEntry({ name: "Supino", firstSetAt: "2026-01-03T09:00:00", main: [{ weight: 60, reps: 10, repsDone: 10, done: true, doneAt: "2026-01-03T09:00:00" }] })
     ] })];
     const r = prevLoadData(sessions, "Supino", undefined, { execOrder: true });
     expect(r.execRank).toBe(1);
@@ -233,8 +236,8 @@ describe("exerciseTopHistory", () => {
   it("scales a shifted entry's top by orderFactor when execOrder:true", () => {
     const cfg = autoregCfg("mod");
     const sessions = [makeSession({ date: "2026-01-03", exercises: [
-      makeEntry({ name: "Agachamento", firstSetAt: "2026-01-03T09:05:00", main: [{ weight: 100 }] }),
-      makeEntry({ name: "Supino", firstSetAt: "2026-01-03T09:00:00", main: [{ weight: 60 }] })
+      makeEntry({ name: "Agachamento", firstSetAt: "2026-01-03T09:05:00", main: [{ weight: 100, done: true, doneAt: "2026-01-03T09:05:00" }] }),
+      makeEntry({ name: "Supino", firstSetAt: "2026-01-03T09:00:00", main: [{ weight: 60, done: true, doneAt: "2026-01-03T09:00:00" }] })
     ] })];
     const hist = exerciseTopHistory(sessions, "Supino", { execOrder: true, cfg });
     // index 1 (Supino) executed before index 0 -> shift -1

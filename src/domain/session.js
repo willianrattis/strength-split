@@ -1,5 +1,6 @@
 import { lastMachineFor, lastUnitFor } from "./machines.js";
 import { convertWeight, roundForDisplay } from "./units.js";
+import { GAP_MAX_MS } from "./day-plan.js";
 
 // Re-expresses a set array's weights in another unit. Returns a NEW array — callers
 // assign it back — so the pure-domain no-mutation style holds. Every non-weight field
@@ -112,4 +113,26 @@ export function reconcileSession(prev, dayKey, opts){
     };
   });
   return fresh;
+}
+
+// `firstSetAt` is stamped on the first keystroke and never cleared, so it can sit hours
+// before the effort that actually produced the first completed set. Trust it only when it
+// is within one abandonment window of that set; otherwise the set's own timestamp is the
+// honest start. Null when the exercise has no completed set at all — typing into a field
+// is not training.
+export function effectiveStartAt(ex){
+  if(!ex) return null;
+  let firstDone = null;
+  for(const arr of [ex.main, ex.sup]){
+    if(!Array.isArray(arr)) continue;
+    for(const s of arr){
+      if(!s || !s.done || !s.doneAt) continue;
+      const t = Date.parse(s.doneAt);
+      if(!isNaN(t) && (firstDone == null || t < firstDone)) firstDone = t;
+    }
+  }
+  if(firstDone == null) return null;
+  const stamped = ex.firstSetAt ? Date.parse(ex.firstSetAt) : NaN;
+  if(!isNaN(stamped) && stamped <= firstDone && firstDone - stamped <= GAP_MAX_MS) return stamped;
+  return firstDone;
 }

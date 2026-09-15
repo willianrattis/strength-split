@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { emptySession, reconcileSession, convertSetWeights } from "../src/domain/session.js";
+import { emptySession, reconcileSession, convertSetWeights, effectiveStartAt } from "../src/domain/session.js";
 import { makeDay, makeExercise, makeEntry, makeSession, makeSet } from "./fixtures.js";
 
 const baseOpts = (overrides = {}) => ({
@@ -376,5 +376,50 @@ describe("convertSetWeights", () => {
   it("returns a null or non-array sets input without throwing", () => {
     expect(convertSetWeights(null, "lb", "kg")).toBeNull();
     expect(convertSetWeights(undefined, "lb", "kg")).toBeUndefined();
+  });
+});
+
+describe("effectiveStartAt", () => {
+  it("trusts firstSetAt when it sits within one abandonment window of the first completed set", () => {
+    const ex = makeEntry({
+      firstSetAt: "2026-01-05T09:58:00",
+      main: [makeSet({ done: true, doneAt: "2026-01-05T10:00:00" })]
+    });
+    expect(effectiveStartAt(ex)).toBe(Date.parse("2026-01-05T09:58:00"));
+  });
+
+  it("falls back to the set's own timestamp when firstSetAt is hours before it (stale stamp)", () => {
+    const ex = makeEntry({
+      firstSetAt: "2026-01-05T01:20:00",
+      main: [makeSet({ done: true, doneAt: "2026-01-05T15:35:00" })]
+    });
+    expect(effectiveStartAt(ex)).toBe(Date.parse("2026-01-05T15:35:00"));
+  });
+
+  it("falls back to the set's own timestamp when firstSetAt is after it", () => {
+    const ex = makeEntry({
+      firstSetAt: "2026-01-05T10:05:00",
+      main: [makeSet({ done: true, doneAt: "2026-01-05T10:00:00" })]
+    });
+    expect(effectiveStartAt(ex)).toBe(Date.parse("2026-01-05T10:00:00"));
+  });
+
+  it("returns null when there is no completed set at all — typing into a field is not training", () => {
+    expect(effectiveStartAt(makeEntry({ firstSetAt: "2026-01-05T09:00:00", main: [makeSet({ done: false })] }))).toBeNull();
+    expect(effectiveStartAt(makeEntry({ firstSetAt: "2026-01-05T09:00:00" }))).toBeNull();
+  });
+
+  it("finds the first completed set across a superset-only completion", () => {
+    const ex = makeEntry({
+      firstSetAt: "2026-01-05T09:59:00",
+      main: [makeSet({ done: false })],
+      sup: [makeSet({ done: true, doneAt: "2026-01-05T10:00:00" })]
+    });
+    expect(effectiveStartAt(ex)).toBe(Date.parse("2026-01-05T09:59:00"));
+  });
+
+  it("returns null for a null or undefined exercise without throwing", () => {
+    expect(effectiveStartAt(null)).toBeNull();
+    expect(effectiveStartAt(undefined)).toBeNull();
   });
 });
