@@ -2,10 +2,9 @@ import { esc } from "../../domain/text.js";
 import { MUSCLE_LABEL, GRIP_LABEL } from "../../data/labels.js";
 import { state } from "../../core/state.js";
 import { $planModal, $planModalInner } from "../../core/dom.js";
-import { savePref } from "../prefs.js";
 import { openExEditor } from "../exercises/editor.js";
 import { renderGeneralNotes } from "../day/render.js";
-import { savePlanDoc, deletePlanDoc, renderPlansSection } from "./index.js";
+import { savePlanDoc, renderPlansSection, deletePlanWithUndo } from "./index.js";
 
 export function openPlanEditor(planDocId){
   const isNew = !planDocId;
@@ -212,15 +211,9 @@ export function openPlanEditor(planDocId){
     if(!isNew){
       const delBtn = document.getElementById("pfDelete");
       if(delBtn){
-        delBtn.addEventListener("click", async () => {
-          if(!confirm(`Excluir plano "${plan.name}"?`)) return;
-          try{
-            await deletePlanDoc(planDocId);
-            state.plansCache.delete(planDocId);
-            if(state.currentPlanId === planDocId){ state.currentPlanId = null; state.currentPlanName = null; savePref(); }
-            closePlanEditor();
-            renderPlansSection();
-          }catch(e){ alert("Erro: " + e.message); }
+        delBtn.addEventListener("click", () => {
+          closePlanEditor();
+          deletePlanWithUndo(planDocId);
         });
       }
     }

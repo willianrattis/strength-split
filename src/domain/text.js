@@ -12,3 +12,5 @@ export const esc = v => String(v ?? "")
 
 export const normMachine = s => s ? stripDiacritics(String(s).trim().toLowerCase()) : null;
 export const sameMachine = (a,b) => normMachine(a) === normMachine(b);
+
+export function plural(n, one, many){ return `${n} ${n === 1 ? one : many}`; }

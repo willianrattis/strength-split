@@ -20,12 +20,13 @@ function serializeTimestamps(value){
 // a query limit), so a cache-built export could silently ship an incomplete backup.
 async function buildExportPayload(){
   const uid = state.user.uid;
-  const [exercisesRaw, plansRaw, sessionsRaw, appPrefs, profilePrefs] = await Promise.all([
+  const [exercisesRaw, plansRaw, sessionsRaw, appPrefs, profilePrefs, program] = await Promise.all([
     repo.fetchExercises(uid),
     repo.fetchPlans(uid),
     repo.fetchAllSessionsRaw(uid),
     repo.getPrefs(uid),
     repo.getProfileDoc(uid),
+    repo.fetchProgram(uid),
   ]);
 
   const toRecord = ({id, data}) => ({ id, ...serializeTimestamps(data) });
@@ -44,6 +45,7 @@ async function buildExportPayload(){
       profile: profilePrefs ? serializeTimestamps(profilePrefs) : null,
     },
     exercises, plans, sessions,
+    program: program ? serializeTimestamps(program) : null,
   };
 }
 

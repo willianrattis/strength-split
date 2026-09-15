@@ -11,6 +11,7 @@ import { loadDay } from "./day/session-io.js";
 import { rebuildUserDays, loadExercises } from "./exercises/crud.js";
 import { loadDayCustomizations } from "./exercises/day-customization.js";
 import { loadPlans } from "./plans/index.js";
+import { loadProgram } from "./program/store.js";
 import { pendingSharedPlan, presentSharedPlan } from "./plans/plan-import.js";
 import { openOnboarding } from "./onboarding.js";
 
@@ -21,6 +22,7 @@ export async function initApp(u){
     loadDayCustomizations(),
     loadExercises(u.uid),
     loadPlans(),
+    loadProgram(u.uid),
   ]);
   rebuildUserDays();
   state.current = todayWeekdayIdx();

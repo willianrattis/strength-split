@@ -30,6 +30,7 @@ export function serializePlan(plan){
       type: d.type,
       label: d.label,
       exercises: (d.exercises || []).map(serializeExercise),
+      ...(Array.isArray(d.weekdays) && d.weekdays.length ? { weekdays: d.weekdays.slice() } : {}),
     })),
   };
 }
@@ -94,7 +95,24 @@ function parseDay(d){
     exercises.push(ex);
   }
 
-  return { type, label, exercises };
+  const day = { type, label, exercises };
+  const weekdays = parseWeekdays(d.weekdays);
+  if(weekdays) day.weekdays = weekdays;
+  return day;
+}
+
+// weekdays is scheduling-only and low-stakes, same treatment as grip/notes above: a
+// malformed shape or value drops the field rather than rejecting the whole plan.
+function parseWeekdays(raw){
+  if(raw == null) return null;
+  if(!Array.isArray(raw) || !raw.length || raw.length > 7) return null;
+  const seen = new Set();
+  for(const wd of raw){
+    if(!Number.isInteger(wd) || wd < 0 || wd > 6) return null;
+    if(seen.has(wd)) return null;
+    seen.add(wd);
+  }
+  return raw.slice();
 }
 
 function parseExercise(e, allowSuperset){

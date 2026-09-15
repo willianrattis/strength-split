@@ -47,14 +47,17 @@ function makeInitialState(){
     _firstRunEnsureTried: false,
     exercisesCatalog: new Map(), // docId -> exercise doc
     userDays: null, // built by rebuildUserDays() from the user's exercise catalog
+    program: null,          // {version, workouts[]} — see domain/program.js
+    programLoaded: false,   // program read succeeded this session
+    catalogLoaded: false,   // exercises read succeeded this session
     dayCustomizations: {}, // {0: {tag, focus}, 1: ...} from Firestore
     weekOffset: 0, // 0 = current week, -1 = last week, etc.
     plansCache: new Map(), // planId -> plan doc (custom plans from Firestore)
     currentPlanName: null,
     currentPlanId: null,   // custom plan doc id
     currentPlanKey: null,  // predefined template key
-    exSubTab: "list",
-    exSearchQuery: "",
+    exSubTab: "home",
+    exWorkoutLetter: null, // letter of the workout shown by program/workout.js's detail view
     lastDeloadDate: null,
     prevLayout: "column", // 'column' | 'panel' — how previous load + suggestion are shown
     periodizationEnabled: true,
@@ -69,11 +72,6 @@ function makeInitialState(){
     // sex/bodyweight are stored but intentionally UNUSED by the algorithm in this version (reserved for future RM-based cold-start)
     profile: { birthDate:null, sex:null, bodyweight:null, experience:null, injuries:{} },
     deloadDismissed: false,
-
-    // exercise list filters
-    exFilterMuscle: null, // null = todos
-    exFilterDay: null, // null = todos
-    exShowInactive: false,
 
     evoChart: null,
     _modalScrollY: 0,

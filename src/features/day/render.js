@@ -908,7 +908,7 @@ export function renderStrip(){
     const isRest = d.ex.length === 0;
     return `
       <button class="day-btn ${isToday?'is-today':''} ${isRest?'rest':''}"
-              role="tab" aria-selected="${i===state.current}" data-i="${i}" title="${esc(isRest ? 'Descanso' : d.focus)}">
+              role="tab" aria-selected="${i===state.current}" data-i="${i}" title="${esc(isRest ? 'Descanso' : (d.tag || d.focus))}">
         <span class="abbr">${d.abbr}</span>
       </button>`;
   }).join("");

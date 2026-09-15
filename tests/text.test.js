@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { esc, stripDiacritics, normMachine, sameMachine } from "../src/domain/text.js";
+import { esc, stripDiacritics, normMachine, sameMachine, plural } from "../src/domain/text.js";
 
 describe("esc", () => {
   it("maps &, <, >, \", ' to entities", () => {
@@ -50,5 +50,16 @@ describe("sameMachine", () => {
 
   it("treats null/null as equal", () => {
     expect(sameMachine(null, null)).toBe(true);
+  });
+});
+
+describe("plural", () => {
+  it("uses the singular form for 1", () => {
+    expect(plural(1, "treino", "treinos")).toBe("1 treino");
+  });
+
+  it("uses the plural form for 0 and for >1", () => {
+    expect(plural(0, "treino", "treinos")).toBe("0 treinos");
+    expect(plural(2, "treino", "treinos")).toBe("2 treinos");
   });
 });

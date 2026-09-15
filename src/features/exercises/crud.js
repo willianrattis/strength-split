@@ -4,6 +4,7 @@ import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
 import { WEEKDAYS } from "../../data/days.js";
 import { buildExerciseList } from "../evolution.js";
+import { syncProgram } from "../program/store.js";
 
 // Build userDays from exercisesCatalog
 export function rebuildUserDays(){
@@ -42,6 +43,7 @@ export function rebuildUserDays(){
   state.userDays = base;
   state.EXERCISES = buildExerciseList();
   state.evoInitialized = false;
+  syncProgram();
 }
 // Exposed so features/day/exercise-actions.js's setUnit() can rebuild the plan after an
 // exercise-doc edit without importing this exercises-cluster code.
@@ -55,6 +57,7 @@ export async function loadExercises(uid){
   let docs;
   try { docs = await repo.fetchExercises(uid); }
   catch(e){ console.warn("loadExercises:", e.message); return; }
+  state.catalogLoaded = true;
   state.exercisesCatalog.clear();
   state.needsOnboarding = docs.length === 0;
   if(docs.length){

@@ -3,7 +3,7 @@ import { esc } from "../../domain/text.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
 import { WEEKDAYS } from "../../data/days.js";
-import { $dayCustomSection, $dayEditModal, $dayEditModalBody } from "../../core/dom.js";
+import { $dayEditModal, $dayEditModalBody } from "../../core/dom.js";
 import { renderDay, renderStrip } from "../day/render.js";
 import { rebuildUserDays } from "./crud.js";
 
@@ -32,35 +32,6 @@ export async function deleteDayCustomization(dayKey){
   if(!state.user) return;
   await repo.deleteDayCustomization(state.user.uid, dayKey);
   delete state.dayCustomizations[dayKey];
-}
-
-export function renderDayCustomSection(){
-  const base = WEEKDAYS;
-
-  let html = "";
-  base.forEach((d, i) => {
-    const custom = state.dayCustomizations[i] || {};
-    const tagVal = custom.tag ?? DAY_DEFAULTS[i].tag;
-    const focusVal = custom.focus ?? DAY_DEFAULTS[i].focus;
-    const isCustom = state.dayCustomizations[i] != null;
-    html += `<div class="day-row" data-dk="${i}">
-      <span class="day-row-abbr">${d.abbr}</span>
-      <div class="day-row-info">
-        <div class="day-row-tag">${tagVal}${isCustom ? ' <span class="ex-tag accent" style="font-size:9px;padding:2px 6px;vertical-align:middle">Personalizado</span>' : ''}</div>
-        <div class="day-row-focus">${focusVal}</div>
-      </div>
-      <span class="day-row-chevron">›</span>
-    </div>`;
-  });
-  $dayCustomSection.innerHTML = html;
-
-  // Tap row → open bottom-sheet editor
-  $dayCustomSection.querySelectorAll(".day-row").forEach(row => {
-    row.addEventListener("click", () => {
-      const dk = Number(row.dataset.dk);
-      openDayEditSheet(dk, base[dk].name);
-    });
-  });
 }
 
 export function openDayEditSheet(dk, dayName){
@@ -100,7 +71,6 @@ export function openDayEditSheet(dk, dayName){
       renderStrip();
       if(state.current === dk) renderDay();
       closeDaySheet();
-      renderDayCustomSection();
     } catch(e) { console.error(e); alert("Erro ao salvar"); }
   });
 
@@ -112,7 +82,6 @@ export function openDayEditSheet(dk, dayName){
         renderStrip();
         if(state.current === dk) renderDay();
         closeDaySheet();
-        renderDayCustomSection();
       } catch(e) { console.error(e); alert("Erro ao restaurar"); }
     });
   }
