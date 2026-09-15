@@ -1,5 +1,5 @@
 import { serverTimestamp } from "firebase/firestore";
-import { esc } from "../../domain/text.js";
+import { esc, plural } from "../../domain/text.js";
 import { planWeekPattern } from "../../domain/plan-schedule.js";
 import { PLAN_TEMPLATES } from "../../data/plan-templates.js";
 import { state } from "../../core/state.js";
@@ -37,8 +37,6 @@ export async function deletePlanDoc(docId){
   if(!state.user) return;
   await repo.deletePlan(state.user.uid, docId);
 }
-
-function pluralize(n, singular, plural){ return `${n} ${n === 1 ? singular : plural}`; }
 
 function closeProgramSheet(){ $programSheet.classList.remove("open"); }
 
@@ -144,7 +142,7 @@ export function renderPlansSection(){
       html += `<div class="pl-card" data-id="${id}">
         <button class="pl-card-main" data-id="${id}" type="button">
           <span class="pl-name">${esc(plan.name)}${isActive ? ' <span class="pg-tag is-today">Ativo</span>' : ''}</span>
-          <span class="pg-meta">${pluralize(n, "treino", "treinos")} · ${pluralize(d, "dia", "dias")} · ${esc([...pattern].join(" "))}</span>
+          <span class="pg-meta">${plural(n, "treino", "treinos")} · ${plural(d, "dia", "dias")} · ${esc([...pattern].join(" "))}</span>
         </button>
         <button class="pg-kebab" data-id="${id}" type="button" aria-label="Ações do plano">⋯</button>
       </div>`;
@@ -160,7 +158,7 @@ export function renderPlansSection(){
     html += `<button class="pl-card pl-tpl" data-key="${t.templateKey}" type="button">
       <span class="pl-card-main">
         <span class="pl-name">${esc(t.name)}${isActive ? ' <span class="pg-tag is-today">Ativo</span>' : ''}</span>
-        <span class="pg-meta">${pluralize(n, "treino", "treinos")} · ${pluralize(d, "dia", "dias")} · ${esc([...pattern].join(" "))}</span>
+        <span class="pg-meta">${plural(n, "treino", "treinos")} · ${plural(d, "dia", "dias")} · ${esc([...pattern].join(" "))}</span>
       </span>
       <span class="pg-chev" aria-hidden="true">›</span>
     </button>`;

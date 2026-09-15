@@ -75,3 +75,10 @@ export function findUserDocByName(userCatalog, name){
   }
   return fallback;
 }
+
+/** Default reps for a picked name: library type "comp" → [8,8,8,8], otherwise [12,12,12]. Fresh array. */
+export function defaultRepsFor(library, name){
+  const key = nameKey(name);
+  const entry = (library || []).find(it => it && nameKey(it.name) === key);
+  return entry && entry.type === "comp" ? [8, 8, 8, 8] : [12, 12, 12];
+}

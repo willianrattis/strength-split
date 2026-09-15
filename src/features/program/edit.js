@@ -1,6 +1,7 @@
 import { esc } from "../../domain/text.js";
-import { findUserDocByName } from "../../domain/exercise-picker.js";
+import { findUserDocByName, defaultRepsFor } from "../../domain/exercise-picker.js";
 import { newExerciseDoc } from "../../domain/program.js";
+import { EXERCISE_CATALOG } from "../../data/exercise-catalog.js";
 import { state } from "../../core/state.js";
 import { reconcileSession } from "../../core/adapters.js";
 import { saveExerciseDoc, rebuildUserDays } from "../exercises/crud.js";
@@ -23,7 +24,7 @@ export async function resolvePick(pick, template){
   if(id) return id;
   const data = pick.doc
     ? { ...newExerciseDoc({ name: pick.doc.name, muscle: pick.doc.muscle, reps: pick.doc.reps }), badges: pick.doc.badges || [], grip: pick.doc.grip ?? null, note: pick.doc.note ?? null, superset: pick.doc.superset ?? null }
-    : newExerciseDoc({ name: pick.name, muscle: pick.muscle, reps: template?.reps });
+    : newExerciseDoc({ name: pick.name, muscle: pick.muscle, reps: template?.reps || defaultRepsFor(EXERCISE_CATALOG, pick.name) });
   id = await saveExerciseDoc(null, data);
   state.exercisesCatalog.set(id, data);
   return id;

@@ -69,6 +69,12 @@ describe("suggestExercises", () => {
     expect(out.map(o => o.name)).not.toContain("Crucifixo reto com halter");
   });
 
+  it("exclude also blocks the same movement family, not just the exact name", () => {
+    const out = suggestExercises(LIB, ["peito"], { exclude: ["Supino reto com barra"] });
+    expect(out.map(o => o.name)).not.toContain("Supino reto com barra");
+    expect(out.map(o => o.name)).not.toContain("Supino reto com halter");
+  });
+
   it("offset yields a different first comp, and wraps past the list length", () => {
     const out0 = suggestExercises(LIB, ["peito"], { offset: 0 });
     const out1 = suggestExercises(LIB, ["peito"], { offset: 1 });

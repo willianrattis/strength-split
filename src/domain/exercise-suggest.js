@@ -34,7 +34,7 @@ export function suggestExercises(library, focus, opts = {}){
   const { exclude = [], offset = 0 } = opts;
   const excludeKeys = new Set(exclude.map(n => nameKey(n)));
   const chosenKeys = new Set();
-  const chosenFamilies = new Set();
+  const chosenFamilies = new Set(exclude.map(n => movementFamily(n)));
 
   function takeFrom(list, cursor, count){
     const picked = [];

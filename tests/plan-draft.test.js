@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   SPLITS, splitsForDays, defaultWeekdays, buildAgenda, cycleAgendaCell,
   agendaPattern, draftForSplit, validateDraft, suggestPlanName, draftToPlan,
+  uniquePlanName,
 } from "../src/domain/plan-draft.js";
 
 describe("splitsForDays", () => {
@@ -202,5 +203,23 @@ describe("draftToPlan", () => {
     plan.days[0].exercises[0].reps.push(99);
     expect(draft.workouts[0].exercises[0].name).toBe("Supino");
     expect(draft.workouts[0].exercises[0].reps).toEqual([8, 8, 8]);
+  });
+});
+
+describe("uniquePlanName", () => {
+  it("returns the base name unchanged when unused", () => {
+    expect(uniquePlanName("ABC", ["PPL", "Push Pull Legs"])).toBe("ABC");
+  });
+
+  it("appends (2) when the base name is taken", () => {
+    expect(uniquePlanName("ABC", ["ABC"])).toBe("ABC (2)");
+  });
+
+  it("appends (3) when the base name and (2) are both taken", () => {
+    expect(uniquePlanName("ABC", ["ABC", "ABC (2)"])).toBe("ABC (3)");
+  });
+
+  it("is case/accent-insensitive", () => {
+    expect(uniquePlanName("ABC · Push / Pull / Legs", ["abc · push / pull / legs"])).toBe("ABC · Push / Pull / Legs (2)");
   });
 });

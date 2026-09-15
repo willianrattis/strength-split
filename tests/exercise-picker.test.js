@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nameKey, pickerResults, findUserDocByName } from "../src/domain/exercise-picker.js";
+import { nameKey, pickerResults, findUserDocByName, defaultRepsFor } from "../src/domain/exercise-picker.js";
 
 describe("nameKey", () => {
   it("trims, lowercases, strips accents and collapses internal whitespace", () => {
@@ -133,5 +133,29 @@ describe("findUserDocByName", () => {
     expect(findUserDocByName(new Map(), "Anything")).toBeNull();
     const userCatalog = new Map([["a", { name: "Agachamento", muscle: "perna", active: true }]]);
     expect(findUserDocByName(userCatalog, "Supino")).toBeNull();
+  });
+});
+
+describe("defaultRepsFor", () => {
+  it("gives comps [8,8,8,8]", () => {
+    expect(defaultRepsFor(library, "Supino reto com barra")).toEqual([8, 8, 8, 8]);
+  });
+
+  it("gives isolations [12,12,12]", () => {
+    expect(defaultRepsFor(library, "Crucifixo reto com halter")).toEqual([12, 12, 12]);
+  });
+
+  it("matches case/accent-insensitively", () => {
+    expect(defaultRepsFor(library, "SUPINO reto COM barra")).toEqual([8, 8, 8, 8]);
+  });
+
+  it("falls back to [12,12,12] when the name isn't in the library", () => {
+    expect(defaultRepsFor(library, "Exercício desconhecido")).toEqual([12, 12, 12]);
+  });
+
+  it("returns a fresh array each call", () => {
+    const a = defaultRepsFor(library, "Supino reto com barra");
+    const b = defaultRepsFor(library, "Supino reto com barra");
+    expect(a).not.toBe(b);
   });
 });

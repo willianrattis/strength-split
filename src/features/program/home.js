@@ -1,4 +1,4 @@
-import { esc } from "../../domain/text.js";
+import { esc, plural } from "../../domain/text.js";
 import { todayWeekdayIdx } from "../../domain/dates.js";
 import { deriveProgram, weekPattern, planSetCount, nextLetter, addWorkout, appendToWeekdaysPatch } from "../../domain/program.js";
 import { historicPace, estimateMs } from "../../domain/day-plan.js";
@@ -19,8 +19,6 @@ import { saveDayCustomization } from "../exercises/day-customization.js";
 import { applyCatalogPatches, refreshAfterPlanEdit, showInfoToast, resolvePick } from "./edit.js";
 import { openExercisePicker } from "./picker.js";
 import { saveProgram } from "./store.js";
-
-function pluralize(n, singular, plural){ return `${n} ${n === 1 ? singular : plural}`; }
 
 async function goToDay(wd){
   state.current = wd;
@@ -58,7 +56,7 @@ export function renderProgramHome(){
       <div class="pg-plan-txt">
         <span class="pg-lbl">Plano ativo</span>
         <span class="pg-plan-name">${planName}</span>
-        <span class="pg-meta">${pluralize(workoutCount, "treino", "treinos")} · ${pluralize(activeDayCount, "dia", "dias")} por semana</span>
+        <span class="pg-meta">${plural(workoutCount, "treino", "treinos")} · ${plural(activeDayCount, "dia", "dias")} por semana</span>
       </div>
       <button class="pg-kebab" id="pgPlanMenu" type="button" aria-label="Ações do plano">⋯</button>
     </div>

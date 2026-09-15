@@ -1,11 +1,11 @@
-import { esc } from "../../domain/text.js";
+import { esc, plural } from "../../domain/text.js";
 import { weekPattern, planSetCount } from "../../domain/program.js";
-import { nameKey } from "../../domain/exercise-picker.js";
+import { defaultRepsFor } from "../../domain/exercise-picker.js";
 import { suggestExercises } from "../../domain/exercise-suggest.js";
 import { scheduleFromPlan, scheduleToMapping } from "../../domain/plan-schedule.js";
 import {
-  splitsForDays, buildAgenda, cycleAgendaCell, agendaPattern,
-  draftForSplit, validateDraft, suggestPlanName, draftToPlan,
+  SPLITS, splitsForDays, buildAgenda, cycleAgendaCell, agendaPattern,
+  draftForSplit, validateDraft, suggestPlanName, draftToPlan, uniquePlanName,
 } from "../../domain/plan-draft.js";
 import { DAY_NAMES_SHORT } from "../../data/days.js";
 import { MUSCLE_ORDER, MUSCLE_LABEL } from "../../data/labels.js";
@@ -73,7 +73,7 @@ function showDiscardDialog(){
   scrim.id = "wzScrim";
   scrim.innerHTML = `<div class="wz-dlg" role="alertdialog" aria-labelledby="wzDlgT">
     <h4 id="wzDlgT">Descartar rascunho?</h4>
-    <p>Você montou ${W} treino(s) com ${E} exercício(s). Se sair agora, isso se perde.</p>
+    <p>Você montou ${plural(W, "treino", "treinos")} com ${plural(E, "exercício", "exercícios")}. Se sair agora, isso se perde.</p>
     <button class="wz-back" id="wzKeep" type="button">Continuar editando</button>
     <button class="wz-discard" id="wzDiscard" type="button">Descartar</button>
   </div>`;
@@ -125,28 +125,31 @@ export function closePlanWizard(fromUi){
   window.removeEventListener("popstate", popstateHandler);
 }
 
-function splitPattern(n, split){
+function splitPattern(split){
   if(!split.types) return "?";
-  return agendaPattern(buildAgenda(n, split.types.length)).replace(/–/g, "");
+  const schedule = split.key === draft.splitKey ? draft.schedule : buildAgenda(draft.days, split.types.length);
+  return agendaPattern(schedule).replace(/–/g, "");
 }
 
-function splitMeta(n, split){
+function splitMeta(split){
   if(!split.types) return "você define treinos e foco";
-  const typeCount = split.types.length;
+  const isSelected = split.key === draft.splitKey;
+  const typeCount = isSelected ? draft.workouts.length : split.types.length;
+  const schedule = isSelected ? draft.schedule : buildAgenda(draft.days, typeCount);
   const counts = new Array(typeCount).fill(0);
-  buildAgenda(n, typeCount).forEach(idx => { if(idx !== null) counts[idx]++; });
+  schedule.forEach(idx => { if(idx !== null && idx < typeCount) counts[idx]++; });
   const T = typeCount;
   const allEqual = counts.every(c => c === counts[0]);
-  if(allEqual) return `${T} treino(s) · ${T === 1 ? "" : "cada um "}${counts[0]}× por semana`;
-  return `${T} treinos`;
+  if(allEqual) return `${plural(T, "treino", "treinos")} · ${T === 1 ? "" : "cada um "}${counts[0]}× por semana`;
+  return plural(T, "treino", "treinos");
 }
 
 function splitCardHtml(split){
   const isOn = draft.splitKey === split.key;
   let html = `<button class="wz-split ${isOn ? "on" : ""}" data-key="${esc(split.key)}" type="button">
     <span class="wz-radio"></span>
-    <span class="wz-split-b"><b>${esc(split.name)}</b><span class="pg-meta">${esc(splitMeta(draft.days, split))}</span></span>
-    <span class="wz-pattern">${esc(splitPattern(draft.days, split))}</span>
+    <span class="wz-split-b"><b>${esc(split.name)}</b><span class="pg-meta">${esc(splitMeta(split))}</span></span>
+    <span class="wz-pattern">${esc(splitPattern(split))}</span>
   </button>`;
   if(isOn && split.key === "custom"){
     html += `<div class="wz-custom">Treinos diferentes <div class="pw-stp-c"><button type="button" data-d="-1">−</button><b>${draft.workouts.length}</b><button type="button" data-d="1">+</button></div></div>`;
@@ -166,7 +169,11 @@ function agendaCellsHtml(){
 }
 
 function step1Body(err){
-  const offered = splitsForDays(draft.days);
+  let offered = splitsForDays(draft.days);
+  if(!offered.some(s => s.key === draft.splitKey)){
+    const cur = SPLITS.find(s => s.key === draft.splitKey);
+    if(cur) offered = [...offered.filter(s => s.key !== "custom"), cur, ...offered.filter(s => s.key === "custom")];
+  }
 
   let html = `<section class="wz-sec"><h3 class="wz-q">Dias por semana</h3>
     <div class="wz-seg" id="wzDays">`;
@@ -232,12 +239,6 @@ function isUniform(reps){
   return Array.isArray(reps) && reps.length > 0 && reps.every(r => r === reps[0]);
 }
 
-function defaultReps(name){
-  const key = nameKey(name);
-  const entry = EXERCISE_CATALOG.find(it => nameKey(it.name) === key);
-  return entry && entry.type === "comp" ? [8, 8, 8, 8] : [12, 12, 12];
-}
-
 function tabsHtml(){
   return draft.workouts.map((w, i) => {
     const cls = [i === activeIdx ? "on" : "", w.exercises.length === 0 ? "empty" : ""].filter(Boolean).join(" ");
@@ -259,8 +260,9 @@ function focusChipsHtml(w){
 
 function suggestBlockHtml(w){
   const hasFocus = w.focus.length > 0;
+  const label = w.exercises.length ? "Sugerir mais" : "Sugerir exercícios";
   return `<p class="pg-meta">${hasFocus ? "Preencher com compostos e isoladores do foco escolhido." : "Escolha o foco para receber sugestões."}</p>
-    <button class="wz-back wz-suggest-btn" id="wzSuggest" type="button" ${hasFocus ? "" : "disabled"}>Sugerir exercícios</button>`;
+    <button class="wz-back wz-suggest-btn" id="wzSuggest" type="button" ${hasFocus ? "" : "disabled"}>${esc(label)}</button>`;
 }
 
 function rowHtml(e, j){
@@ -362,7 +364,7 @@ function openAddPicker(w){
     onConfirm: picks => {
       picks.forEach(p => w.exercises.push(p.doc
         ? { name: p.doc.name, muscle: p.doc.muscle, reps: [...p.doc.reps], badges: [...(p.doc.badges || [])], grip: p.doc.grip ?? null, note: p.doc.note ?? null, superset: p.doc.superset ?? null }
-        : { name: p.name, muscle: p.muscle, reps: defaultReps(p.name), badges: [], grip: null, note: null, superset: null }));
+        : { name: p.name, muscle: p.muscle, reps: defaultRepsFor(EXERCISE_CATALOG, p.name), badges: [], grip: null, note: null, superset: null }));
       openStepperIdx = null;
       render();
     },
@@ -548,8 +550,10 @@ function optionsHtml(){
 }
 
 function step3Body(){
+  const existingNames = [...state.plansCache.values()].map(p => p.name);
+  const nameDefault = draft.name || uniquePlanName(suggestPlanName(draft), existingNames);
   let html = `<section class="wz-sec"><h3 class="wz-q">Nome do plano</h3>
-    <input class="pw-name-input" id="wzName" maxlength="60" value="${esc(draft.name || suggestPlanName(draft))}"></section>`;
+    <input class="pw-name-input" id="wzName" maxlength="60" value="${esc(nameDefault)}"></section>`;
 
   html += `<div class="pg-week">${weekCellsHtml()}</div>`;
   html += `<div class="wz-sum">${summaryHtml()}</div>`;
@@ -594,6 +598,8 @@ async function finish(){
   $finish.disabled = true; $back.disabled = true; $finish.textContent = "Salvando…";
   saving = true;
   try{
+    const existingNames = [...state.plansCache.values()].map(p => p.name);
+    draft = { ...draft, name: uniquePlanName((draft.name || "").trim() || suggestPlanName(draft), existingNames) };
     const plan = draftToPlan(draft, { muscleLabels: MUSCLE_LABEL });
     const id = await savePlanDoc(null, { ...plan });
     state.plansCache.set(id, plan);

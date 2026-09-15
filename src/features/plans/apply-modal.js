@@ -163,10 +163,14 @@ export async function preserveCurrentAsCustomPlan(){
   if(!dayTypes.length) return;
 
   const planName = state.currentPlanName || "Treino anterior";
-  const planData = { name: planName, source: "custom", days: dayTypes };
-
+  const marker = state.currentPlanKey ? `template:${state.currentPlanKey}` : "legacy";
   let existingId = null;
-  state.plansCache.forEach((p, id) => { if(p.name === planName) existingId = id; });
+  if(state.currentPlanId && state.plansCache.has(state.currentPlanId)){
+    existingId = state.currentPlanId;                         // active custom plan → update it
+  }else{
+    state.plansCache.forEach((p, id) => { if(p.preservedFrom === marker) existingId = id; });  // only our own previous snapshot
+  }
+  const planData = { name: planName, source: "custom", days: dayTypes, ...(existingId === state.currentPlanId && existingId ? {} : { preservedFrom: marker }) };
 
   const id = await savePlanDoc(existingId, planData);
   state.plansCache.set(id, { ...planData });

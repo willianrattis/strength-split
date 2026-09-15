@@ -1,5 +1,6 @@
 import { validateSchedule } from "./plan-schedule.js";
 import { LETTERS } from "./program.js";
+import { nameKey } from "./exercise-picker.js";
 
 export { LETTERS };
 
@@ -154,4 +155,13 @@ export function draftToPlan(draft, { muscleLabels = {} } = {}){
   });
 
   return { name, source: "custom", notes, days };
+}
+
+/** base if unused (nameKey-insensitive via ./exercise-picker.js nameKey), else "base (2)", "base (3)"… */
+export function uniquePlanName(base, existingNames){
+  const keys = new Set((existingNames || []).map(n => nameKey(n)));
+  if(!keys.has(nameKey(base))) return base;
+  let i = 2;
+  while(keys.has(nameKey(`${base} (${i})`))) i++;
+  return `${base} (${i})`;
 }
