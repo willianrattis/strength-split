@@ -16,7 +16,7 @@ export function openExEditor(docId, opts = {}){
   const { preselectDays = [], ex: planEx = null, hideDaysActive = false, onSave = null } = opts;
   const isPlanMode = !!onSave;
   const isNew = isPlanMode ? !planEx?.name : !docId;
-  const showDelete = !isPlanMode && !isNew;
+  const showDelete = !isPlanMode && !isNew && !hideDaysActive;
   const ex = isPlanMode
     ? { name:"", muscle:"ombro", reps:[12,10,8], badges:[], note:null, grip:null, superset:null, ...planEx }
     : (isNew ? {
@@ -309,27 +309,36 @@ export function openExEditor(docId, opts = {}){
       return;
     }
 
-    const days = [...document.querySelectorAll("#mfDays .day-chip.selected")].map(el => Number(el.dataset.day));
-    const active = document.getElementById("mfActive").checked;
-    if(days.length < 1){ errEl.textContent = "Selecione ao menos 1 dia."; errEl.style.display = ""; return; }
+    let days, active, orderByDay;
+    if(hideDaysActive){
+      // Opened from the workout detail (program/workout.js) — schedule and active
+      // state are edited there, via the domain patch functions, not here.
+      days = [...(ex.days || [])];
+      active = ex.active !== false;
+      orderByDay = { ...(ex.orderByDay || {}) };
+    } else {
+      days = [...document.querySelectorAll("#mfDays .day-chip.selected")].map(el => Number(el.dataset.day));
+      active = document.getElementById("mfActive").checked;
+      if(days.length < 1){ errEl.textContent = "Selecione ao menos 1 dia."; errEl.style.display = ""; return; }
 
-    // compute orderByDay for new days (append to end)
-    const orderByDay = docId ? {...(state.exercisesCatalog.get(docId)?.orderByDay || {})} : {};
-    days.forEach(dk => {
-      if(orderByDay[dk] == null){
-        // find max order for this day
-        let maxOrder = -1;
-        state.exercisesCatalog.forEach(ex => {
-          if(ex.days?.includes(dk) && ex.orderByDay?.[dk] != null && ex.orderByDay[dk] > maxOrder)
-            maxOrder = ex.orderByDay[dk];
-        });
-        orderByDay[dk] = maxOrder + 1;
-      }
-    });
-    // remove orderByDay for days no longer assigned
-    Object.keys(orderByDay).forEach(k => {
-      if(!days.includes(Number(k))) delete orderByDay[k];
-    });
+      // compute orderByDay for new days (append to end)
+      orderByDay = docId ? {...(state.exercisesCatalog.get(docId)?.orderByDay || {})} : {};
+      days.forEach(dk => {
+        if(orderByDay[dk] == null){
+          // find max order for this day
+          let maxOrder = -1;
+          state.exercisesCatalog.forEach(ex2 => {
+            if(ex2.days?.includes(dk) && ex2.orderByDay?.[dk] != null && ex2.orderByDay[dk] > maxOrder)
+              maxOrder = ex2.orderByDay[dk];
+          });
+          orderByDay[dk] = maxOrder + 1;
+        }
+      });
+      // remove orderByDay for days no longer assigned
+      Object.keys(orderByDay).forEach(k => {
+        if(!days.includes(Number(k))) delete orderByDay[k];
+      });
+    }
 
     const data = { name, muscle, reps, badges, grip, note, active, days, orderByDay, superset };
 

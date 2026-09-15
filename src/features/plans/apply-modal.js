@@ -1,5 +1,6 @@
 import { serverTimestamp } from "firebase/firestore";
 import { esc } from "../../domain/text.js";
+import { scheduleFromPlan, scheduleToMapping, validateSchedule, applyScheduleToPlan } from "../../domain/plan-schedule.js";
 import { state } from "../../core/state.js";
 import * as repo from "../../core/repo.js";
 import { $applyPlanModal, $applyPlanModalInner } from "../../core/dom.js";
@@ -15,29 +16,34 @@ export function openApplyPlanModal(plan, planDocId, opts = {}){
   const { onApplied = () => {}, onCancel = () => {} } = opts;
   const dayTypes = plan.days || [];
   const weekdays = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const schedule = scheduleFromPlan(plan);
 
   let html = `<h3>Aplicar plano</h3>`;
   html += `<p style="color:var(--muted);font-size:13px;margin-bottom:16px">${esc(plan.name)}</p>`;
-  html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Associe cada tipo de dia a um dia da semana. Dias não mapeados serão dias de descanso.</p>`;
+  if(opts.note) html += `<p class="day-map-note">${esc(opts.note)}</p>`;
+  html += `<p style="color:var(--muted);font-size:12px;margin-bottom:14px">Escolha o treino de cada dia. Um treino pode repetir na semana.</p>`;
 
-  dayTypes.forEach((d, i) => {
-    const defaultDay = i < weekdays.length ? i : -1;
+  dayTypes.forEach(d => {
     const exNames = d.exercises.map(e => e.superset
       ? `${esc(e.name)} + ${esc(e.superset.name)}`
       : esc(e.name)
     );
     html += `<div class="day-map-item">
-      <div class="day-map-row">
-        <span class="day-map-type">${d.type}</span>
-        <span class="day-map-label">${esc(d.label)}</span>
-        <select class="day-map-select" data-idx="${i}">
-          <option value="">— Selecionar —</option>
-          ${weekdays.map((w,wi) => `<option value="${wi}" ${defaultDay===wi?'selected':''}>${w}</option>`).join("")}
-        </select>
-      </div>
+      <div class="day-map-row"><span class="day-map-type">${esc(d.type)}</span><span class="day-map-label">${esc(d.label)} · ${d.exercises.length} exercícios</span></div>
       <div class="day-map-exlist">
         ${exNames.map(n => `<span class="day-map-ex">${n}</span>`).join("")}
       </div>
+    </div>`;
+  });
+
+  html += `<div class="day-map-section">Agenda</div>`;
+  weekdays.forEach((w, wd) => {
+    html += `<div class="day-map-row">
+      <span class="day-map-wd">${w}</span>
+      <select class="day-map-select" data-wd="${wd}">
+        <option value="">Descanso</option>
+        ${dayTypes.map((d, i) => `<option value="${i}" ${schedule[wd]===i?'selected':''}>${esc(d.type)} · ${esc(d.label)}</option>`).join("")}
+      </select>
     </div>`;
   });
 
@@ -60,28 +66,12 @@ export function openApplyPlanModal(plan, planDocId, opts = {}){
     const errEl = document.getElementById("applyError");
     errEl.style.display = "none";
 
-    const mapping = [];
-    const usedWeekdays = new Set();
-    let valid = true;
-
-    $applyPlanModalInner.querySelectorAll(".day-map-select").forEach(sel => {
-      if(!valid) return;
-      const idx = +sel.dataset.idx;
-      const val = sel.value;
-      if(val === ''){
-        errEl.textContent = `Selecione um dia para o tipo ${dayTypes[idx].type}.`;
-        errEl.style.display = ""; valid = false; return;
-      }
-      const weekday = +val;
-      if(usedWeekdays.has(weekday)){
-        errEl.textContent = `O dia ${weekdays[weekday]} foi selecionado mais de uma vez.`;
-        errEl.style.display = ""; valid = false; return;
-      }
-      usedWeekdays.add(weekday);
-      mapping.push({ dayTypeIdx: idx, weekday });
-    });
-
-    if(!valid) return;
+    const types = dayTypes.map(d => d.type);
+    const chosen = [...$applyPlanModalInner.querySelectorAll(".day-map-select")]
+      .reduce((s, sel) => { s[+sel.dataset.wd] = sel.value === "" ? null : +sel.value; return s; }, new Array(7).fill(null));
+    const err = validateSchedule(chosen, types);
+    if(err){ errEl.textContent = err; errEl.style.display = ""; return; }
+    const mapping = scheduleToMapping(chosen);
 
     const $confirmBtn = document.getElementById("applyConfirm");
     const $cancelBtn = document.getElementById("applyCancel");
@@ -94,6 +84,11 @@ export function openApplyPlanModal(plan, planDocId, opts = {}){
 
     try{
       await applyPlan(plan, planDocId, mapping);
+      if(planDocId){
+        savePlanDoc(planDocId, { days: applyScheduleToPlan(plan, chosen).days })
+          .then(id => { const p = state.plansCache.get(planDocId); if(p) p.days = applyScheduleToPlan(p, chosen).days; })
+          .catch(e => console.warn("save schedule:", e.message));
+      }
       settled = true;
       closeApply();
       onApplied();
@@ -110,6 +105,23 @@ export function openApplyPlanModal(plan, planDocId, opts = {}){
   });
 }
 
+function toPlanExercise(e){
+  return {
+    name: e.name, muscle: e.muscle,
+    reps: [...(e.reps||[])],
+    badges: [...(e.badges||[])],
+    grip: e.grip || null,
+    note: e.note || null,
+    superset: e.superset ? {
+      name: e.superset.name, muscle: e.superset.muscle,
+      reps: [...(e.superset.reps||[])],
+      badges: [...(e.superset.badges||[])],
+      grip: e.superset.grip || null,
+      note: e.superset.note || null,
+    } : null,
+  };
+}
+
 // Maps the live day/exercise setup (activeDays()) into plan-shaped {type,label,
 // exercises} day types, skipping rest days. Shared by preserveCurrentAsCustomPlan
 // (below) and the "share current program" entry point in plans/index.js.
@@ -118,28 +130,28 @@ export function activeProgramAsPlan(){
   const days = activeDays();
   const dayTypes = [];
 
-  days.forEach((d) => {
-    if(d.ex.length === 0) return;
-    const exercises = d.ex.map(e => ({
-      name: e.name, muscle: e.muscle,
-      reps: [...(e.reps||[])],
-      badges: [...(e.badges||[])],
-      grip: e.grip || null,
-      note: e.note || null,
-      superset: e.superset ? {
-        name: e.superset.name, muscle: e.superset.muscle,
-        reps: [...(e.superset.reps||[])],
-        badges: [...(e.superset.badges||[])],
-        grip: e.superset.grip || null,
-        note: e.superset.note || null,
-      } : null,
-    }));
-    dayTypes.push({
-      type: typeLetters[dayTypes.length] || String(dayTypes.length),
-      label: d.tag || d.focus || d.name,
-      exercises,
+  if(state.program?.workouts?.length){
+    state.program.workouts.forEach(w => {
+      const d = days[w.weekdays[0]];
+      if(!d || d.ex.length === 0) return;
+      dayTypes.push({
+        type: w.letter,
+        label: w.label || d.tag || d.focus || d.name,
+        exercises: d.ex.map(toPlanExercise),
+        weekdays: [...w.weekdays],
+      });
     });
-  });
+  }else{
+    days.forEach((d, dayIdx) => {
+      if(d.ex.length === 0) return;
+      dayTypes.push({
+        type: typeLetters[dayTypes.length] || String(dayTypes.length),
+        label: d.tag || d.focus || d.name,
+        exercises: d.ex.map(toPlanExercise),
+        weekdays: [dayIdx],
+      });
+    });
+  }
 
   return { name: state.currentPlanName || "Meu treino", days: dayTypes };
 }
@@ -213,7 +225,7 @@ export async function applyPlan(plan, planDocId, mapping){
   await Promise.all(addPromises);
 
   // 4. Update day customizations
-  for(let dk = 0; dk < 5; dk++){
+  for(let dk = 0; dk < 7; dk++){
     const mappedItem = mapping.find(m => m.weekday === dk);
     if(mappedItem){
       const dayType = plan.days[mappedItem.dayTypeIdx];
@@ -235,6 +247,8 @@ export async function applyPlan(plan, planDocId, mapping){
   await savePref();
 
   // 6. Rebuild and re-render
+  // Force syncProgram to re-derive from the new catalog so labels come from this plan, not the previous program.
+  state.program = null;
   rebuildUserDays();
   renderStrip();
   state.session = null;

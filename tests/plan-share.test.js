@@ -258,3 +258,41 @@ describe("parseSharedPlan", () => {
     expect(parsed.days[0].exercises[0].extraField).toBeUndefined();
   });
 });
+
+describe("weekdays (plan schedule)", () => {
+  it("round-trips weekdays through serialize + parse", () => {
+    const planWithWeekdays = { ...fullPlan, days: [{ ...fullPlan.days[0], weekdays: [0, 3] }] };
+    const serialized = serializePlan(planWithWeekdays);
+    expect(serialized.days[0].weekdays).toEqual([0, 3]);
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.days[0].weekdays).toEqual([0, 3]);
+  });
+
+  it("omits weekdays entirely when the day has none — existing plans are unchanged", () => {
+    const serialized = serializePlan(fullPlan);
+    expect(serialized.days[0].weekdays).toBeUndefined();
+    const parsed = parseSharedPlan(serialized);
+    expect(parsed.days[0].weekdays).toBeUndefined();
+  });
+
+  it("drops a garbage weekdays array (bad types, out-of-range, duplicates, oversized) without rejecting the plan", () => {
+    const serialized = serializePlan(fullPlan);
+    const base = serialized.days[0];
+
+    const withStrings = parseSharedPlan({ ...serialized, days: [{ ...base, weekdays: ["0", "3"] }] });
+    expect(withStrings).not.toBeNull();
+    expect(withStrings.days[0].weekdays).toBeUndefined();
+
+    const outOfRange = parseSharedPlan({ ...serialized, days: [{ ...base, weekdays: [9] }] });
+    expect(outOfRange).not.toBeNull();
+    expect(outOfRange.days[0].weekdays).toBeUndefined();
+
+    const duplicated = parseSharedPlan({ ...serialized, days: [{ ...base, weekdays: [0, 0] }] });
+    expect(duplicated).not.toBeNull();
+    expect(duplicated.days[0].weekdays).toBeUndefined();
+
+    const oversized = parseSharedPlan({ ...serialized, days: [{ ...base, weekdays: [0,1,2,3,4,5,6,0] }] });
+    expect(oversized).not.toBeNull();
+    expect(oversized.days[0].weekdays).toBeUndefined();
+  });
+});

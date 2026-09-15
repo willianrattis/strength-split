@@ -146,3 +146,13 @@ export async function addPlan(uid, data) {
 export async function deletePlan(uid, docId) {
   await deleteDoc(doc(db, "users", uid, "plans", docId));
 }
+
+// ---- program ----
+
+export async function fetchProgram(uid){
+  const snap = await getDoc(doc(db, "users", uid, "program", "current"));
+  return snap.exists() ? snap.data() : null;
+}
+export async function putProgram(uid, data){
+  await setDoc(doc(db, "users", uid, "program", "current"), data);
+}

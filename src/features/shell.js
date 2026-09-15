@@ -61,6 +61,7 @@ export function setSync(status, txt){
 }
 
 export function showTab(which){
+  document.body.dataset.tab = which;
   if(which !== "treino" && state.trainMode && window._exitTrainMode) window._exitTrainMode();
   $tabTreino.classList.toggle("active", which === "treino");
   $tabExercicios.classList.toggle("active", which === "exercicios");

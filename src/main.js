@@ -26,13 +26,14 @@ import * as exerciseActions from "./features/day/exercise-actions.js";
 import * as train from "./features/train/index.js";
 import * as restTimer from "./features/train/rest-timer.js";
 import * as exercisesList from "./features/exercises/list.js";
+import * as programHome from "./features/program/home.js";
 import * as flagState from "./features/flag-state.js";
 import { initOnboarding } from "./features/onboarding.js";
 import { initHowItWorks } from "./features/how-it-works.js";
 import { setGamifChipLoading } from "./features/flag-state.js";
 import { capturePendingSharedPlan, initPlanImport } from "./features/plans/plan-import.js";
-import { initPlanBuilder } from "./features/plans/plan-builder.js";
 import { initWakeLock } from "./features/wake-lock.js";
+import "./features/plans/wizard.js";
 
 // Captured before auth resolves — a shared link must survive login, and the
 // fragment needs to be off the URL before anything else runs.
@@ -45,8 +46,10 @@ onAuthStateChanged(auth, async u => {
   setGamifChipLoading(true);
   if(u){
     $authBox.textContent = (u.displayName||u.email||"").split(" ")[0];
+    document.getElementById("settingsAccountInfo").textContent = [(u.displayName||"").split(" ")[0], u.email].filter(Boolean).join(" · ");
     $gateWrap.style.display = "none";
     $appContent.style.display = "";
+    if(!document.body.dataset.tab) document.body.dataset.tab = "treino";
     $strip.innerHTML = skeletonStrip();
     $panel.innerHTML = skeletonPanel();
     setSync("live", "sincronizado");
@@ -59,8 +62,10 @@ onAuthStateChanged(auth, async u => {
     }
   } else {
     $authBox.textContent = "";
+    document.getElementById("settingsAccountInfo").textContent = "";
     $gateWrap.style.display = "block";
     $appContent.style.display = "none";
+    delete document.body.dataset.tab;
     setSync("", "aguardando login");
     if(window.SSSplash) window.SSSplash.ready();
     teardownFeatureFlags();
@@ -87,11 +92,11 @@ exerciseActions.init();
 train.init();
 restTimer.init();
 exercisesList.init();
+programHome.init();
 flagState.init();
 initOnboarding();
 initHowItWorks();
 initPlanImport();
-initPlanBuilder();
 initWakeLock();
 
 applyTheme();
