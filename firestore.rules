@@ -9,5 +9,26 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.token.admin == true;
     }
+
+    // Short share links (KMP app, M7 P31): https://strengthsplit.app/p/{id} → this doc. The id is
+    // 10 base62 chars of SHA-256(ownerUid + plan), so the same user sharing the same plan gets the
+    // same doc. Public get: the site's /p/ page reads it signed out. List only as the owner's
+    // `where ownerUid == uid` query (account deletion). Immutable: create once, delete by the owner.
+    match /sharedPlans/{id} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow create: if request.auth != null
+        && id.matches('^[0-9A-Za-z]{10}$')
+        && request.resource.data.keys().hasAll(['v', 'plan', 'ownerUid', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['v', 'plan', 'ownerUid', 'createdAt'])
+        && request.resource.data.v == 1
+        && request.resource.data.plan is string
+        && request.resource.data.plan.size() > 0
+        && request.resource.data.plan.size() <= 65536
+        && request.resource.data.plan.matches('^[A-Za-z0-9_-]+={0,2}$')
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
   }
 }
